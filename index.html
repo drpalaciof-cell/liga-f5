@@ -915,7 +915,7 @@ textarea {
         </div>
         <div class="form-group">
           <label>Contraseña</label>
-          <input type="password" id="new-admin-pin" maxlength="20" inputmode="numeric" placeholder="••••••">
+          <input type="password" id="new-admin-pin" maxlength="20" placeholder="••••••">
         </div>
       </div>
       <button class="btn-primary mt-16" onclick="addAdmin()" style="width:auto;padding:10px 28px">Agregar organizador</button>
@@ -1241,7 +1241,7 @@ function addPlayerRow(player, idx){
            oninput="updatePlayerCount()" ${locked?'disabled':''}>
     <input type="text" placeholder="Nombre"   value="${esc(player.nombre||'')}"
            oninput="updatePlayerCount()" ${locked?'disabled':''}>
-    <input type="text" placeholder="DNI" inputmode="numeric" maxlength="10"
+    <input type="text" placeholder="DNI" maxlength="10"
            value="${esc(player.dni||'')}" ${locked?'disabled':''}>
     <button class="btn-remove-player" onclick="removePlayer(this)" ${locked?'disabled':''} title="Eliminar">✕</button>
   `;
