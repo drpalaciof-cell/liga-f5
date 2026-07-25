@@ -1036,6 +1036,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         </div>
         <p class="wizard-help" id="pe-receipt-seguro-help" style="margin-bottom:0;"></p>
       </div>
+      <div id="pe-seguro-historial" style="margin-top:16px;"></div>
     </div>
 
     </div><!-- /pe-tab-panel -->
@@ -2064,7 +2065,7 @@ function renderPanelEquipo() {
   else { shieldImg.classList.add('hidden'); shieldPh.classList.remove('hidden'); shieldPh.textContent = (eq.nombre || '??').slice(0, 2).toUpperCase(); }
 
   renderTablaJugadores('pe-jugadores-body', jugadores, false);
-  state.seguroSeleccion = (eq.seguroJugadoresDni || []).slice();
+  state.seguroSeleccion = [];
   renderPagoPanel();
   renderSegurosPanel();
   checkDeadlineLock();
@@ -2177,11 +2178,17 @@ async function renderPagoPanel() {
 function toggleSeguroJugador(dni, checked) {
   state.seguroSeleccion = state.seguroSeleccion.filter(d => d !== dni);
   if (checked) state.seguroSeleccion.push(dni);
-  document.getElementById('pe-seguro-total').textContent = `${state.seguroSeleccion.length} jugador(es) asegurado(s) · Total: $${(state.seguroSeleccion.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')}`;
+  const total = document.getElementById('pe-seguro-total');
+  if (total) total.textContent = state.seguroSeleccion.length > 0
+    ? `Nueva selección: ${state.seguroSeleccion.length} jugador(es) · Total a transferir: $${(state.seguroSeleccion.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')}`
+    : '';
 }
+function fmtFechaSeguroTx(iso) { if (!iso) return ''; return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
 async function renderSegurosPanel() {
   const eq = state.equipo;
-  const estado = eq.seguroEstado || 'sin_subir';
+  const transacciones = eq.segurosTransacciones || [];
+  const aprobadas = new Set(eq.seguroJugadoresDni || []);
+  const pendientes = new Set(transacciones.filter(t => t.estado === 'pendiente').flatMap(t => t.dnis));
   const jugadores = (eq.jugadores && eq.jugadores.length > 0 ? eq.jugadores : emptyJugadores()).filter(j => j.apellido || j.nombre || j.dni);
   const seleccion = new Set(state.seguroSeleccion);
   const body = document.getElementById('pe-seguro-body');
@@ -2193,61 +2200,82 @@ async function renderSegurosPanel() {
   } catch (e) { console.error(e); }
   const fechaSeguroTxt = formatFechaDMY(cfg.fechaLimiteSeguro);
   const venciSeguro = !!(cfg.fechaLimiteSeguro && new Date() > new Date(cfg.fechaLimiteSeguro + 'T23:59:59'));
-  const locked = estado === 'aprobado' || venciSeguro;
-  state.lockSeguro = locked;
+  state.lockSeguro = venciSeguro;
 
   body.innerHTML = jugadores.length === 0
     ? `<tr><td colspan="5" class="empty-state">Primero completá tu lista de buena fe.</td></tr>`
     : jugadores.map((j, i) => {
         const sinDni = !j.dni;
-        const checked = !sinDni && seleccion.has(j.dni);
+        const esAprobado = !sinDni && aprobadas.has(j.dni);
+        const esPendiente = !sinDni && !esAprobado && pendientes.has(j.dni);
+        const noEditable = sinDni || esAprobado || esPendiente || venciSeguro;
+        const checked = esAprobado || esPendiente || (!sinDni && seleccion.has(j.dni));
+        let estadoTag = '';
+        if (esAprobado) estadoTag = '<span class="badge badge-ok" style="margin-left:6px;">Asegurado</span>';
+        else if (esPendiente) estadoTag = '<span class="badge badge-warn" style="margin-left:6px;">Pendiente</span>';
         return `<tr>
           <td class="idx-cell"><span class="jersey-num">${i + 1}</span></td>
           <td class="uppercase-bold">${escapeHtml(j.apellido) || '-'}</td>
           <td>${escapeHtml(j.nombre) || '-'}</td>
           <td style="font-variant-numeric:tabular-nums;">${escapeHtml(j.dni) || 'sin DNI'}</td>
           <td style="text-align:center;">
-            <input type="checkbox" class="seguro-checkbox" ${checked ? 'checked' : ''} ${(locked || sinDni) ? 'disabled' : ''} title="${sinDni ? 'Completá el DNI en la lista de buena fe para poder asegurar a este jugador' : ''}" onchange="toggleSeguroJugador('${escapeHtml(j.dni)}', this.checked)">
+            <input type="checkbox" class="seguro-checkbox" ${checked ? 'checked' : ''} ${noEditable ? 'disabled' : ''} title="${sinDni ? 'Completá el DNI en la lista de buena fe para poder asegurar a este jugador' : ''}" onchange="toggleSeguroJugador('${escapeHtml(j.dni)}', this.checked)">${estadoTag}
           </td>
         </tr>`;
       }).join('');
 
-  document.getElementById('pe-seguro-total').textContent = `${state.seguroSeleccion.length} jugador(es) asegurado(s) · Total: $${(state.seguroSeleccion.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')}`;
+  const total = document.getElementById('pe-seguro-total');
+  total.textContent = state.seguroSeleccion.length > 0
+    ? `Nueva selección: ${state.seguroSeleccion.length} jugador(es) · Total a transferir: $${(state.seguroSeleccion.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')}`
+    : '';
 
   const notice = document.getElementById('pe-seguro-notice');
   const uploadWrap = document.getElementById('pe-seguro-upload-wrap');
   const img = document.getElementById('pe-receipt-seguro-img');
   const ph = document.getElementById('pe-receipt-seguro-ph');
   const help = document.getElementById('pe-receipt-seguro-help');
-  document.getElementById('pe-nombre-transferencia-seguro').value = eq.seguroNombreTransferencia || '';
-  if (eq.seguroComprobante) { img.src = eq.seguroComprobante; img.classList.remove('hidden'); ph.classList.add('hidden'); }
-  uploadWrap.classList.add('hidden');
+  document.getElementById('pe-nombre-transferencia-seguro').value = '';
+  img.classList.add('hidden'); ph.classList.remove('hidden');
 
-  if (estado === 'aprobado') {
-    notice.innerHTML = `<div class="glass notice notice-ok">✅ Seguro aprobado para ${(eq.seguroJugadoresDni || []).length} jugador(es).</div>`;
-    return;
-  }
+  const resumen = `${aprobadas.size} jugador(es) asegurado(s)${pendientes.size ? ` · ${pendientes.size} pendiente(s) de revisión` : ''}`;
   if (venciSeguro) {
-    notice.innerHTML = `<div class="glass notice notice-warn">⚠️ El plazo para pagar el seguro médico venció el ${fechaSeguroTxt}. Contactá a la organización para regularizar tu situación.</div>`;
-    return;
-  }
-  if (estado === 'rechazado') {
-    notice.innerHTML = `<div class="glass notice notice-warn">⚠️ El comprobante del seguro presentado no pudo ser validado. Revisá la selección y cargá un nuevo comprobante.</div>`;
+    notice.innerHTML = `<div class="glass notice notice-warn">⚠️ El plazo para pagar el seguro médico venció el ${fechaSeguroTxt}. ${resumen}. Los jugadores no asegurados no van a estar habilitados para disputar partidos.</div>`;
+    uploadWrap.classList.add('hidden');
+  } else {
+    notice.innerHTML = `<div class="glass notice notice-info">ℹ️ ${resumen}. ${cfg.fechaLimiteSeguro ? `Tenés hasta el ${fechaSeguroTxt} para ir asegurando jugadores.` : ''} Podés ir marcando y pagando de a grupos, cuantas veces quieras.</div>`;
     uploadWrap.classList.remove('hidden');
-    help.textContent = 'Cargá un nuevo comprobante del seguro.';
-    return;
+    help.textContent = 'Marcá los jugadores de esta tanda y subí el comprobante de esa transferencia.';
   }
-  if (estado === 'pendiente') {
-    notice.innerHTML = `<div class="glass notice notice-info">Tu comprobante del seguro fue recibido y está pendiente de validación por la organización.</div>`;
-    uploadWrap.classList.remove('hidden');
-    help.textContent = 'Podés ajustar la selección y volver a subir el comprobante si fue un error.';
-    return;
-  }
-  notice.innerHTML = cfg.fechaLimiteSeguro
-    ? `<div class="glass notice notice-info">ℹ️ Tenés hasta el ${fechaSeguroTxt} para pagar el seguro de los jugadores que quieras cubrir.</div>`
-    : '';
-  uploadWrap.classList.remove('hidden');
-  help.textContent = 'Marcá a los jugadores asegurados y subí un solo comprobante por el total.';
+
+  renderHistorialSeguro(transacciones);
+}
+function renderHistorialSeguro(transacciones) {
+  const wrap = document.getElementById('pe-seguro-historial');
+  if (!wrap) return;
+  if (!transacciones.length) { wrap.innerHTML = ''; return; }
+  const ordenadas = transacciones.slice().sort((a, b) => new Date(b.fechaCarga) - new Date(a.fechaCarga));
+  const badge = t => t.estado === 'aprobado' ? '<span class="badge badge-ok">Aprobado</span>'
+    : t.estado === 'rechazado' ? '<span class="badge badge-danger">Rechazado</span>'
+    : '<span class="badge badge-warn">Pendiente</span>';
+  wrap.innerHTML = `<div class="section-title" style="font-size:.8rem;margin-top:4px;">Historial de comprobantes del seguro</div>` +
+    ordenadas.map(t => `
+      <div class="list-row" style="align-items:center;">
+        <div>
+          <strong>${t.dnis.length} jugador(es)</strong> · $${(t.dnis.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')}
+          <div class="muted" style="font-size:12px;margin-top:2px;">${fmtFechaSeguroTx(t.fechaCarga)} · Transfirió: ${escapeHtml(t.nombreTransferencia || '-')}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${badge(t)}
+          <button class="btn btn-sm" onclick="verComprobanteSeguroPropio('${t.id}')">Ver</button>
+        </div>
+      </div>`).join('');
+}
+function verComprobanteSeguroPropio(txId) {
+  const t = (state.equipo.segurosTransacciones || []).find(x => x.id === txId);
+  if (!t) return;
+  openModal(`<h2 style="margin-bottom:14px;">Comprobante del seguro</h2>
+    <img src="${t.comprobante}" style="width:100%;border-radius:10px;">
+    <button class="btn btn-block" style="margin-top:14px;" onclick="closeModal()">Cerrar</button>`);
 }
 document.getElementById('pe-receipt-seguro-input').addEventListener('change', async e => {
   const file = e.target.files[0];
@@ -2255,18 +2283,28 @@ document.getElementById('pe-receipt-seguro-input').addEventListener('change', as
   if (state.lockSeguro) { showToast('El plazo para pagar el seguro ya finalizó.', 'error'); e.target.value = ''; return; }
   const nombreTransferencia = document.getElementById('pe-nombre-transferencia-seguro').value.trim();
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
-  if (state.seguroSeleccion.length === 0) { showToast('Marcá al menos un jugador para asegurar.', 'error'); e.target.value = ''; return; }
+  if (state.seguroSeleccion.length === 0) { showToast('Marcá al menos un jugador para esta tanda.', 'error'); e.target.value = ''; return; }
   try {
     const dataUrl = await resizeImageFile(file, 1100);
     if (dataUrl.length > 900000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
-    const fechaCarga = new Date().toISOString();
-    const seguroJugadoresDni = state.seguroSeleccion.slice();
-    await db.collection('equipos').doc(state.equipoId).update({ seguroJugadoresDni, seguroComprobante: dataUrl, seguroNombreTransferencia: nombreTransferencia, seguroEstado: 'pendiente', seguroFechaCarga: fechaCarga });
-    Object.assign(state.equipo, { seguroJugadoresDni, seguroComprobante: dataUrl, seguroNombreTransferencia: nombreTransferencia, seguroEstado: 'pendiente', seguroFechaCarga: fechaCarga });
+    const transaccion = {
+      id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      dnis: state.seguroSeleccion.slice(),
+      comprobante: dataUrl,
+      nombreTransferencia,
+      estado: 'pendiente',
+      fechaCarga: new Date().toISOString(),
+      fechaRevision: null
+    };
+    await db.collection('equipos').doc(state.equipoId).update({ segurosTransacciones: firebase.firestore.FieldValue.arrayUnion(transaccion) });
+    state.equipo.segurosTransacciones = [...(state.equipo.segurosTransacciones || []), transaccion];
+    const cantidad = state.seguroSeleccion.length;
+    state.seguroSeleccion = [];
+    e.target.value = '';
     renderSegurosPanel();
-    showToast(`Comprobante del seguro cargado para ${seguroJugadoresDni.length} jugador(es). Queda pendiente de validación.`, 'ok');
-    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de seguro médico', `📎 ${state.equipo?.nombre||'El equipo'} subió el comprobante del seguro médico para ${seguroJugadoresDni.length} jugador(es). Transferencia a nombre de: ${nombreTransferencia}.`, 'admin');
-  } catch (err) { console.error(err); showToast('No se pudo actualizar el comprobante.', 'error'); }
+    showToast(`Comprobante cargado para ${cantidad} jugador(es). Queda pendiente de validación.`, 'ok');
+    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de seguro médico', `📎 ${state.equipo?.nombre||'El equipo'} subió un comprobante de seguro médico para ${cantidad} jugador(es). Transferencia a nombre de: ${nombreTransferencia}.`, 'admin');
+  } catch (err) { console.error(err); showToast('No se pudo cargar el comprobante.', 'error'); }
 });
 async function checkDeadlineLock() {
   state.lockBuenaFe = false;
@@ -3346,7 +3384,7 @@ function calcularIngresoInscripcion(eq, cfg) {
   return total;
 }
 function calcularIngresoSeguro(eq) {
-  return eq.seguroEstado === 'aprobado' ? (eq.seguroJugadoresDni || []).length * MONTO_SEGURO_POR_JUGADOR : 0;
+  return (eq.seguroJugadoresDni || []).length * MONTO_SEGURO_POR_JUGADOR;
 }
 async function calcularStatsTemporada() {
   let cfg = {};
@@ -3358,7 +3396,7 @@ async function calcularStatsTemporada() {
   const primeraEquipos = equiposCacheAdmin.filter(eq => eq.division === 'Primera');
   const segundaEquipos = equiposCacheAdmin.filter(eq => eq.division === 'Segunda');
   const pagoOk = equiposCacheAdmin.filter(eq => estadoGeneralPago(eq) === 'aprobado').length;
-  const segurosOk = equiposCacheAdmin.filter(eq => (eq.seguroEstado || 'sin_subir') === 'aprobado').reduce((sum, eq) => sum + (eq.seguroJugadoresDni || []).length, 0);
+  const segurosOk = equiposCacheAdmin.reduce((sum, eq) => sum + (eq.seguroJugadoresDni || []).length, 0);
   const insPrimera = primeraEquipos.reduce((s, eq) => s + calcularIngresoInscripcion(eq, cfg), 0);
   const insSegunda = segundaEquipos.reduce((s, eq) => s + calcularIngresoInscripcion(eq, cfg), 0);
   const segPrimera = primeraEquipos.reduce((s, eq) => s + calcularIngresoSeguro(eq), 0);
@@ -3602,25 +3640,26 @@ function jugadoresAseguradosDe(eq) {
 }
 function renderSegurosAdminList() {
   const filtro = state.seguroFiltroActivo || 'pendiente';
-  let list = pagosCacheAdmin.filter(eq => eq.division === state.adminDivisionActiva);
-  if (filtro !== 'todos') list = list.filter(eq => (eq.seguroEstado || 'sin_subir') === filtro);
-  document.getElementById('pa-seguros-count').textContent = `(${list.length})`;
+  const equipos = pagosCacheAdmin.filter(eq => eq.division === state.adminDivisionActiva);
+  let filas = [];
+  equipos.forEach(eq => {
+    (eq.segurosTransacciones || []).forEach(tx => {
+      if (filtro === 'todos' || tx.estado === filtro) filas.push({ eq, tx });
+    });
+  });
+  filas.sort((a, b) => new Date(b.tx.fechaCarga) - new Date(a.tx.fechaCarga));
+  document.getElementById('pa-seguros-count').textContent = `(${filas.length})`;
   const wrap = document.getElementById('pa-seguros-list');
-  if (list.length === 0) { wrap.innerHTML = `<div class="empty-state">No hay equipos en esta categoría.</div>`; return; }
-  wrap.innerHTML = list.map((eq, idx) => {
+  if (filas.length === 0) { wrap.innerHTML = `<div class="empty-state">No hay comprobantes en esta categoría.</div>`; return; }
+  wrap.innerHTML = filas.map(({ eq, tx }, idx) => {
     const isSegunda = eq.division === 'Segunda';
     const accent = isSegunda ? 'var(--segunda)' : 'var(--cyan)';
     const accentSoft = isSegunda ? 'var(--segunda-soft)' : 'var(--cyan-soft)';
-    const estado = eq.seguroEstado || 'sin_subir';
-    const cantidad = (eq.seguroJugadoresDni || []).length;
-    const monto = cantidad * MONTO_SEGURO_POR_JUGADOR;
-    const badge = estado === 'aprobado' ? `<span class="badge badge-ok">Aprobado</span>`
-      : estado === 'rechazado' ? `<span class="badge badge-danger">Rechazado</span>`
-      : estado === 'pendiente' ? `<span class="badge badge-warn">Pendiente</span>`
-      : `<span class="badge">Sin subir</span>`;
-    const receiptHtml = eq.seguroComprobante
-      ? `<img src="${eq.seguroComprobante}" class="receipt-thumb" onclick="verComprobanteSeguroAdmin('${eq.id}')" style="cursor:pointer;">`
-      : `<div class="receipt-thumb ph">Sin comprobante</div>`;
+    const badge = tx.estado === 'aprobado' ? `<span class="badge badge-ok">Aprobado</span>`
+      : tx.estado === 'rechazado' ? `<span class="badge badge-danger">Rechazado</span>`
+      : `<span class="badge badge-warn">Pendiente</span>`;
+    const monto = tx.dnis.length * MONTO_SEGURO_POR_JUGADOR;
+    const receiptHtml = `<img src="${tx.comprobante}" class="receipt-thumb" onclick="verComprobanteSeguroAdmin('${eq.id}','${tx.id}')" style="cursor:pointer;">`;
     return `<div class="team-row" style="--row-accent:${accent};animation-delay:${idx * 35}ms">
       <div class="team-row-main">
         ${receiptHtml}
@@ -3629,59 +3668,71 @@ function renderSegurosAdminList() {
           <div class="team-row-meta">
             <span class="badge" style="background:${accentSoft};color:${accent};border:1px solid ${accent};">${escapeHtml(eq.division || '-')}</span>
             ${badge}
-            <span class="team-row-sub">${cantidad}/${NUM_JUGADORES} asegurados · $${monto.toLocaleString('es-AR')} · Transfirió: ${escapeHtml(eq.seguroNombreTransferencia) || 'sin dato'}</span>
+            <span class="team-row-sub">${tx.dnis.length} jugador(es) · $${monto.toLocaleString('es-AR')} · ${fmtFechaSeguroTx(tx.fechaCarga)} · Transfirió: ${escapeHtml(tx.nombreTransferencia) || 'sin dato'}</span>
           </div>
         </div>
       </div>
       <div class="admin-table-actions">
-        <button class="btn btn-sm" ${cantidad === 0 ? 'disabled' : ''} onclick="verComprobanteSeguroAdmin('${eq.id}')">Ver detalle</button>
-        <button class="btn btn-sm btn-primary" ${estado !== 'pendiente' ? 'disabled' : ''} onclick="aprobarSeguro('${eq.id}')">✓ Aprobar</button>
-        <button class="btn btn-sm btn-danger" ${estado !== 'pendiente' ? 'disabled' : ''} onclick="rechazarSeguro('${eq.id}')">✕ Rechazar</button>
+        <button class="btn btn-sm" onclick="verComprobanteSeguroAdmin('${eq.id}','${tx.id}')">Ver detalle</button>
+        <button class="btn btn-sm btn-primary" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="aprobarSeguro('${eq.id}','${tx.id}')">✓ Aprobar</button>
+        <button class="btn btn-sm btn-danger" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="rechazarSeguro('${eq.id}','${tx.id}')">✕ Rechazar</button>
       </div>
     </div>`;
   }).join('');
 }
-function verComprobanteSeguroAdmin(id) {
-  const eq = pagosCacheAdmin.find(e => e.id === id);
+function verComprobanteSeguroAdmin(equipoId, txId) {
+  const eq = pagosCacheAdmin.find(e => e.id === equipoId);
   if (!eq) return;
-  const estado = eq.seguroEstado || 'sin_subir';
-  const asegurados = jugadoresAseguradosDe(eq);
-  const listaHtml = asegurados.length
-    ? `<ul style="margin:0 0 14px;padding-left:18px;">${asegurados.map(j => `<li>${escapeHtml(j.apellido)}, ${escapeHtml(j.nombre)} — DNI ${escapeHtml(j.dni)}</li>`).join('')}</ul>`
-    : `<p class="muted" style="margin-bottom:14px;">Todavía no seleccionó jugadores.</p>`;
-  const comprobanteHtml = eq.seguroComprobante
-    ? `<img src="${eq.seguroComprobante}" style="width:100%;border-radius:10px;border:1px solid var(--glass-border);margin-bottom:14px;">`
-    : `<p class="muted" style="margin-bottom:14px;">Sin comprobante cargado.</p>`;
+  const tx = (eq.segurosTransacciones || []).find(t => t.id === txId);
+  if (!tx) return;
+  const jugadoresMap = {};
+  (eq.jugadores || []).forEach(j => { if (j.dni) jugadoresMap[j.dni] = j; });
+  const listaHtml = tx.dnis.length
+    ? `<ul style="margin:0 0 14px;padding-left:18px;">${tx.dnis.map(dni => { const j = jugadoresMap[dni]; return `<li>${j ? `${escapeHtml(j.apellido)}, ${escapeHtml(j.nombre)}` : 'Jugador'} — DNI ${escapeHtml(dni)}</li>`; }).join('')}</ul>`
+    : `<p class="muted" style="margin-bottom:14px;">Sin jugadores.</p>`;
   openModal(`
     <h2 style="margin-bottom:4px;">${escapeHtml(eq.nombre)} — Seguro médico</h2>
-    <p class="muted" style="margin-bottom:14px;">${asegurados.length} jugador(es) · $${(asegurados.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')} · Transfirió: ${escapeHtml(eq.seguroNombreTransferencia) || 'sin dato'}</p>
-    <h3 style="font-size:14px;margin-bottom:8px;">Jugadores asegurados</h3>
+    <p class="muted" style="margin-bottom:14px;">${tx.dnis.length} jugador(es) · $${(tx.dnis.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')} · ${fmtFechaSeguroTx(tx.fechaCarga)} · Transfirió: ${escapeHtml(tx.nombreTransferencia) || 'sin dato'}</p>
+    <h3 style="font-size:14px;margin-bottom:8px;">Jugadores de esta tanda</h3>
     ${listaHtml}
     <h3 style="font-size:14px;margin-bottom:8px;">Comprobante</h3>
-    ${comprobanteHtml}
+    <img src="${tx.comprobante}" style="width:100%;border-radius:10px;border:1px solid var(--glass-border);margin-bottom:14px;">
     <div class="section-actions">
-      ${eq.seguroComprobante ? `<a class="btn" href="${eq.seguroComprobante}" download="comprobante_seguro_${(eq.nombre || 'equipo').replace(/[^a-z0-9]+/gi, '_')}.jpg">⬇ Descargar</a>` : ''}
-      <button class="btn btn-primary" ${estado !== 'pendiente' ? 'disabled' : ''} onclick="closeModal();aprobarSeguro('${eq.id}')">✓ Aprobar</button>
-      <button class="btn btn-danger" ${estado !== 'pendiente' ? 'disabled' : ''} onclick="closeModal();rechazarSeguro('${eq.id}')">✕ Rechazar</button>
+      <a class="btn" href="${tx.comprobante}" download="comprobante_seguro_${(eq.nombre || 'equipo').replace(/[^a-z0-9]+/gi, '_')}.jpg">⬇ Descargar</a>
+      <button class="btn btn-primary" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="closeModal();aprobarSeguro('${eq.id}','${tx.id}')">✓ Aprobar</button>
+      <button class="btn btn-danger" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="closeModal();rechazarSeguro('${eq.id}','${tx.id}')">✕ Rechazar</button>
     </div>
   `);
 }
-async function aprobarSeguro(id) {
+async function aprobarSeguro(equipoId, txId) {
   try {
-    const eq = equiposCacheAdmin.find(e => e.id === id) || pagosCacheAdmin.find(e => e.id === id) || {};
-    await db.collection('equipos').doc(id).update({ seguroEstado: 'aprobado', seguroFechaRevision: new Date().toISOString() });
-    showToast('Seguro aprobado.', 'ok');
-    crearMensajeSistema(id, eq.nombre || id, eq.division || '', 'Seguro médico', `✅ Tu comprobante de seguro médico fue aprobado por la organización.`, 'equipo').catch(() => {});
+    const snap = await db.collection('equipos').doc(equipoId).get();
+    if (!snap.exists) return;
+    const eq = snap.data();
+    const transacciones = eq.segurosTransacciones || [];
+    const tx = transacciones.find(t => t.id === txId);
+    if (!tx || tx.estado !== 'pendiente') { showToast('Ese comprobante ya fue revisado.', 'error'); return; }
+    const nuevasTransacciones = transacciones.map(t => t.id === txId ? { ...t, estado: 'aprobado', fechaRevision: new Date().toISOString() } : t);
+    const seguroJugadoresDni = Array.from(new Set([...(eq.seguroJugadoresDni || []), ...tx.dnis]));
+    await db.collection('equipos').doc(equipoId).update({ segurosTransacciones: nuevasTransacciones, seguroJugadoresDni });
+    showToast('Comprobante de seguro aprobado.', 'ok');
+    crearMensajeSistema(equipoId, eq.nombre || equipoId, eq.division || '', 'Seguro médico', `✅ Tu comprobante de seguro médico para ${tx.dnis.length} jugador(es) fue aprobado por la organización.`, 'equipo').catch(() => {});
     await cargarPagosAdmin();
     cargarEquiposAdmin();
   } catch (e) { console.error(e); showToast('No se pudo aprobar el seguro.', 'error'); }
 }
-async function rechazarSeguro(id) {
+async function rechazarSeguro(equipoId, txId) {
   try {
-    const eq = equiposCacheAdmin.find(e => e.id === id) || pagosCacheAdmin.find(e => e.id === id) || {};
-    await db.collection('equipos').doc(id).update({ seguroEstado: 'rechazado', seguroFechaRevision: new Date().toISOString() });
-    showToast('Seguro rechazado.', 'ok');
-    crearMensajeSistema(id, eq.nombre || id, eq.division || '', 'Seguro médico', `❌ Tu comprobante de seguro médico fue rechazado. Por favor subí uno nuevo o comunicate con la organización.`, 'equipo').catch(() => {});
+    const snap = await db.collection('equipos').doc(equipoId).get();
+    if (!snap.exists) return;
+    const eq = snap.data();
+    const transacciones = eq.segurosTransacciones || [];
+    const tx = transacciones.find(t => t.id === txId);
+    if (!tx || tx.estado !== 'pendiente') { showToast('Ese comprobante ya fue revisado.', 'error'); return; }
+    const nuevasTransacciones = transacciones.map(t => t.id === txId ? { ...t, estado: 'rechazado', fechaRevision: new Date().toISOString() } : t);
+    await db.collection('equipos').doc(equipoId).update({ segurosTransacciones: nuevasTransacciones });
+    showToast('Comprobante de seguro rechazado.', 'ok');
+    crearMensajeSistema(equipoId, eq.nombre || equipoId, eq.division || '', 'Seguro médico', `❌ Tu comprobante de seguro médico para ${tx.dnis.length} jugador(es) fue rechazado. Podés volver a marcarlos y subir un nuevo comprobante.`, 'equipo').catch(() => {});
     await cargarPagosAdmin();
     cargarEquiposAdmin();
   } catch (e) { console.error(e); showToast('No se pudo rechazar el seguro.', 'error'); }
@@ -3706,19 +3757,21 @@ function generarPDFSeguros() {
 
   pagosCacheAdmin.forEach(eq => {
     const asegurados = jugadoresAseguradosDe(eq);
-    const nombresTxt = asegurados.length ? asegurados.map(j => `${j.apellido}, ${j.nombre} (${j.dni})`).join(' · ') : 'Sin jugadores seleccionados';
-    const nombresWrapped = doc.splitTextToSize(nombresTxt, pageWidth - 38);
+    const transacciones = eq.segurosTransacciones || [];
+    const aprobadas = transacciones.filter(t => t.estado === 'aprobado');
+    const pendientes = transacciones.filter(t => t.estado === 'pendiente');
+    if (asegurados.length === 0 && transacciones.length === 0) return;
+    const nombresTxt = asegurados.length ? asegurados.map(j => `${j.apellido}, ${j.nombre} (${j.dni})`).join(' · ') : 'Sin jugadores asegurados todavía';
+    const nombresWrapped = doc.splitTextToSize(nombresTxt, pageWidth - 20);
     ensureSpace(rowH + nombresWrapped.length * 4.5);
-    if (eq.seguroComprobante) { try { doc.addImage(eq.seguroComprobante, 'JPEG', 14, y - 3, 20, 20); } catch (e) {} }
     doc.setDrawColor(225, 225, 225);
     doc.line(14, y - 6, pageWidth - 14, y - 6);
     doc.setFontSize(10); doc.setTextColor(30, 30, 30);
-    doc.setFont(undefined, 'bold'); doc.text(`${eq.nombre} (${eq.division})`, 38, y + 1); doc.setFont(undefined, 'normal');
+    doc.setFont(undefined, 'bold'); doc.text(`${eq.nombre} (${eq.division})`, 14, y + 1); doc.setFont(undefined, 'normal');
     doc.setFontSize(8.5); doc.setTextColor(80, 80, 80);
-    doc.text(`${asegurados.length}/${NUM_JUGADORES} asegurados · $${(asegurados.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')} · Transfirió: ${eq.seguroNombreTransferencia || '-'}`, 38, y + 7);
-    doc.text(`Estado: ${estadoLeg(eq.seguroEstado || 'sin_subir')} · Cargado: ${fechaLeg(eq.seguroFechaCarga)}`, 38, y + 13);
+    doc.text(`${asegurados.length}/${NUM_JUGADORES} asegurados · $${(asegurados.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')} · ${aprobadas.length} comprobante(s) aprobado(s)${pendientes.length ? ` · ${pendientes.length} pendiente(s)` : ''}`, 14, y + 7);
     doc.setFontSize(7.5); doc.setTextColor(110, 110, 110);
-    doc.text(nombresWrapped, 38, y + 19);
+    doc.text(nombresWrapped, 14, y + 13);
     y += rowH + nombresWrapped.length * 4.5;
   });
   doc.save('informe_seguros_liga_f5.pdf');
@@ -4075,7 +4128,7 @@ async function crearEquipoDoc(usuario, nombre, division, pass, extra = {}) {
     jugadores: emptyJugadores(),
     pagoComprobante: '', pagoEstado: 'aprobado', pagoFechaCarga: '', pagoNombreTransferencia: '', pagoTipo: 'total',
     pagoSaldoComprobante: '', pagoSaldoNombreTransferencia: '', pagoSaldoEstado: 'sin_subir', pagoSaldoFechaCarga: '',
-    seguroJugadoresDni: [], seguroComprobante: '', seguroNombreTransferencia: '', seguroEstado: 'sin_subir', seguroFechaCarga: '',
+    seguroJugadoresDni: [], segurosTransacciones: [],
     zona: '',
     fechaCreacion: new Date().toISOString(), fechaActualizacion: new Date().toISOString(),
     ...extra
