@@ -3171,6 +3171,7 @@ function renderCarnetTab() {
       <div class="carnet-tab-sub">DNI: ${escapeHtml(dni)}</div>
       <input type="number" min="15" max="65" placeholder="Edad" value="${escapeHtml(String(edades[dni] || ''))}"
         class="carnet-tab-edad" onchange="guardarEdadJugador('${escapeHtml(dni)}',this.value)">
+      <button class="btn btn-sm btn-primary" style="width:100%;margin-top:8px;" ${dni?'':'disabled'} onclick="generarCarnetIndividual('${escapeHtml(dni)}')">🖨️ Descargar carnet</button>
     </div>`;
   }).join('')}</div>`;
 }
@@ -3184,15 +3185,23 @@ async function guardarEdadJugador(dni, valor) {
 }
 
 function generarCarnetsPDF() {
-  const eq = state.equipo;
-  const jugadores = (eq.jugadores || []).filter(j => j.apellido || j.nombre || j.dni);
+  const jugadores = (state.equipo.jugadores || []).filter(j => j.apellido || j.nombre || j.dni);
   if (jugadores.length === 0) { showToast('No hay jugadores en la lista.', 'error'); return; }
+  abrirVentanaCarnets(jugadores);
+}
+function generarCarnetIndividual(dni) {
+  const jugador = (state.equipo.jugadores || []).find(j => j.dni === dni);
+  if (!jugador) { showToast('No se encontró el jugador.', 'error'); return; }
+  abrirVentanaCarnets([jugador]);
+}
+function abrirVentanaCarnets(jugadores) {
+  const eq = state.equipo;
   const fotos = eq.fotosJugadores || {};
   const edades = eq.jugadoresEdad || {};
   const base = new URL('assets/', window.location.href).href;
-  const logoUrl   = base + 'logo-clausura.png';
+  const logoUrl   = base + 'logo-liga-f5.png';
   const isPrimera = (eq.division || '') === 'Primera';
-  const copaUrl   = base + (isPrimera ? 'copa-primera.png' : 'copa-segunda.png');
+  const copaUrl   = base + (isPrimera ? 'shield-primera.png' : 'shield-segunda.png');
   const divColor  = isPrimera ? '#060e20' : '#7a3300';
   const divSoft   = isPrimera ? '#e2e7f2' : '#ffeedd';
   const divLabel  = isPrimera ? 'PRIMERA' : 'SEGUNDA';
@@ -3280,7 +3289,7 @@ h1{font-size:9pt;color:#555;margin-bottom:2mm;text-align:center;font-weight:norm
 }
 .c-side::after{content:'';position:absolute;top:0;right:0;width:1.5mm;height:100%;background:linear-gradient(to right,rgba(0,0,0,.12),transparent);}
 .c-side-logo{width:12mm;height:12mm;object-fit:contain;filter:brightness(0) invert(1);opacity:.9;}
-.c-side-copa{width:15mm;height:15mm;object-fit:contain;filter:brightness(0) invert(1);opacity:.95;}
+.c-side-copa{width:16mm;height:16mm;object-fit:contain;opacity:.98;}
 .c-main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
 /* Sello + firma en esquina inferior derecha */
 .c-sello-wrap{position:absolute;bottom:1mm;right:1.5mm;z-index:6;pointer-events:none;}
@@ -3318,7 +3327,7 @@ h1{font-size:9pt;color:#555;margin-bottom:2mm;text-align:center;font-weight:norm
 }
 .d-topbar{height:9mm;flex-shrink:0;padding:0 3mm;background:${divColor};display:flex;align-items:center;justify-content:space-between;}
 .d-logo{height:6mm;width:6mm;object-fit:contain;filter:brightness(0) invert(1);}
-.d-copa{height:6mm;width:6mm;object-fit:contain;filter:brightness(0) invert(1);}
+.d-copa{height:7mm;width:7mm;object-fit:contain;}
 .d-title{font-size:7pt;font-weight:900;color:#fff;letter-spacing:1.5px;}
 .d-body{flex:1;display:flex;align-items:center;justify-content:center;background:#fff;}
 
@@ -3327,13 +3336,16 @@ h1{font-size:9pt;color:#555;margin-bottom:2mm;text-align:center;font-weight:norm
   @page{size:A4 portrait;margin:8mm;}
 }`;
 
+  const esUno = jugadores.length === 1;
+  const tituloPagina = esUno ? `Carnet — ${(jugadores[0].apellido||'')} ${(jugadores[0].nombre||'')}`.trim() : `Carnets — ${equipoNombre}`;
+
   const win = window.open('', '_blank', 'width=960,height=720');
   if (!win) { showToast('Habilitá los popups para descargar el PDF.', 'error'); return; }
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Carnets — ${esc(equipoNombre)}</title>
+<title>${esc(tituloPagina)}</title>
 <style>${css}</style></head><body>
 <div class="page">
-  <h1>LIGA F5 · Carnets · ${esc(equipoNombre)}</h1>
+  <h1>LIGA F5 · ${esUno?'Carnet':'Carnets'} · ${esc(equipoNombre)}</h1>
   <p class="instruc">Imprimí · Doblá cada tira por la mitad · Frente izq. / Dorso der.</p>
   ${jugadores.map((j,i) => `<div class="par">${mkCarnet(j,i)}${mkDorso(j,i)}</div>`).join('')}
 </div>
