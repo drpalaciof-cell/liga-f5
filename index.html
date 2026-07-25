@@ -4652,7 +4652,7 @@ function iniciarBadgeEquipo() {
   _badgeListenerEquipo = db.collection('mensajes').where('equipoId','==',state.equipoId)
     .onSnapshot(snap => {
       const hilos = [];
-      snap.forEach(doc => hilos.push({id:doc.id,...doc.data()}));
+      snap.forEach(doc => { const h={id:doc.id,...doc.data()}; if(!h.soloAdmin) hilos.push(h); });
       _actualizarBadgeEquipo(hilos);
       if (!_msgListenerEquipo) _msgHilosEquipo = hilos;
     }, e => console.error(e));
@@ -4837,7 +4837,7 @@ async function crearMensajeSistema(equipoId,equipoNombre,division,asunto,texto,p
       else upd.noLeidoEquipo=firebase.firestore.FieldValue.increment(1);
       await db.collection('mensajes').doc(hiloId).update(upd);
     }else{
-      const ref=await db.collection('mensajes').add({equipoId,equipoNombre,division,asunto,ultimoTexto:texto,ultimaFecha:fecha,noLeidoAdmin:para==='admin'?1:0,noLeidoEquipo:para==='equipo'?1:0,iniciador:'sistema'});
+      const ref=await db.collection('mensajes').add({equipoId,equipoNombre,division,asunto,ultimoTexto:texto,ultimaFecha:fecha,noLeidoAdmin:para==='admin'?1:0,noLeidoEquipo:para==='equipo'?1:0,iniciador:'sistema',soloAdmin:para==='admin'});
       hiloId=ref.id;
     }
     await db.collection('mensajes').doc(hiloId).collection('replies').add({de:'sistema',deNombre:'Sistema',texto,adjuntos:[],fecha});
@@ -4851,7 +4851,7 @@ function iniciarMensajesEquipo(){
   _msgListenerEquipo=db.collection('mensajes').where('equipoId','==',state.equipoId).orderBy('ultimaFecha','desc')
     .onSnapshot(snap=>{
       _msgHilosEquipo=[];
-      snap.forEach(doc=>_msgHilosEquipo.push({id:doc.id,...doc.data()}));
+      snap.forEach(doc=>{ const h={id:doc.id,...doc.data()}; if(!h.soloAdmin) _msgHilosEquipo.push(h); });
       renderBandejaEquipo(_msgHilosEquipo);
       _actualizarBadgeEquipo(_msgHilosEquipo);
     },e=>console.error(e));
