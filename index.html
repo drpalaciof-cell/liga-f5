@@ -1014,7 +1014,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     </div>
 
     <div class="glass section-card">
-      <h3>🩺 Seguro médico <span class="muted" style="font-size:12px;font-weight:500;">($6.000 por jugador asegurado)</span></h3>
+      <h3>🩺 Seguro médico <span class="muted" style="font-size:12px;font-weight:500;">($5.000 por jugador asegurado)</span></h3>
       <p class="wizard-help">Marcá qué jugadores de tu lista de buena fe vas a asegurar. No es obligatorio asegurar a los 25: podés cubrir solo a una parte del plantel. Los jugadores no asegurados no van a estar habilitados para disputar partidos.</p>
       <div class="tbl-wrap">
         <table class="jugadores-table">
@@ -1409,7 +1409,7 @@ fetch('assets/logo-clausura.png').then(r=>r.blob()).then(blob=>{
 
 /* ===================== STATE ===================== */
 const NUM_JUGADORES = 25;
-const MONTO_SEGURO_POR_JUGADOR = 6000;
+const MONTO_SEGURO_POR_JUGADOR = 5000;
 const state = { equipo: null, equipoId: null, admin: null, divisionActiva: 'Primera', equiposCache: [], pagoFiltroActivo: 'pendiente', seguroFiltroActivo: 'pendiente', seguroSeleccion: [], adminDivisionActiva: null, partidosCache: [], contentTabActivo: 'equipos', fechaPublicaActiva: null };
 
 /* ===================== UTILS ===================== */
@@ -3122,8 +3122,9 @@ async function subirFotoJugador(dni, input) {
     fotos[dni] = dataUrl;
     await db.collection('equipos').doc(state.equipoId).update({ fotosJugadores: fotos });
     state.equipo.fotosJugadores = fotos;
-    showToast('Foto guardada.', 'ok');
+    showToast('✅ Foto guardada. Recordá: debe ser tipo carnet 4×4, fondo blanco.', 'ok');
     renderSancionesEquipo();
+    renderCarnetTab();
   } catch(e) { console.error(e); showToast('No se pudo subir la foto.', 'error'); }
 }
 
@@ -3169,8 +3170,9 @@ function renderCarnetTab() {
       <div class="carnet-tab-nombre">${escapeHtml(j.apellido || '')}</div>
       <div class="carnet-tab-sub">${escapeHtml(j.nombre || '')}</div>
       <div class="carnet-tab-sub">DNI: ${escapeHtml(dni)}</div>
-      <input type="number" min="15" max="65" placeholder="Edad" value="${escapeHtml(String(edades[dni] || ''))}"
-        class="carnet-tab-edad" onchange="guardarEdadJugador('${escapeHtml(dni)}',this.value)">
+      <input type="number" min="15" max="65" placeholder="Edad (obligatoria)" value="${escapeHtml(String(edades[dni] || ''))}"
+        class="carnet-tab-edad" style="${edades[dni] ? '' : 'border-color:var(--danger);'}"
+        onchange="guardarEdadJugador('${escapeHtml(dni)}',this.value)">
       <button class="btn btn-sm btn-primary" style="width:100%;margin-top:8px;" ${dni?'':'disabled'} onclick="generarCarnetIndividual('${escapeHtml(dni)}')">🖨️ Descargar carnet</button>
     </div>`;
   }).join('')}</div>`;
@@ -3198,6 +3200,14 @@ function abrirVentanaCarnets(jugadores) {
   const eq = state.equipo;
   const fotos = eq.fotosJugadores || {};
   const edades = eq.jugadoresEdad || {};
+
+  const sinEdad = jugadores.filter(j => !edades[j.dni]);
+  if (sinEdad.length > 0) {
+    const nombres = sinEdad.map(j => `${j.apellido || ''} ${j.nombre || ''}`.trim() || j.dni).join(', ');
+    showToast(`Completá la edad de: ${nombres} antes de descargar el carnet.`, 'error');
+    return;
+  }
+
   const base = new URL('assets/', window.location.href).href;
   const logoUrl   = base + 'logo-liga-f5.png';
   const isPrimera = (eq.division || '') === 'Primera';
@@ -3262,7 +3272,12 @@ function abrirVentanaCarnets(jugadores) {
     <div class="d-title">LIGA F5</div>
     <img src="${copaUrl}" class="d-copa" onerror="this.style.display='none'">
   </div>
-  <div class="d-body">${mkSello('b'+idx,'34mm')}</div>
+  <div class="d-body">${mkSello('b'+idx,'26mm')}</div>
+  <div class="d-footer">
+    <div class="d-firma-lbl">Firma y aclaración — Presidente / Delegado / Encargado del equipo</div>
+    <div class="d-firma-line"></div>
+    <div class="d-firma-note">Requisito para validar el carnet en la mesa de partido.</div>
+  </div>
 </div>`;
 
   const css = `
@@ -3330,6 +3345,10 @@ h1{font-size:9pt;color:#555;margin-bottom:2mm;text-align:center;font-weight:norm
 .d-copa{height:7mm;width:7mm;object-fit:contain;}
 .d-title{font-size:7pt;font-weight:900;color:#fff;letter-spacing:1.5px;}
 .d-body{flex:1;display:flex;align-items:center;justify-content:center;background:#fff;}
+.d-footer{flex-shrink:0;border-top:.8pt solid ${divColor}33;background:${divSoft};padding:1.5mm 3mm;}
+.d-firma-lbl{font-size:5.5pt;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.3px;margin-bottom:1.5mm;}
+.d-firma-line{border-bottom:.6pt solid #999;margin-bottom:1mm;height:4mm;}
+.d-firma-note{font-size:5pt;color:#888;}
 
 @media print{
   body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -4639,8 +4658,8 @@ function fmtFechaMsgCompleta(ts) {
 function badgeDiv(division) {
   if (!division) return '';
   const p = division.toLowerCase().includes('primera');
-  const c = p ? 'var(--cyan)' : '#a855f7';
-  const cs = p ? 'rgba(14,165,233,.15)' : 'rgba(168,85,247,.15)';
+  const c = p ? 'var(--cyan)' : 'var(--segunda)';
+  const cs = p ? 'rgba(14,165,233,.15)' : 'var(--segunda-soft)';
   return `<span style="font-size:10px;font-weight:700;color:${c};background:${cs};border:1px solid ${c};border-radius:5px;padding:1px 5px;flex-shrink:0;">${p?'1°':'2°'}</span>`;
 }
 
