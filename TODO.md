@@ -14,8 +14,17 @@ Hallazgo original: cualquier usuario (incluido un equipo) podía leer los hashes
 Se resolvió en dos fases, sin cortar el acceso a equipos en uso:
 
 - **Fase 1**: nueva Cloud Function `login()` verifica usuario+contraseña en el servidor y devuelve un custom token de Firebase Auth con el rol adentro (`role: 'admin'|'equipo'`, `adminId`/`equipoId`). El hash ya no llega al navegador. Gestión de admins (crear/listar/eliminar, cambiar contraseña) movida a Cloud Functions equivalentes. Requirió un permiso de IAM (Service Account Token Creator) en la cuenta de servicio de las funciones — ya otorgado.
-- **Fase 2**: `firestore.rules` reescritas usando la identidad real: `admins/*` ahora es solo para el servidor (`allow read, write: if false`), y en `equipos/{id}` un equipo solo puede escribir su **propio** documento y nunca los campos `pagoEstado`, `pagoFechaRevision`, `pagoSaldoEstado`, `pagoSaldoFechaRevision`, `seguroJugadoresDni`, `seguroHabilitadoManual` (esos quedan exclusivos del admin). `config/*` ahora requiere admin para escribir.
+- **Fase 2**: `firestore.rules` reescritas usando la identidad real: `admins/*` ahora es solo para el servidor (`allow read, write: if false`), y en `equipos/{id}` un equipo solo puede escribir su **propio** documento. `pagoFechaRevision`, `pagoSaldoFechaRevision`, `seguroJugadoresDni`, `seguroHabilitadoManual` quedan exclusivos del admin; `pagoEstado`/`pagoSaldoEstado` el equipo solo puede ponerlos en `'pendiente'` (al subir un comprobante) — nunca en `'aprobado'`/`'rechazado'`. `config/*` ahora requiere admin para escribir.
+  - Primera versión de esta regla bloqueaba `pagoEstado`/`pagoSaldoEstado` por completo, lo que rompía la inscripción de equipos nuevos y la subida del saldo (ambas legítimamente ponen ese campo en 'pendiente'). Corregido en commit `e13f224` tras probar una inscripción real de punta a punta.
 
-**Verificado en producción**: lectura anónima a `admins` → bloqueada. Escritura anónima de `pagoEstado` en un equipo ajeno → bloqueada. Aprobación real de pago por el admin logueado → funcionó y quedó guardada.
+**Verificado en producción, con pruebas reales (no simuladas):**
+- Lectura anónima a `admins` → bloqueada.
+- Escritura anónima de `pagoEstado` en un equipo ajeno → bloqueada.
+- Aprobación real de pago por el admin logueado → funcionó y quedó guardada.
+- Inscripción de un equipo nuevo de punta a punta (cuenta → datos → división → buena fe → subir comprobante de pago) → funcionó, quedó logueado automáticamente, `pagoEstado: 'pendiente'` guardado correctamente.
+- Equipo editando su propia lista de jugadores → funciona.
+- Equipo intentando auto-aprobarse el pago → bloqueado.
+- Equipo intentando editar el documento de otro equipo → bloqueado.
+- Equipo de prueba usado para el test, eliminado por el usuario.
 
 **Pendiente menor, no urgente:** el hash de contraseña de los *equipos* (no de los admins) sigue siendo técnicamente legible vía lectura pública de `equipos/*` (necesaria para listados/standings). El riesgo real es bajo — con el login ahora server-side, tener el hash no alcanza para loguearse, haría falta crackearlo offline. Si se quiere cerrar del todo, requiere mover las credenciales de equipo a una subcolección separada no legible públicamente.
