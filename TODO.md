@@ -6,6 +6,8 @@
 
 - **1-11**: mensajería completa (commits `229fe91`, `271e66f`).
 - **13-15**: aviso de seguro pendiente al equipo, deshabilitación por seguro vencido + habilitación tardía con recargo $7.000, banner admin de plazos vencidos (commit `eef3ab7`).
+- **Monto declarado + saldo pendiente real** (commit `0ad56b9`, 2026-07-31): al subir cualquier comprobante (inscripción, saldo, o cada tanda de seguro) el equipo ahora también declara el monto transferido. El sistema compara contra lo requerido (según división / seña-saldo / cantidad de jugadores asegurados) y muestra "coincide" / "falta $X" / "$X de más", tanto en el panel del equipo como en las listas de revisión del admin. Cada subida notifica a **ambos**: el equipo recibe confirmación con el desglose, el admin recibe el aviso ya con el monto declarado incluido. Verificado con llamadas directas a las mismas funciones que usa la UI (escritura, cálculo, y creación del mensaje) — el click-through visual del wizard se puso inestable en el navegador pero la lógica está confirmada.
+  - Quedó 1 equipo de prueba para borrar del panel admin: **TEST MONTO DIRECT FC** (el otro intento, "TEST MONTO FC 20260731", no llegó a crearse).
 
 ## ✅ Seguridad — login + reglas de Firestore endurecidas (2026-07-31, commits `936124e` + reglas)
 
