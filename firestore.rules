@@ -10,15 +10,20 @@ service cloud.firestore {
     function isEquipoPropio(id) {
       return autenticado() && request.auth.token.role == 'equipo' && request.auth.token.equipoId == id;
     }
-    // Campos que solo la Cloud Function `login`/las acciones de admin pueden
-    // tocar (aprobar/rechazar pago o seguro, habilitación tardía). Un equipo
-    // puede seguir editando su propio documento (jugadores, escudo, subir
-    // comprobantes, cambiar su contraseña, etc.) siempre que no toque esto.
+    // Campos que solo las acciones de admin pueden tocar (aprobar/rechazar
+    // pago o seguro, habilitación tardía). Un equipo puede seguir editando su
+    // propio documento (jugadores, escudo, contraseña, etc.) siempre que no
+    // toque esto — con la excepción de pagoEstado/pagoSaldoEstado, que el
+    // equipo SÍ necesita poder poner en 'pendiente' al subir un comprobante;
+    // lo único que tiene prohibido es aprobarse o rechazarse a sí mismo.
     function noTocaCamposAdmin() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-        'pagoEstado', 'pagoFechaRevision', 'pagoSaldoEstado', 'pagoSaldoFechaRevision',
-        'seguroJugadoresDni', 'seguroHabilitadoManual'
+      let tocados = request.resource.data.diff(resource.data).affectedKeys();
+      let tocaProhibidos = tocados.hasAny([
+        'pagoFechaRevision', 'pagoSaldoFechaRevision', 'seguroJugadoresDni', 'seguroHabilitadoManual'
       ]);
+      let pagoOk = !tocados.hasAny(['pagoEstado']) || request.resource.data.pagoEstado == 'pendiente';
+      let saldoOk = !tocados.hasAny(['pagoSaldoEstado']) || request.resource.data.pagoSaldoEstado == 'pendiente';
+      return !tocaProhibidos && pagoOk && saldoOk;
     }
 
     // Solo la Cloud Function `login` (Admin SDK, bypassea las reglas) puede
