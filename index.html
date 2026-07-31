@@ -1401,6 +1401,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
@@ -1413,6 +1414,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
+const functions = firebase.functions();
 db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
 let _logoDataUrlIndex = null;
@@ -1515,31 +1517,46 @@ function showView(name) {
 }
 
 /* ===================== SESSION ===================== */
-function saveSession(type, id) {
-  localStorage.setItem('ligaf5_session', JSON.stringify({ type, id }));
-}
-function clearSession() { localStorage.removeItem('ligaf5_session'); }
-async function restoreSession() {
-  const raw = localStorage.getItem('ligaf5_session');
-  if (!raw) { showView('landing'); return; }
+// La sesión real la maneja Firebase Auth (custom token con el rol adentro,
+// emitido por la Cloud Function `login`) — se persiste sola entre recargas,
+// no hace falta guardar nada en localStorage.
+async function aplicarSesionDesdeAuth(user) {
   try {
-    const { type, id } = JSON.parse(raw);
-    if (type === 'equipo') {
-      const doc = await db.collection('equipos').doc(id).get();
-      if (doc.exists) { state.equipoId = id; state.equipo = doc.data(); renderPanelEquipo(); showView('panel-equipo'); subscribirPush('equipo', id); iniciarBadgeEquipo(); return; }
-    } else if (type === 'admin') {
-      const doc = await db.collection('admins').doc(id).get();
-      if (doc.exists) { state.admin = id; await renderPanelAdmin(); showView('panel-admin'); subscribirPush('admin', null); iniciarBadgeAdmin(); return; }
+    const tokenResult = await user.getIdTokenResult();
+    const role = tokenResult.claims.role;
+    if (role === 'admin') {
+      if (state.admin !== tokenResult.claims.adminId) {
+        state.admin = tokenResult.claims.adminId;
+        await renderPanelAdmin();
+        showView('panel-admin');
+        subscribirPush('admin', null);
+        iniciarBadgeAdmin();
+      }
+      return;
     }
-  } catch (e) { console.error(e); }
-  clearSession();
-  showView('landing');
+    if (role === 'equipo') {
+      const equipoId = tokenResult.claims.equipoId;
+      if (state.equipoId !== equipoId) {
+        const doc = await db.collection('equipos').doc(equipoId).get();
+        if (doc.exists) {
+          state.equipoId = equipoId; state.equipo = doc.data();
+          renderPanelEquipo(); showView('panel-equipo');
+          subscribirPush('equipo', equipoId); iniciarBadgeEquipo();
+        } else {
+          await auth.signOut();
+        }
+      }
+      return;
+    }
+    if (!_authReady) showView('landing');
+  } catch (e) { console.error(e); if (!_authReady) showView('landing'); }
+  finally { _authReady = true; }
 }
 function logout() {
   detenerBadgeAdmin(); detenerBadgeEquipo();
   detenerMensajesAdmin(); detenerMensajesEquipo();
-  clearSession();
   state.equipo = null; state.equipoId = null; state.admin = null;
+  auth.signOut().catch(() => {});
   showView('landing');
 }
 
@@ -1563,22 +1580,19 @@ function abrirModalCambiarPassword(tipo) {
     if (nueva.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
     if (!/[a-zA-Z]/.test(nueva) || !/[0-9]/.test(nueva)) { showToast('La contraseña debe tener al menos una letra y un número.', 'error'); return; }
     try {
-      const actualHash = await sha256Hex(actual);
       if (tipo === 'equipo') {
+        const actualHash = await sha256Hex(actual);
         const doc = await db.collection('equipos').doc(state.equipoId).get();
         if (doc.data().contrasenaHash !== actualHash) { showToast('La contraseña actual es incorrecta.', 'error'); return; }
         const nuevaHash = await sha256Hex(nueva);
         await db.collection('equipos').doc(state.equipoId).update({ contrasenaHash: nuevaHash });
         state.equipo.contrasenaHash = nuevaHash;
       } else {
-        const doc = await db.collection('admins').doc(state.admin).get();
-        if (doc.data().pinHash !== actualHash) { showToast('La contraseña actual es incorrecta.', 'error'); return; }
-        const nuevaHash = await sha256Hex(nueva);
-        await db.collection('admins').doc(state.admin).update({ pinHash: nuevaHash });
+        await functions.httpsCallable('cambiarPasswordAdmin')({ passActual: actual, passNueva: nueva });
       }
       closeModal();
       showToast('Contraseña actualizada correctamente.', 'ok');
-    } catch (err) { console.error(err); showToast('No se pudo actualizar la contraseña.', 'error'); }
+    } catch (err) { console.error(err); showToast(err.message || 'No se pudo actualizar la contraseña.', 'error'); }
   });
 }
 
@@ -1825,26 +1839,11 @@ document.getElementById('form-login-equipo').addEventListener('submit', async e 
   const btnLogin = e.submitter || e.target.querySelector('button[type="submit"]');
   if (btnLogin) btnLogin.disabled = true;
   try {
-    const hash = await sha256Hex(pass);
-
-    // Busca admin: primero exacto, luego lowercase, luego uppercase (iOS autocapitaliza)
-    let adminDoc = await db.collection('admins').doc(usuario).get();
-    let adminId = usuario;
-    if (!adminDoc.exists) {
-      const lower = await db.collection('admins').doc(usuario.toLowerCase()).get();
-      if (lower.exists) { adminDoc = lower; adminId = usuario.toLowerCase(); }
-    }
-    if (!adminDoc.exists) {
-      const upper = await db.collection('admins').doc(usuario.toUpperCase()).get();
-      if (upper.exists) { adminDoc = upper; adminId = usuario.toUpperCase(); }
-    }
-    if (!adminDoc.exists) {
-      const adminSnap = await db.collection('admins').where('usuario', '==', usuario).limit(1).get();
-      if (!adminSnap.empty) { adminDoc = adminSnap.docs[0]; adminId = adminDoc.id; }
-    }
-    if (adminDoc.exists && adminDoc.data().pinHash === hash) {
-      state.admin = adminId;
-      saveSession('admin', adminId);
+    const res = await functions.httpsCallable('login')({ usuario, pass });
+    const { token, role, id } = res.data;
+    await auth.signInWithCustomToken(token);
+    if (role === 'admin') {
+      state.admin = id;
       await renderPanelAdmin();
       showView('panel-admin');
       showToast('Bienvenido al panel admin', 'ok');
@@ -1852,24 +1851,14 @@ document.getElementById('form-login-equipo').addEventListener('submit', async e 
       iniciarBadgeAdmin();
       return;
     }
-
-    let snap = await db.collection('equipos').where('usuarioLower', '==', usuario.toLowerCase()).limit(1).get();
-    if (snap.empty) {
-      // equipos creados antes de existir el campo "usuario" siguen entrando con su nombre de equipo
-      snap = await db.collection('equipos').where('nombreLower', '==', usuario.toLowerCase()).limit(1).get();
-    }
-    if (snap.empty) { showToast('Usuario o contraseña incorrectos.', 'error'); return; }
-    const doc = snap.docs[0];
-    const data = doc.data();
-    if (data.contrasenaHash !== hash) { showToast('Usuario o contraseña incorrectos.', 'error'); return; }
-    state.equipoId = doc.id; state.equipo = data;
-    saveSession('equipo', doc.id);
+    const doc = await db.collection('equipos').doc(id).get();
+    state.equipoId = id; state.equipo = doc.data();
     renderPanelEquipo();
     showView('panel-equipo');
-    showToast(`Bienvenido, ${data.nombre}`, 'ok');
-    subscribirPush('equipo', doc.id);
+    showToast(`Bienvenido, ${state.equipo.nombre}`, 'ok');
+    subscribirPush('equipo', id);
     iniciarBadgeEquipo();
-  } catch (err) { console.error(err); showToast('Error: ' + (err.message || 'Intentá de nuevo.'), 'error'); }
+  } catch (err) { console.error(err); showToast(err.message || 'Usuario o contraseña incorrectos.', 'error'); }
   finally { if (btnLogin) btnLogin.disabled = false; }
 });
 
@@ -2041,9 +2030,10 @@ document.getElementById('form-registro-equipo').addEventListener('submit', async
       pagoSaldoComprobante: '', pagoSaldoNombreTransferencia: '', pagoSaldoEstado: 'sin_subir', pagoSaldoFechaCarga: ''
     });
     if (!created) { btn.disabled = false; return; }
+    const loginRes = await functions.httpsCallable('login')({ usuario, pass });
+    await auth.signInWithCustomToken(loginRes.data.token);
     state.equipoId = created.id;
     state.equipo = created.data;
-    saveSession('equipo', created.id);
     crearMensajeSistema(created.id, created.data?.nombre, created.data?.division, 'Nueva inscripción', `🆕 ${created.data?.nombre||'Un equipo'} completó su inscripción en ${created.data?.division||'la liga'}.`, 'admin').catch(()=>{});
     mostrarExitoInscripcion();
   } catch (err) { console.error(err); showToast('No se pudo completar la inscripción.', 'error'); }
@@ -4457,27 +4447,23 @@ document.getElementById('form-nuevo-admin').addEventListener('submit', async e =
   if (pass.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
   if (!/[a-zA-Z]/.test(pass) || !/[0-9]/.test(pass)) { showToast('La contraseña debe tener al menos una letra y un número.', 'error'); return; }
   try {
-    const existing = await db.collection('admins').doc(usuario).get();
-    if (existing.exists) { showToast('Ya existe un administrador con ese usuario.', 'error'); return; }
-    const pinHash = await sha256Hex(pass);
-    await db.collection('admins').doc(usuario).set({ usuario, pinHash, fechaCreacion: new Date().toISOString() });
+    await functions.httpsCallable('crearAdminServer')({ usuario, pass });
     document.getElementById('form-nuevo-admin').reset();
     showToast('Administrador creado.', 'ok');
     cargarAdminsList();
-  } catch (err) { console.error(err); showToast('No se pudo crear el administrador.', 'error'); }
+  } catch (err) { console.error(err); showToast(err.message || 'No se pudo crear el administrador.', 'error'); }
 });
 async function cargarAdminsList() {
   try {
-    const snap = await db.collection('admins').get();
+    const res = await functions.httpsCallable('listarAdminsServer')();
+    const admins = res.data.admins || [];
     const wrap = document.getElementById('pa-admins-list');
-    const total = snap.size;
+    const total = admins.length;
     wrap.innerHTML = '';
-    let adminIdx = 0;
-    snap.forEach(doc => {
-      const idx = adminIdx++;
+    admins.forEach((a, idx) => {
       wrap.innerHTML += `<div class="list-row" style="animation-delay:${idx * 30}ms">
-        <strong>${escapeHtml(doc.id)}</strong>
-        <button class="btn btn-sm btn-danger" onclick="eliminarAdmin('${doc.id}', ${total})" ${total <= 1 ? 'disabled title="Debe quedar al menos un administrador"' : ''}>Eliminar</button>
+        <strong>${escapeHtml(a.usuario)}</strong>
+        <button class="btn btn-sm btn-danger" onclick="eliminarAdmin('${a.usuario}', ${total})" ${total <= 1 ? 'disabled title="Debe quedar al menos un administrador"' : ''}>Eliminar</button>
       </div>`;
     });
   } catch (e) { console.error(e); showToast('No se pudieron cargar los administradores.', 'error'); }
@@ -4494,11 +4480,11 @@ async function eliminarAdmin(usuario, total) {
   `);
   document.getElementById('confirm-del-admin').addEventListener('click', async () => {
     try {
-      await db.collection('admins').doc(usuario).delete();
+      await functions.httpsCallable('eliminarAdminServer')({ usuario });
       closeModal();
       showToast('Administrador eliminado.', 'ok');
       cargarAdminsList();
-    } catch (e) { console.error(e); showToast('No se pudo eliminar el administrador.', 'error'); }
+    } catch (e) { console.error(e); showToast(e.message || 'No se pudo eliminar el administrador.', 'error'); }
   });
 }
 
@@ -4619,11 +4605,14 @@ async function imprimirPlanillaAdmin(partidoId, btn) {
 document.getElementById('footer-year').textContent = new Date().getFullYear();
 let _authReady = false;
 auth.onAuthStateChanged(user => {
-  if (user && !_authReady) { _authReady = true; restoreSession(); }
-});
-auth.signInAnonymously().catch(e => {
-  console.error('No se pudo autenticar anónimamente:', e);
-  showToast('Error de conexión. Recargá la página.', 'error');
+  if (user) { aplicarSesionDesdeAuth(user); return; }
+  // Sin sesión persistida (ni admin/equipo ni anónima) — recién ahí generamos una anónima.
+  // Ojo: signInAnonymously() reemplaza cualquier sesión actual, por eso solo se llama acá,
+  // nunca si onAuthStateChanged ya trajo un usuario (persistido de una visita anterior).
+  auth.signInAnonymously().catch(e => {
+    console.error('No se pudo autenticar anónimamente:', e);
+    showToast('Error de conexión. Recargá la página.', 'error');
+  });
 });
 
 /* ── PUSH NOTIFICATIONS ── */

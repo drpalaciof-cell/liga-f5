@@ -1,11 +1,99 @@
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
+const crypto = require('crypto');
 const webpush = require('web-push');
 
 initializeApp();
 const db = getFirestore();
+
+// Misma normalización que sha256Hex() en index.html — hashes existentes
+// (creados en el navegador) tienen que seguir siendo válidos acá.
+function sha256Hex(text) {
+  return crypto.createHash('sha256').update(text || '', 'utf8').digest('hex');
+}
+
+function requireAdmin(request) {
+  if (!request.auth || request.auth.token.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Necesitás ser administrador para esto.');
+  }
+  return request.auth.token.adminId;
+}
+
+// Verifica usuario+contraseña en el servidor (admin o equipo, mismo orden de
+// búsqueda que tenía el login client-side) y devuelve un custom token de
+// Firebase Auth con el rol adentro. El hash nunca llega al navegador.
+exports.login = onCall(async (request) => {
+  const { usuario, pass } = request.data || {};
+  if (!usuario || !pass) throw new HttpsError('invalid-argument', 'Faltan usuario o contraseña.');
+  const hash = sha256Hex(pass);
+
+  let adminDoc = await db.collection('admins').doc(usuario).get();
+  let adminId = usuario;
+  if (!adminDoc.exists) {
+    const lower = await db.collection('admins').doc(usuario.toLowerCase()).get();
+    if (lower.exists) { adminDoc = lower; adminId = usuario.toLowerCase(); }
+  }
+  if (!adminDoc.exists) {
+    const upper = await db.collection('admins').doc(usuario.toUpperCase()).get();
+    if (upper.exists) { adminDoc = upper; adminId = usuario.toUpperCase(); }
+  }
+  if (!adminDoc.exists) {
+    const snap = await db.collection('admins').where('usuario', '==', usuario).limit(1).get();
+    if (!snap.empty) { adminDoc = snap.docs[0]; adminId = adminDoc.id; }
+  }
+  if (adminDoc.exists && adminDoc.data().pinHash === hash) {
+    const token = await getAuth().createCustomToken('admin_' + adminId, { role: 'admin', adminId });
+    return { token, role: 'admin', id: adminId };
+  }
+
+  let snap = await db.collection('equipos').where('usuarioLower', '==', usuario.toLowerCase()).limit(1).get();
+  if (snap.empty) snap = await db.collection('equipos').where('nombreLower', '==', usuario.toLowerCase()).limit(1).get();
+  if (snap.empty) throw new HttpsError('permission-denied', 'Usuario o contraseña incorrectos.');
+  const doc = snap.docs[0];
+  if (doc.data().contrasenaHash !== hash) throw new HttpsError('permission-denied', 'Usuario o contraseña incorrectos.');
+  const token = await getAuth().createCustomToken('equipo_' + doc.id, { role: 'equipo', equipoId: doc.id });
+  return { token, role: 'equipo', id: doc.id };
+});
+
+exports.cambiarPasswordAdmin = onCall(async (request) => {
+  const adminId = requireAdmin(request);
+  const { passActual, passNueva } = request.data || {};
+  if (!passActual || !passNueva || passNueva.length < 6) throw new HttpsError('invalid-argument', 'Datos inválidos.');
+  const doc = await db.collection('admins').doc(adminId).get();
+  if (!doc.exists || doc.data().pinHash !== sha256Hex(passActual)) throw new HttpsError('permission-denied', 'La contraseña actual es incorrecta.');
+  await db.collection('admins').doc(adminId).update({ pinHash: sha256Hex(passNueva) });
+  return { ok: true };
+});
+
+exports.crearAdminServer = onCall(async (request) => {
+  requireAdmin(request);
+  const { usuario, pass } = request.data || {};
+  if (!usuario || !pass || pass.length < 6) throw new HttpsError('invalid-argument', 'Datos inválidos.');
+  const existing = await db.collection('admins').doc(usuario).get();
+  if (existing.exists) throw new HttpsError('already-exists', 'Ya existe un administrador con ese usuario.');
+  await db.collection('admins').doc(usuario).set({ usuario, pinHash: sha256Hex(pass), fechaCreacion: new Date().toISOString() });
+  return { ok: true };
+});
+
+exports.eliminarAdminServer = onCall(async (request) => {
+  requireAdmin(request);
+  const { usuario } = request.data || {};
+  if (!usuario) throw new HttpsError('invalid-argument', 'Falta el usuario.');
+  const snap = await db.collection('admins').get();
+  if (snap.size <= 1) throw new HttpsError('failed-precondition', 'Debe quedar al menos un administrador.');
+  await db.collection('admins').doc(usuario).delete();
+  return { ok: true };
+});
+
+exports.listarAdminsServer = onCall(async (request) => {
+  requireAdmin(request);
+  const snap = await db.collection('admins').get();
+  return { admins: snap.docs.map((d) => ({ usuario: d.id, fechaCreacion: d.data().fechaCreacion || null })) };
+});
 
 let vapidReady = false;
 function ensureVapid() {
