@@ -1,28 +1,57 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function autenticado() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return autenticado() && request.auth.token.role == 'admin';
+    }
+    function isEquipoPropio(id) {
+      return autenticado() && request.auth.token.role == 'equipo' && request.auth.token.equipoId == id;
+    }
+    // Campos que solo la Cloud Function `login`/las acciones de admin pueden
+    // tocar (aprobar/rechazar pago o seguro, habilitación tardía). Un equipo
+    // puede seguir editando su propio documento (jugadores, escudo, subir
+    // comprobantes, cambiar su contraseña, etc.) siempre que no toque esto.
+    function noTocaCamposAdmin() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'pagoEstado', 'pagoFechaRevision', 'pagoSaldoEstado', 'pagoSaldoFechaRevision',
+        'seguroJugadoresDni', 'seguroHabilitadoManual'
+      ]);
+    }
+
+    // Solo la Cloud Function `login` (Admin SDK, bypassea las reglas) puede
+    // leer o escribir acá. Antes cualquier visitante anónimo podía leer el
+    // hash de contraseña de todos los admins.
     match /admins/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
+
     match /equipos/{id} {
-      allow read, write: if request.auth != null;
+      allow read: if autenticado();
+      allow create: if autenticado();
+      allow update: if isAdmin() || (isEquipoPropio(id) && noTocaCamposAdmin());
+      allow delete: if isAdmin();
     }
+
     match /partidos/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if autenticado();
     }
     match /avisos/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if autenticado();
     }
     match /config/{id} {
-      allow read, write: if request.auth != null;
+      allow read: if autenticado();
+      allow write: if isAdmin();
     }
     match /pushSubscriptions/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if autenticado();
     }
     match /mensajes/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if autenticado();
       match /replies/{replyId} {
-        allow read, write: if request.auth != null;
+        allow read, write: if autenticado();
       }
     }
   }
