@@ -229,6 +229,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   box-shadow:0 0 24px rgba(0,230,118,0.06);
 }
 .player-row.blocked{opacity:.28;cursor:not-allowed;}
+.player-row.no-habilitado{border-color:rgba(255,61,61,.35);background:rgba(255,61,61,.06);cursor:not-allowed;}
+.player-warn{font-size:10px;font-weight:700;color:var(--red);margin-top:2px;}
 .player-check{
   width:24px;height:24px;border-radius:8px;border:2px solid rgba(255,255,255,0.12);
   flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;transition:.15s;
@@ -1123,6 +1125,12 @@ function irAlInicio(){
 
 let _pCache={};
 let _eCache={}; // caché de equipos — pre-cargado en cargarLista para funcionar offline
+let _cfgCache=null;
+async function getCfg(){
+  if(_cfgCache)return _cfgCache;
+  try{const d=await db.collection('config').doc('general').get();_cfgCache=d.exists?d.data():{};}catch(e){_cfgCache={};}
+  return _cfgCache;
+}
 let _abriendo=false; // BUG4: lock para evitar race condition con doble tap
 
 async function cargarLista(){
@@ -1245,7 +1253,11 @@ async function mostrarAlineacion(equipo){
   jugadores=jugadores.filter(j=>j.apellido||j.nombre||j.dni);
   const aliExistente=esLocal?st.alineacionLocal:st.alineacionVisitante;
   const seleccionados=new Map(aliExistente.map(j=>[j.dni,j.numero||'']));
-  renderAlineacion(jugadores,seleccionados,equipo);
+  const cfg=await getCfg();
+  const venciSeguro=!!(cfg.fechaLimiteSeguro && new Date()>new Date(cfg.fechaLimiteSeguro+'T23:00:00'));
+  const eqData=_eCache[equipoId]||{};
+  const habilitadosSeguro=new Set([...(eqData.seguroJugadoresDni||[]), ...((eqData.seguroHabilitadoManual||[]).map(h=>h.dni))]);
+  renderAlineacion(jugadores,seleccionados,equipo,venciSeguro,habilitadosSeguro);
   // Árbitros — solo en local
   const arbSec=document.getElementById('arbitros-section');
   if(esLocal){
@@ -1259,14 +1271,15 @@ async function mostrarAlineacion(equipo){
   fixIosScroll(document.querySelector('#screen-alineacion .scroll'));
 }
 
-function renderAlineacion(jugadores,seleccionados,equipo){
+function renderAlineacion(jugadores,seleccionados,equipo,venciSeguro,habilitadosSeguro){
   jugadores=jugadores.slice().sort((a,b)=>{const ap=(a.apellido||'').localeCompare(b.apellido||'','es');return ap!==0?ap:(a.nombre||'').localeCompare(b.nombre||'','es');});
   const lista=document.getElementById('ali-lista');lista.innerHTML='';
   jugadores.forEach(j=>{
     const dni=j.dni||'';const isSel=seleccionados.has(dni);const num=seleccionados.get(dni)||'';
-    lista.innerHTML+=`<div class="player-row${isSel?' selected':''}" id="prow-${dni}" onclick="toggleJugador('${dni}','${equipo}')">
+    const noHabilitado=!!(venciSeguro && dni && habilitadosSeguro && !habilitadosSeguro.has(dni));
+    lista.innerHTML+=`<div class="player-row${isSel?' selected':''}${noHabilitado?' no-habilitado':''}" id="prow-${dni}" onclick="toggleJugador('${dni}','${equipo}')">
 <div class="player-check">${isSel?'✓':''}</div>
-<div style="flex:1;"><div class="player-name">${esc((j.apellido||'').toUpperCase()+(j.apellido&&j.nombre?', ':'')+( j.nombre||''))}</div><div class="player-dni">DNI ${esc(dni)}</div></div>
+<div style="flex:1;"><div class="player-name">${esc((j.apellido||'').toUpperCase()+(j.apellido&&j.nombre?', ':'')+( j.nombre||''))}</div><div class="player-dni">DNI ${esc(dni)}</div>${noHabilitado?'<div class="player-warn">No habilitado por pago de seguro pendiente</div>':''}</div>
 <div class="player-num" onclick="event.stopPropagation()">
   <input class="num-input" id="num-${dni}" type="tel" inputmode="numeric" maxlength="2" placeholder="N°" value="${isSel?numCamiseta(num):''}" ${isSel?'':'style="display:none"'} oninput="validarNumero(this)" onfocus="this.select()">
 </div></div>`;
@@ -1283,6 +1296,7 @@ function toggleJugador(dni,equipo){
   const totalSel=document.querySelectorAll('#ali-lista .player-row.selected').length;
   if(isSel){row.classList.remove('selected');row.querySelector('.player-check').textContent='';numInp.style.display='none';numInp.value='';}
   else{
+    if(row.classList.contains('no-habilitado')){toast('Este jugador no está habilitado: seguro médico pendiente.');return;}
     if(totalSel>=15){toast('Máximo 15 jugadores.');return;}
     if(row.classList.contains('blocked'))return;
     row.classList.add('selected');row.querySelector('.player-check').textContent='✓';numInp.style.display='';numInp.focus();
@@ -1294,7 +1308,7 @@ function actualizarContador(n,equipo){
   const badge=document.getElementById('ali-counter');
   badge.textContent=n+' / 15 seleccionados';
   badge.className='counter-badge'+(n===15?' lleno':n>0?' ok':'');
-  document.querySelectorAll('#ali-lista .player-row').forEach(r=>{if(!r.classList.contains('selected'))r.classList.toggle('blocked',n>=15);});
+  document.querySelectorAll('#ali-lista .player-row').forEach(r=>{if(!r.classList.contains('selected')&&!r.classList.contains('no-habilitado'))r.classList.toggle('blocked',n>=15);});
   renderCapitanSelector(equipo);
 }
 
