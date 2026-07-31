@@ -17,6 +17,10 @@ function ensureVapid() {
   vapidReady = true;
 }
 
+// Debe reflejar la misma lista que ASUNTOS_SOLO_ADMIN en index.html: respaldo
+// para hilos viejos que quedaron sin soloAdmin:true seteado en Firestore.
+const ASUNTOS_SOLO_ADMIN = ['Nueva inscripción', 'Comprobante de seguro médico', 'Lista de buena fe', 'Escudo del equipo', 'Comprobante de inscripción'];
+
 // Se dispara con cada respuesta nueva en cualquier hilo de mensajes y decide
 // a quién avisar (admin o el equipo dueño del hilo) según quién la escribió.
 exports.enviarNotificacionPush = onDocumentCreated('mensajes/{mensajeId}/replies/{replyId}', async (event) => {
@@ -28,10 +32,11 @@ exports.enviarNotificacionPush = onDocumentCreated('mensajes/{mensajeId}/replies
   if (!threadSnap.exists) return;
   const thread = threadSnap.data();
 
+  const esSoloAdmin = thread.soloAdmin || ASUNTOS_SOLO_ADMIN.includes(thread.asunto);
   let targetDocId = null;
   if (reply.de === 'equipo') targetDocId = 'admin';
   else if (reply.de === 'admin') targetDocId = 'equipo_' + thread.equipoId;
-  else if (reply.de === 'sistema') targetDocId = thread.soloAdmin ? 'admin' : 'equipo_' + thread.equipoId;
+  else if (reply.de === 'sistema') targetDocId = esSoloAdmin ? 'admin' : 'equipo_' + thread.equipoId;
   if (!targetDocId) return;
 
   const subDoc = await db.collection('pushSubscriptions').doc(targetDocId).get();
@@ -39,7 +44,8 @@ exports.enviarNotificacionPush = onDocumentCreated('mensajes/{mensajeId}/replies
   const subscription = subDoc.data().subscription;
   if (!subscription) return;
 
-  const cuerpo = (reply.texto || '').trim() || '📎 Imagen adjunta';
+  const textoParaDestino = targetDocId === 'admin' ? (reply.textoAdmin || reply.texto) : reply.texto;
+  const cuerpo = (textoParaDestino || '').trim() || '📎 Imagen adjunta';
   const payload = JSON.stringify({
     title: `Liga F5 · ${thread.asunto || 'Nuevo mensaje'}`,
     body: cuerpo.slice(0, 140),
