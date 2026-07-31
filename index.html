@@ -873,6 +873,11 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
             <input type="text" id="re-nombre-transferencia" required placeholder="Nombre y apellido tal como figura en la transferencia">
             <p class="wizard-help" style="margin-top:6px;margin-bottom:0;">Lo necesitamos para poder cotejar tu pago contra el comprobante.</p>
           </div>
+          <div class="field">
+            <label>Monto transferido ($)</label>
+            <input type="number" id="re-monto-transferencia" required min="1" step="1" placeholder="Ej: 15000">
+            <p class="wizard-help" style="margin-top:6px;margin-bottom:0;">Así calculamos si queda algún saldo pendiente.</p>
+          </div>
 
           <div class="field" style="text-align:center;">
             <label>Comprobante de pago</label>
@@ -960,6 +965,10 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           <label>Nombre de quien realizó la transferencia</label>
           <input type="text" id="pe-nombre-transferencia">
         </div>
+        <div class="field" style="max-width:320px;margin:0 auto 14px;text-align:left;">
+          <label>Monto transferido ($)</label>
+          <input type="number" id="pe-monto-transferencia" min="1" step="1" placeholder="Ej: 15000">
+        </div>
         <div class="receipt-upload">
           <img id="pe-receipt-img" class="hidden">
           <div id="pe-receipt-ph" class="ph">🧾</div>
@@ -969,11 +978,16 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         </div>
         <p class="wizard-help" id="pe-receipt-help" style="margin-bottom:0;"></p>
       </div>
+      <div id="pe-pago-resumen-monto"></div>
       <div class="field hidden" style="text-align:center;" id="pe-pago-saldo-wrap">
         <label>Comprobante del saldo restante (50%)</label>
         <div class="field" style="max-width:320px;margin:0 auto 14px;text-align:left;">
           <label>Nombre de quien realizó la transferencia del saldo</label>
           <input type="text" id="pe-nombre-transferencia-saldo">
+        </div>
+        <div class="field" style="max-width:320px;margin:0 auto 14px;text-align:left;">
+          <label>Monto transferido del saldo ($)</label>
+          <input type="number" id="pe-monto-transferencia-saldo" min="1" step="1" placeholder="Ej: 15000">
         </div>
         <div class="receipt-upload">
           <img id="pe-receipt-saldo-img" class="hidden">
@@ -1033,6 +1047,10 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         <div class="field" style="max-width:320px;margin:0 auto 14px;text-align:left;">
           <label>Nombre de quien realizó la transferencia del seguro</label>
           <input type="text" id="pe-nombre-transferencia-seguro">
+        </div>
+        <div class="field" style="max-width:320px;margin:0 auto 14px;text-align:left;">
+          <label>Monto transferido ($)</label>
+          <input type="number" id="pe-monto-transferencia-seguro" min="1" step="1" placeholder="Ej: 15000">
         </div>
         <div class="receipt-upload">
           <img id="pe-receipt-seguro-img" class="hidden">
@@ -1452,6 +1470,19 @@ function formatFechaDMY(isoDate) {
   if (!isoDate) return '—';
   const [y, m, d] = isoDate.split('-');
   return `${d}/${m}/${y}`;
+}
+// Compara lo que el equipo declaró haber transferido contra lo requerido.
+function textoSaldoPendiente(declarado, requerido) {
+  const diff = requerido - declarado;
+  if (diff === 0) return 'coincide con lo requerido';
+  if (diff > 0) return `queda pendiente $${diff.toLocaleString('es-AR')}`;
+  return `transferiste $${(-diff).toLocaleString('es-AR')} de más`;
+}
+function htmlResumenMonto(declarado, requerido, etiqueta) {
+  if (!requerido || declarado == null) return '';
+  const diff = requerido - declarado;
+  const color = diff === 0 ? 'var(--ok)' : diff > 0 ? 'var(--warn)' : 'var(--cyan)';
+  return `<div class="muted" style="font-size:12px;margin-top:6px;">${etiqueta}: declaraste <strong>$${declarado.toLocaleString('es-AR')}</strong> de $${requerido.toLocaleString('es-AR')} requeridos · <span style="color:${color};font-weight:700;">${textoSaldoPendiente(declarado, requerido)}</span></div>`;
 }
 function openModal(html) {
   document.getElementById('modal-content').innerHTML = `<button class="modal-close" onclick="closeModal()">✕</button>${html}`;
@@ -2003,7 +2034,9 @@ document.getElementById('form-registro-equipo').addEventListener('submit', async
   if (!regEscudoDataUrl) { showToast('Subí el escudo de tu equipo antes de inscribirte.', 'error'); actualizarStepsRegistro(2); return; }
   const tipoPago = document.getElementById('re-tipo-pago').value;
   const nombreTransferencia = document.getElementById('re-nombre-transferencia').value.trim();
+  const montoTransferido = Number(document.getElementById('re-monto-transferencia').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); actualizarStepsRegistro(5); return; }
+  if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); actualizarStepsRegistro(5); return; }
   if (!regComprobanteDataUrl) { showToast('Subí el comprobante de pago antes de inscribirte.', 'error'); actualizarStepsRegistro(5); return; }
   const btn = document.getElementById('btn-inscribirse');
   btn.disabled = true;
@@ -2024,6 +2057,7 @@ document.getElementById('form-registro-equipo').addEventListener('submit', async
       jugadores,
       pagoComprobante: regComprobanteDataUrl,
       pagoNombreTransferencia: nombreTransferencia,
+      pagoMontoDeclarado: montoTransferido,
       pagoTipo: tipoPago,
       pagoEstado: 'pendiente',
       pagoFechaCarga: new Date().toISOString(),
@@ -2034,7 +2068,11 @@ document.getElementById('form-registro-equipo').addEventListener('submit', async
     await auth.signInWithCustomToken(loginRes.data.token);
     state.equipoId = created.id;
     state.equipo = created.data;
-    crearMensajeSistema(created.id, created.data?.nombre, created.data?.division, 'Nueva inscripción', `🆕 ${created.data?.nombre||'Un equipo'} completó su inscripción en ${created.data?.division||'la liga'}.`, 'admin').catch(()=>{});
+    const montoReq = division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera;
+    const requerido = montoReq ? (tipoPago === 'sena' ? Math.round(montoReq / 2) : montoReq) : null;
+    const saldoTxt = requerido ? textoSaldoPendiente(montoTransferido, requerido) : '';
+    crearMensajeSistema(created.id, created.data?.nombre, created.data?.division, 'Nueva inscripción', `🆕 ${created.data?.nombre||'Un equipo'} completó su inscripción en ${created.data?.division||'la liga'}. Declaró $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` de $${requerido.toLocaleString('es-AR')} requeridos (${saldoTxt}).` : '.'}`, 'admin').catch(()=>{});
+    crearMensajeSistema(created.id, created.data?.nombre, created.data?.division, 'Estado de pago', `📎 Recibimos tu comprobante de inscripción por $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` (requerido: $${requerido.toLocaleString('es-AR')} · ${saldoTxt})` : ''}. Va a ser revisado por la organización.`, 'equipo').catch(()=>{});
     mostrarExitoInscripcion();
   } catch (err) { console.error(err); showToast('No se pudo completar la inscripción.', 'error'); }
   btn.disabled = false;
@@ -2119,6 +2157,13 @@ async function renderPagoPanel() {
   document.getElementById('pe-nombre-transferencia-saldo').value = eq.pagoSaldoNombreTransferencia || '';
   saldoWrap.classList.add('hidden');
   uploadWrap.classList.add('hidden');
+
+  const montoReqTotal = eq.division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera;
+  const montoReqInicial = montoReqTotal ? (tipo === 'sena' ? Math.round(montoReqTotal / 2) : montoReqTotal) : null;
+  const montoReqSaldo = montoReqTotal ? (montoReqTotal - Math.round(montoReqTotal / 2)) : null;
+  document.getElementById('pe-pago-resumen-monto').innerHTML =
+    htmlResumenMonto(eq.pagoMontoDeclarado, montoReqInicial, tipo === 'sena' ? 'Seña' : 'Pago') +
+    (tipo === 'sena' ? htmlResumenMonto(eq.pagoSaldoMontoDeclarado, montoReqSaldo, 'Saldo') : '');
 
   if (estado === 'rechazado' || estado === 'pendiente') {
     if (venciPagoTotal) {
@@ -2245,6 +2290,7 @@ async function renderSegurosPanel() {
   const ph = document.getElementById('pe-receipt-seguro-ph');
   const help = document.getElementById('pe-receipt-seguro-help');
   document.getElementById('pe-nombre-transferencia-seguro').value = '';
+  document.getElementById('pe-monto-transferencia-seguro').value = '';
   img.classList.add('hidden'); ph.classList.remove('hidden');
 
   const noHabilitadosCount = jugadores.filter(j => j.dni && !aprobadas.has(j.dni) && !habilitadosManual.has(j.dni) && !pendientes.has(j.dni)).length;
@@ -2274,6 +2320,7 @@ function renderHistorialSeguro(transacciones) {
         <div>
           <strong>${t.dnis.length} jugador(es)</strong> · $${(t.dnis.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')}
           <div class="muted" style="font-size:12px;margin-top:2px;">${fmtFechaSeguroTx(t.fechaCarga)} · Transfirió: ${escapeHtml(t.nombreTransferencia || '-')}</div>
+          ${htmlResumenMonto(t.montoDeclarado, t.dnis.length * MONTO_SEGURO_POR_JUGADOR, 'Declarado')}
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
           ${badge(t)}
@@ -2293,7 +2340,9 @@ document.getElementById('pe-receipt-seguro-input').addEventListener('change', as
   if (!file || !state.equipoId) return;
   if (state.lockSeguro) { showToast('El plazo para pagar el seguro ya finalizó.', 'error'); e.target.value = ''; return; }
   const nombreTransferencia = document.getElementById('pe-nombre-transferencia-seguro').value.trim();
+  const montoTransferido = Number(document.getElementById('pe-monto-transferencia-seguro').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
+  if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   if (state.seguroSeleccion.length === 0) { showToast('Marcá al menos un jugador para esta tanda.', 'error'); e.target.value = ''; return; }
   try {
     const dataUrl = await resizeImageFile(file, 1100);
@@ -2303,6 +2352,7 @@ document.getElementById('pe-receipt-seguro-input').addEventListener('change', as
       dnis: state.seguroSeleccion.slice(),
       comprobante: dataUrl,
       nombreTransferencia,
+      montoDeclarado: montoTransferido,
       estado: 'pendiente',
       fechaCarga: new Date().toISOString(),
       fechaRevision: null
@@ -2314,7 +2364,10 @@ document.getElementById('pe-receipt-seguro-input').addEventListener('change', as
     e.target.value = '';
     renderSegurosPanel();
     showToast(`Comprobante cargado para ${cantidad} jugador(es). Queda pendiente de validación.`, 'ok');
-    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de seguro médico', `📎 ${state.equipo?.nombre||'El equipo'} subió un comprobante de seguro médico para ${cantidad} jugador(es). Transferencia a nombre de: ${nombreTransferencia}.`, 'admin');
+    const requeridoSeguro = cantidad * MONTO_SEGURO_POR_JUGADOR;
+    const saldoTxtSeguro = textoSaldoPendiente(montoTransferido, requeridoSeguro);
+    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de seguro médico', `📎 ${state.equipo?.nombre||'El equipo'} subió un comprobante de seguro médico para ${cantidad} jugador(es). Transferencia a nombre de: ${nombreTransferencia}. Declaró $${montoTransferido.toLocaleString('es-AR')} de $${requeridoSeguro.toLocaleString('es-AR')} requeridos (${saldoTxtSeguro}).`, 'admin');
+    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Seguro médico', `📎 Recibimos tu comprobante de seguro médico para ${cantidad} jugador(es) por $${montoTransferido.toLocaleString('es-AR')} (requerido: $${requeridoSeguro.toLocaleString('es-AR')} · ${saldoTxtSeguro}). Va a ser revisado por la organización.`, 'equipo');
     await avisarJugadoresSinAsegurar();
   } catch (err) { console.error(err); showToast('No se pudo cargar el comprobante.', 'error'); }
 });
@@ -2447,38 +2500,56 @@ document.getElementById('pe-receipt-input').addEventListener('change', async e =
   const file = e.target.files[0];
   if (!file || !state.equipoId) return;
   const nombreTransferencia = document.getElementById('pe-nombre-transferencia').value.trim();
+  const montoTransferido = Number(document.getElementById('pe-monto-transferencia').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
+  if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   try {
     const dataUrl = await resizeImageFile(file, 1100);
     if (dataUrl.length > 900000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
     const fechaCarga = new Date().toISOString();
-    await db.collection('equipos').doc(state.equipoId).update({ pagoComprobante: dataUrl, pagoNombreTransferencia: nombreTransferencia, pagoEstado: 'pendiente', pagoFechaCarga: fechaCarga });
+    await db.collection('equipos').doc(state.equipoId).update({ pagoComprobante: dataUrl, pagoNombreTransferencia: nombreTransferencia, pagoMontoDeclarado: montoTransferido, pagoEstado: 'pendiente', pagoFechaCarga: fechaCarga });
     state.equipo.pagoComprobante = dataUrl;
     state.equipo.pagoNombreTransferencia = nombreTransferencia;
+    state.equipo.pagoMontoDeclarado = montoTransferido;
     state.equipo.pagoEstado = 'pendiente';
     state.equipo.pagoFechaCarga = fechaCarga;
     renderPagoPanel();
     showToast('Comprobante actualizado. Queda pendiente de validación.', 'ok');
-    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de inscripción', `📎 ${state.equipo?.nombre||'El equipo'} subió el comprobante de inscripción (50%). Transferencia a nombre de: ${nombreTransferencia}.`, 'admin');
+    let cfg = {};
+    try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (err) {}
+    const montoReq = state.equipo.division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera;
+    const requerido = montoReq ? ((state.equipo.pagoTipo || 'total') === 'sena' ? Math.round(montoReq / 2) : montoReq) : null;
+    const saldoTxt = requerido ? textoSaldoPendiente(montoTransferido, requerido) : '';
+    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de inscripción', `📎 ${state.equipo?.nombre||'El equipo'} subió el comprobante de inscripción. Transferencia a nombre de: ${nombreTransferencia}. Declaró $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` de $${requerido.toLocaleString('es-AR')} requeridos (${saldoTxt}).` : '.'}`, 'admin');
+    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Estado de pago', `📎 Recibimos tu comprobante de inscripción por $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` (requerido: $${requerido.toLocaleString('es-AR')} · ${saldoTxt})` : ''}. Va a ser revisado por la organización.`, 'equipo');
   } catch (err) { console.error(err); showToast('No se pudo actualizar el comprobante.', 'error'); }
 });
 document.getElementById('pe-receipt-saldo-input').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file || !state.equipoId) return;
   const nombreTransferencia = document.getElementById('pe-nombre-transferencia-saldo').value.trim();
+  const montoTransferido = Number(document.getElementById('pe-monto-transferencia-saldo').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
+  if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   try {
     const dataUrl = await resizeImageFile(file, 1100);
     if (dataUrl.length > 900000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
     const fechaCarga = new Date().toISOString();
-    await db.collection('equipos').doc(state.equipoId).update({ pagoSaldoComprobante: dataUrl, pagoSaldoNombreTransferencia: nombreTransferencia, pagoSaldoEstado: 'pendiente', pagoSaldoFechaCarga: fechaCarga });
+    await db.collection('equipos').doc(state.equipoId).update({ pagoSaldoComprobante: dataUrl, pagoSaldoNombreTransferencia: nombreTransferencia, pagoSaldoMontoDeclarado: montoTransferido, pagoSaldoEstado: 'pendiente', pagoSaldoFechaCarga: fechaCarga });
     state.equipo.pagoSaldoComprobante = dataUrl;
     state.equipo.pagoSaldoNombreTransferencia = nombreTransferencia;
+    state.equipo.pagoSaldoMontoDeclarado = montoTransferido;
     state.equipo.pagoSaldoEstado = 'pendiente';
     state.equipo.pagoSaldoFechaCarga = fechaCarga;
     renderPagoPanel();
     showToast('Comprobante del saldo cargado. Queda pendiente de validación.', 'ok');
-    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de inscripción', `📎 ${state.equipo?.nombre||'El equipo'} subió el comprobante del saldo restante (50%). Transferencia a nombre de: ${nombreTransferencia}.`, 'admin');
+    let cfg = {};
+    try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (err) {}
+    const montoReq = state.equipo.division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera;
+    const requerido = montoReq ? (montoReq - Math.round(montoReq / 2)) : null;
+    const saldoTxt = requerido ? textoSaldoPendiente(montoTransferido, requerido) : '';
+    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de inscripción', `📎 ${state.equipo?.nombre||'El equipo'} subió el comprobante del saldo restante. Transferencia a nombre de: ${nombreTransferencia}. Declaró $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` de $${requerido.toLocaleString('es-AR')} requeridos (${saldoTxt}).` : '.'}`, 'admin');
+    crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Estado de pago', `📎 Recibimos tu comprobante del saldo por $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` (requerido: $${requerido.toLocaleString('es-AR')} · ${saldoTxt})` : ''}. Va a ser revisado por la organización.`, 'equipo');
   } catch (err) { console.error(err); showToast('No se pudo actualizar el comprobante.', 'error'); }
 });
 function descargarPDFEquipoActual() {
@@ -3572,15 +3643,22 @@ function infoEtapaPago(eq) {
   const estado = eq.pagoEstado || 'pendiente';
   const saldoEstado = eq.pagoSaldoEstado || 'sin_subir';
   if (estado !== 'aprobado') {
-    return { etapa: 'principal', estado, comprobante: eq.pagoComprobante, nombreTransferencia: eq.pagoNombreTransferencia, label: tipo === 'sena' ? 'Seña' : 'Pago total' };
+    return { etapa: 'principal', estado, comprobante: eq.pagoComprobante, nombreTransferencia: eq.pagoNombreTransferencia, montoDeclarado: eq.pagoMontoDeclarado, label: tipo === 'sena' ? 'Seña' : 'Pago total' };
   }
   if (tipo !== 'sena') {
-    return { etapa: null, estado: 'aprobado', comprobante: eq.pagoComprobante, nombreTransferencia: eq.pagoNombreTransferencia, label: 'Pago total' };
+    return { etapa: null, estado: 'aprobado', comprobante: eq.pagoComprobante, nombreTransferencia: eq.pagoNombreTransferencia, montoDeclarado: eq.pagoMontoDeclarado, label: 'Pago total' };
   }
   if (saldoEstado === 'sin_subir') {
-    return { etapa: null, estado: 'esperando_saldo', comprobante: eq.pagoComprobante, nombreTransferencia: eq.pagoNombreTransferencia, label: 'Seña' };
+    return { etapa: null, estado: 'esperando_saldo', comprobante: eq.pagoComprobante, nombreTransferencia: eq.pagoNombreTransferencia, montoDeclarado: eq.pagoMontoDeclarado, label: 'Seña' };
   }
-  return { etapa: 'saldo', estado: saldoEstado, comprobante: eq.pagoSaldoComprobante, nombreTransferencia: eq.pagoSaldoNombreTransferencia, label: 'Saldo' };
+  return { etapa: 'saldo', estado: saldoEstado, comprobante: eq.pagoSaldoComprobante, nombreTransferencia: eq.pagoSaldoNombreTransferencia, montoDeclarado: eq.pagoSaldoMontoDeclarado, label: 'Saldo' };
+}
+function montoRequeridoEtapa(eq, cfg, etapaLabel) {
+  const montoTotal = eq.division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera;
+  if (!montoTotal) return null;
+  if (etapaLabel === 'Saldo') return montoTotal - Math.round(montoTotal / 2);
+  if (etapaLabel === 'Seña') return Math.round(montoTotal / 2);
+  return montoTotal;
 }
 function estadoGeneralPago(eq) {
   const info = infoEtapaPago(eq);
@@ -3593,13 +3671,15 @@ function badgesPago(info) {
   if (info.estado === 'rechazado') return `<span class="badge badge-danger">Rechazado · ${info.label}</span>`;
   return `<span class="badge badge-warn">Pendiente · ${info.label}</span>`;
 }
-function renderPagosAdminList() {
+async function renderPagosAdminList() {
   const filtro = state.pagoFiltroActivo || 'pendiente';
   let list = pagosCacheAdmin.filter(eq => eq.division === state.adminDivisionActiva);
   if (filtro !== 'todos') list = list.filter(eq => estadoGeneralPago(eq) === filtro);
   document.getElementById('pa-pagos-count').textContent = `(${list.length})`;
   const wrap = document.getElementById('pa-pagos-list');
   if (list.length === 0) { wrap.innerHTML = `<div class="empty-state">No hay comprobantes en esta categoría.</div>`; return; }
+  let cfg = {};
+  try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
   wrap.innerHTML = list.map((eq, idx) => {
     const info = infoEtapaPago(eq);
     const isSegunda = eq.division === 'Segunda';
@@ -3609,6 +3689,7 @@ function renderPagosAdminList() {
       ? `<img src="${info.comprobante}" class="receipt-thumb" onclick="verComprobanteAdmin('${eq.id}')" style="cursor:pointer;">`
       : `<div class="receipt-thumb ph">Sin comprobante</div>`;
     const tipoTexto = (eq.pagoTipo || 'total') === 'sena' ? 'Seña (50%)' : 'Pago total';
+    const requerido = montoRequeridoEtapa(eq, cfg, info.label);
     return `<div class="team-row" style="--row-accent:${accent};animation-delay:${idx * 35}ms">
       <div class="team-row-main">
         ${receiptHtml}
@@ -3619,6 +3700,7 @@ function renderPagosAdminList() {
             ${badgesPago(info)}
             <span class="team-row-sub">${tipoTexto} · Transfirió: ${escapeHtml(info.nombreTransferencia) || 'sin dato'}</span>
           </div>
+          ${htmlResumenMonto(info.montoDeclarado, requerido, 'Declarado')}
         </div>
       </div>
       <div class="admin-table-actions">
@@ -3757,6 +3839,7 @@ function renderSegurosAdminList() {
             ${badge}
             <span class="team-row-sub">${tx.dnis.length} jugador(es) · $${monto.toLocaleString('es-AR')} · ${fmtFechaSeguroTx(tx.fechaCarga)} · Transfirió: ${escapeHtml(tx.nombreTransferencia) || 'sin dato'}</span>
           </div>
+          ${htmlResumenMonto(tx.montoDeclarado, monto, 'Declarado')}
         </div>
       </div>
       <div class="admin-table-actions">
