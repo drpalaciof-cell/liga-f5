@@ -54,9 +54,62 @@ exports.login = onCall(async (request) => {
   if (snap.empty) snap = await db.collection('equipos').where('nombreLower', '==', usuario.toLowerCase()).limit(1).get();
   if (snap.empty) throw new HttpsError('permission-denied', 'Usuario o contraseña incorrectos.');
   const doc = snap.docs[0];
-  if (doc.data().contrasenaHash !== hash) throw new HttpsError('permission-denied', 'Usuario o contraseña incorrectos.');
+  const credDoc = await db.collection('credenciales').doc(doc.id).get();
+  // Durante la migración: si todavía no se migró este equipo, cae al hash
+  // viejo guardado en el propio documento de equipos (contrasenaHash).
+  const hashGuardado = credDoc.exists ? credDoc.data().contrasenaHash : doc.data().contrasenaHash;
+  if (hashGuardado !== hash) throw new HttpsError('permission-denied', 'Usuario o contraseña incorrectos.');
   const token = await getAuth().createCustomToken('equipo_' + doc.id, { role: 'equipo', equipoId: doc.id });
   return { token, role: 'equipo', id: doc.id };
+});
+
+function requireEquipo(request) {
+  if (!request.auth || request.auth.token.role !== 'equipo') {
+    throw new HttpsError('permission-denied', 'Necesitás estar logueado como equipo para esto.');
+  }
+  return request.auth.token.equipoId;
+}
+
+exports.cambiarPasswordEquipo = onCall(async (request) => {
+  const equipoId = requireEquipo(request);
+  const { passActual, passNueva } = request.data || {};
+  if (!passActual || !passNueva || passNueva.length < 6) throw new HttpsError('invalid-argument', 'Datos inválidos.');
+  const credRef = db.collection('credenciales').doc(equipoId);
+  const credDoc = await credRef.get();
+  const eqDoc = await db.collection('equipos').doc(equipoId).get();
+  const hashActual = credDoc.exists ? credDoc.data().contrasenaHash : eqDoc.data()?.contrasenaHash;
+  if (hashActual !== sha256Hex(passActual)) throw new HttpsError('permission-denied', 'La contraseña actual es incorrecta.');
+  await credRef.set({ contrasenaHash: sha256Hex(passNueva) }, { merge: true });
+  return { ok: true };
+});
+
+exports.resetPasswordEquipoServer = onCall(async (request) => {
+  requireAdmin(request);
+  const { equipoId, passNueva } = request.data || {};
+  if (!equipoId || !passNueva || passNueva.length < 6) throw new HttpsError('invalid-argument', 'Datos inválidos.');
+  await db.collection('credenciales').doc(equipoId).set({ contrasenaHash: sha256Hex(passNueva) }, { merge: true });
+  return { ok: true };
+});
+
+// Migración única: copia contrasenaHash de equipos/{id} a credenciales/{id}
+// (colección no legible por clientes) y borra el campo del documento
+// público. Idempotente — salta los equipos ya migrados.
+exports.migrarCredencialesEquipos = onCall(async (request) => {
+  requireAdmin(request);
+  const snap = await db.collection('equipos').get();
+  let migrados = 0, saltados = 0, sinHash = 0;
+  for (const doc of snap.docs) {
+    const hash = doc.data().contrasenaHash;
+    if (!hash) { sinHash++; continue; }
+    const credRef = db.collection('credenciales').doc(doc.id);
+    const credDoc = await credRef.get();
+    if (credDoc.exists) { saltados++; } else {
+      await credRef.set({ contrasenaHash: hash, migradoDesde: 'equipos', fechaMigracion: new Date().toISOString() });
+      migrados++;
+    }
+    await db.collection('equipos').doc(doc.id).update({ contrasenaHash: FieldValue.delete() });
+  }
+  return { ok: true, migrados, saltados, sinHash, total: snap.size };
 });
 
 exports.cambiarPasswordAdmin = onCall(async (request) => {

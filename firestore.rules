@@ -40,6 +40,19 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Hash de contraseña de cada equipo, separado del documento público de
+    // equipos/{id} (que cualquiera puede leer para listados/standings).
+    // Nunca es legible por un cliente — solo la Cloud Function `login` (o
+    // cambiarPasswordEquipo/resetPasswordEquipoServer) lo tocan con el
+    // Admin SDK. El equipo puede crear el suyo propio al registrarse y
+    // actualizarlo después de logueado; nadie puede leerlo nunca.
+    match /credenciales/{id} {
+      allow read: if false;
+      allow create: if autenticado();
+      allow update: if isAdmin() || isEquipoPropio(id);
+      allow delete: if isAdmin();
+    }
+
     match /partidos/{id} {
       allow read, write: if autenticado();
     }

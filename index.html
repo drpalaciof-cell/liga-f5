@@ -1407,6 +1407,13 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         <h3>Administradores activos</h3>
         <div id="pa-admins-list"></div>
       </div>
+      <div class="glass section-card">
+        <h3>Mantenimiento</h3>
+        <p class="wizard-help">Migra la contraseña de cada equipo desde el documento público al almacenamiento protegido nuevo. Se puede ejecutar varias veces sin problema — salta los equipos que ya estén migrados.</p>
+        <div class="section-actions" style="justify-content:flex-start;">
+          <button class="btn" onclick="migrarCredenciales()">🔒 Migrar credenciales de equipos</button>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1614,12 +1621,7 @@ function abrirModalCambiarPassword(tipo) {
     if (!/[a-zA-Z]/.test(nueva) || !/[0-9]/.test(nueva)) { showToast('La contraseña debe tener al menos una letra y un número.', 'error'); return; }
     try {
       if (tipo === 'equipo') {
-        const actualHash = await sha256Hex(actual);
-        const doc = await db.collection('equipos').doc(state.equipoId).get();
-        if (doc.data().contrasenaHash !== actualHash) { showToast('La contraseña actual es incorrecta.', 'error'); return; }
-        const nuevaHash = await sha256Hex(nueva);
-        await db.collection('equipos').doc(state.equipoId).update({ contrasenaHash: nuevaHash });
-        state.equipo.contrasenaHash = nuevaHash;
+        await functions.httpsCallable('cambiarPasswordEquipo')({ passActual: actual, passNueva: nueva });
       } else {
         await functions.httpsCallable('cambiarPasswordAdmin')({ passActual: actual, passNueva: nueva });
       }
@@ -4338,7 +4340,7 @@ async function crearEquipoDoc(usuario, nombre, division, pass, extra = {}) {
   if (!existingNombre.empty) { showToast('Ya existe un equipo con ese nombre. Elegí otro nombre para tu equipo.', 'error'); return null; }
   const contrasenaHash = await sha256Hex(pass);
   const data = {
-    usuario, usuarioLower, nombre, nombreLower, division, contrasenaHash,
+    usuario, usuarioLower, nombre, nombreLower, division,
     capitan: '', contacto: '', escudo: '',
     jugadores: emptyJugadores(),
     pagoComprobante: '', pagoEstado: 'aprobado', pagoFechaCarga: '', pagoNombreTransferencia: '', pagoTipo: 'total',
@@ -4349,6 +4351,8 @@ async function crearEquipoDoc(usuario, nombre, division, pass, extra = {}) {
     ...extra
   };
   const docRef = await db.collection('equipos').add(data);
+  // La contraseña se guarda aparte, en una colección que ningún cliente puede leer.
+  await db.collection('credenciales').doc(docRef.id).set({ contrasenaHash });
   return { id: docRef.id, data };
 }
 async function crearEquipo(e) {
@@ -4453,11 +4457,10 @@ async function resetPasswordEquipo(id, nombre) {
     if (pass.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
     if (!/[a-zA-Z]/.test(pass) || !/[0-9]/.test(pass)) { showToast('La contraseña debe tener al menos una letra y un número.', 'error'); return; }
     try {
-      const contrasenaHash = await sha256Hex(pass);
-      await db.collection('equipos').doc(id).update({ contrasenaHash });
+      await functions.httpsCallable('resetPasswordEquipoServer')({ equipoId: id, passNueva: pass });
       closeModal();
       showToast('Contraseña actualizada.', 'ok');
-    } catch (err) { console.error(err); showToast('No se pudo actualizar la contraseña.', 'error'); }
+    } catch (err) { console.error(err); showToast(err.message || 'No se pudo actualizar la contraseña.', 'error'); }
   });
 }
 async function eliminarEquipo(id, nombre) {
@@ -4472,6 +4475,7 @@ async function eliminarEquipo(id, nombre) {
   document.getElementById('confirm-del-equipo').addEventListener('click', async () => {
     try {
       await db.collection('equipos').doc(id).delete();
+      await db.collection('credenciales').doc(id).delete().catch(() => {});
       closeModal();
       showToast('Equipo eliminado.', 'ok');
       cargarEquiposAdmin();
@@ -4614,6 +4618,14 @@ async function eliminarAdmin(usuario, total) {
       cargarAdminsList();
     } catch (e) { console.error(e); showToast(e.message || 'No se pudo eliminar el administrador.', 'error'); }
   });
+}
+async function migrarCredenciales() {
+  if (!confirm('Migra la contraseña de cada equipo a un almacenamiento protegido que ya no queda expuesto en el documento público. Se puede ejecutar más de una vez sin problema. ¿Continuar?')) return;
+  try {
+    const res = await functions.httpsCallable('migrarCredencialesEquipos')();
+    const { migrados, saltados, sinHash, total } = res.data;
+    showToast(`Migración lista: ${migrados} migrados, ${saltados} ya estaban, ${sinHash} sin contraseña, de ${total} equipos.`, 'ok');
+  } catch (e) { console.error(e); showToast(e.message || 'No se pudo migrar.', 'error'); }
 }
 
 /* ===================== PLANILLAS ADMIN ===================== */
