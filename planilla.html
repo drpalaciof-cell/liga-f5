@@ -1051,7 +1051,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 firebase.initializeApp({apiKey:"AIzaSyDV75qM1_QrkIqCO403vq7GYSPiuDlnP9E",authDomain:"liga-f5-3d80c.firebaseapp.com",projectId:"liga-f5-3d80c"});
 const db=firebase.firestore();
 const auth=firebase.auth();
-const authReadyPromise = auth.signInAnonymously().catch(e => console.error('Auth anónimo falló:', e));
+const authReadyPromise = auth.signInAnonymously().catch(e => { console.error('Auth anónimo falló:', e); setTimeout(()=>toast('Error de autenticación: '+(e.message||e.code||e),6000),300); });
 db.enablePersistence({synchronizeTabs:false}).catch(()=>{});
 
 // Pre-cargar logo como base64 para embeber en print sin red
@@ -1084,7 +1084,7 @@ async function cargarDivisionesCanchas(){
         el.style.color=esP?'var(--cyan)':'var(--orange)';
       }else{el.textContent='Sin partidos';el.style.color='rgba(255,255,255,0.2)';}
     });
-  }catch(e){}
+  }catch(e){console.error('cargarDivisionesCanchas:',e);toast('Error cargando partidos: '+(e.message||e.code||e),5000);}
 }
 async function confirmarPlanillero(){
   const nombre=document.getElementById('planillero-input').value.trim();
