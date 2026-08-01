@@ -1755,7 +1755,7 @@ function abrirModal(id){document.getElementById(id).classList.add('open');}
 function cerrarModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
 
-const SIM_PARTIDO_ID='__sim_planilla__';
+const SIM_PARTIDO_ID='sim_planilla';
 async function simCrearPartido(){
   toast('Creando partido de prueba...',4000);
   try{
