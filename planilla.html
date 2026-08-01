@@ -1207,7 +1207,7 @@ async function abrirPartido(id,cardEl){
     st.eventos=st.partido.eventos||[];
     st.firmas=st.partido.firmas||{local:false,visitante:false};
     const estado=st.partido.estado||'pendiente';
-    if(estado==='cerrado'){toast('Esta planilla ya está cerrada.',3000);return;}
+    if(estado==='cerrado'||st.partido.jugado){toast('Esta planilla ya está cerrada.',3000);return;}
     // Solo persistir el pid si el partido está activo
     sessionStorage.setItem('ligaf5_screen','partido');sessionStorage.setItem('ligaf5_pid',id);
     // Cargar AMBOS equipos — primero desde _eCache (disponible offline), sino Firestore
@@ -1723,8 +1723,15 @@ async function guardarPartido(){
   st.eventos.filter(e=>e.tipo==='gol').forEach(e=>{const k=e.dni+'_'+e.equipoId;if(!goleadoresMap[k])goleadoresMap[k]={dni:e.dni,equipoId:e.equipoId,jugadorNombre:e.nombre,cantidad:0};goleadoresMap[k].cantidad++;});
   const goleadores=Object.values(goleadoresMap);
   const tarjetas=st.eventos.filter(e=>e.tipo==='tarjeta').map(e=>({dni:e.dni,equipoId:e.equipoId,jugadorNombre:e.nombre,tipo:e.subtipo==='roja'?'roja':'amarilla',dobleAmarilla:e.subtipo==='doble'}));
-  try{await db.collection('partidos').doc(st.partidoId).update({eventos:st.eventos,faltas:st.faltas,minutos:st.minutos,tiempoActual:st.tiempoActual,alineacionLocal:st.alineacionLocal,alineacionVisitante:st.alineacionVisitante,firmas:st.firmas,golesLocal:gL,golesVisitante:gV,goleadores,tarjetas,planillero:st.planillero,arbitro1:st.partido.arbitro1||'',arbitro2:st.partido.arbitro2||''});}
-  catch(e){console.error('guardado offline:',e);}
+  try{
+    await db.collection('partidos').doc(st.partidoId).update({eventos:st.eventos,faltas:st.faltas,minutos:st.minutos,tiempoActual:st.tiempoActual,alineacionLocal:st.alineacionLocal,alineacionVisitante:st.alineacionVisitante,firmas:st.firmas,golesLocal:gL,golesVisitante:gV,goleadores,tarjetas,planillero:st.planillero,arbitro1:st.partido.arbitro1||'',arbitro2:st.partido.arbitro2||''});
+  }catch(e){
+    console.error('guardado falló:',e);
+    // Si es porque no hay conexión, la barra offline ya lo indica — evitar
+    // duplicar el aviso. Cualquier otro error (permisos, cuota, etc.) sí se
+    // muestra, porque en ese caso lo que se ve en pantalla NO llegó al servidor.
+    if(navigator.onLine)toast('⚠ No se guardó el último cambio: '+(e.message||e.code||e),6000);
+  }
 }
 
 function firmarCapitan(equipo){
@@ -1922,10 +1929,10 @@ function generarPDFPlanilla(){
 }
 
 function actualizarBotonesAgregarJugador(){
-  const esPrimero=st.partido&&st.partido.estado==='primer_tiempo';
+  const enJuego=st.partido&&(st.partido.estado==='primer_tiempo'||st.partido.estado==='segundo_tiempo');
   ['local','visitante'].forEach(eq=>{
     const el=document.getElementById('footer-add-'+eq);
-    if(el)el.style.display=esPrimero?'':'none';
+    if(el)el.style.display=enJuego?'':'none';
   });
 }
 
@@ -2026,6 +2033,13 @@ async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
           }
         });
       });
+      // Apps instaladas (WebAPK) suelen quedar vivas en memoria al "cerrarlas"
+      // desde recientes en Android — sin una navegación real, el navegador
+      // nunca vuelve a chequear si sw.js cambió. Forzamos el chequeo cada vez
+      // que la app vuelve a primer plano, para que las actualizaciones lleguen
+      // sin depender de un reinicio manual del dispositivo.
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+      window.addEventListener('focus', () => reg.update().catch(() => {}));
     }).catch(() => {});
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
   }

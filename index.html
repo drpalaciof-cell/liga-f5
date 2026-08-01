@@ -4259,7 +4259,7 @@ async function guardarResultadoPartido(partidoId) {
     tarjetas.push({ dni: select.dataset.dni, equipoId: select.dataset.equipo, jugadorNombre: select.dataset.nombre, tipo, dobleAmarilla: select.value === 'doble' });
   });
   try {
-    await db.collection('partidos').doc(partidoId).update({ golesLocal, golesVisitante, goleadores, tarjetas, jugado: true, fechaResultado: new Date().toISOString() });
+    await db.collection('partidos').doc(partidoId).update({ golesLocal, golesVisitante, goleadores, tarjetas, jugado: true, estado: 'cerrado', fechaResultado: new Date().toISOString() });
     showToast('Resultado guardado.', 'ok');
     closeModal();
     await cargarPartidosAdmin(state.adminDivisionActiva);
