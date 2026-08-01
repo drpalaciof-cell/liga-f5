@@ -29,4 +29,31 @@ Se resolvió en dos fases, sin cortar el acceso a equipos en uso:
 - Equipo intentando editar el documento de otro equipo → bloqueado.
 - Equipo de prueba usado para el test, eliminado por el usuario.
 
-**Pendiente menor, no urgente:** el hash de contraseña de los *equipos* (no de los admins) sigue siendo técnicamente legible vía lectura pública de `equipos/*` (necesaria para listados/standings). El riesgo real es bajo — con el login ahora server-side, tener el hash no alcanza para loguearse, haría falta crackearlo offline. Si se quiere cerrar del todo, requiere mover las credenciales de equipo a una subcolección separada no legible públicamente.
+**Pendiente menor, no urgente:** ~~el hash de contraseña de los equipos sigue siendo técnicamente legible vía lectura pública de equipos/*~~ → **resuelto 2026-08-01**, ver más abajo.
+
+## ✅ Sesión 2026-08-01 — planilla, auditoría completa, sync en vivo, migración de credenciales, Primera sin zonas
+
+**Planilla — bugs encontrados y corregidos** (commits `e96d1ca`…`555a6fe`):
+- El simulador ("🧪 Simular partido de prueba") usaba un ID de documento reservado por Firestore (`__sim_planilla__`) — fallaba siempre. Corregido, y de paso se encontró que el mismo botón guardaba `cancha` como texto en vez de número, por lo que el partido que creaba nunca aparecía en "Ver partidos" aunque sí figurara en la pantalla de selección de cancha. Los dos, corregidos.
+- Varios `catch` vacíos o solo con `console.error` dejaban fallas completamente invisibles para el planillero (auth anónima, carga de partidos por cancha, guardado de eventos en partido). Ahora avisan con un toast.
+- La app, al reabrir, restauraba la sesión anterior (cancha/partido guardado) saltando directo a la pantalla del partido — lo que además la hacía saltarse la pantalla donde están los avisos de error nuevos. Sumado a que el `sw.js` (service worker) solo se autoactualiza cuando cambia su propio archivo, una tablet podía quedar corriendo código viejo indefinidamente sin ninguna señal. Se agregó chequeo de actualización cada vez que la app vuelve a primer plano (no solo al navegar), así no depende de forzar el cierre manual.
+- Un resultado cargado a mano desde el panel admin no marcaba el partido como `cerrado`, así que la planilla lo podía abrir de nuevo y pisarlo con un partido vacío. Ahora el admin también cierra `estado`, y la planilla además rechaza abrir cualquier partido con `jugado:true` sin importar el `estado`.
+- No se podía cargar cambio de jugador en el segundo tiempo (el botón solo aparecía en el primero).
+- Nombre del PDF/impresión de cada planilla era siempre "Planilla · Liga F5" — ahora es `<fecha> - <equipo local> vs <equipo visitante>`, para poder buscarlas entre muchas.
+
+**Sync en vivo (público + admin)** (commit `709c6c2`): posiciones, goleadores, fixture y sanciones ahora escuchan cambios en Firestore en tiempo real (`onSnapshot`) en vez de cargar una sola vez — cuando un planillero cierra un partido, se refleja solo en cualquier pantalla ya abierta (pública o admin), sin recargar. Antes hacía falta recargar la página a mano para ver un resultado nuevo. Demostrado en vivo con un partido de prueba: los goleadores se actualizan gol a gol (ni hace falta cerrar el partido), las posiciones recién al cerrar (correcto, para no contar partidos a medio jugar).
+
+**Migración de credenciales** (commit `7d927fc`, ya desplegada — functions + rules + hosting): el hash de contraseña de cada equipo se movió de `equipos/{id}` (público, legible por cualquiera) a `credenciales/{id}` (nunca legible desde el cliente, solo Cloud Functions con Admin SDK). Login, cambio y reseteo de contraseña de equipo ahora pasan por Cloud Functions nuevas (`cambiarPasswordEquipo`, `resetPasswordEquipoServer`). Migración de equipos existentes es idempotente vía botón **"🔒 Migrar credenciales de equipos"** en Admin → pestaña Administradores → tarjeta "Mantenimiento" — **falta correrlo** (un clic, no lo hice yo porque requiere login real de admin).
+
+**Primera División sin zonas** (commit `7d4b82f`): a pedido explícito, Primera pasó de 2 zonas (A/B) a una sola tabla de 12 equipos — top 8 a playoffs, el 12° desciende. Segunda sigue igual, con sus zonas. En el panel admin, división Primera ahora muestra un solo botón "⚙ Generar fixture" (round-robin de toda la división) en vez de los botones por zona.
+
+**Herramienta nueva en admin**: botón "🗑 Borrar partidos" (por zona en Segunda, de toda la división en Primera) para limpiar un fixture sin tener que regenerarlo — junto a los botones de "Generar fixture".
+
+**Pendiente, no lo pude hacer yo (requiere tu login real de admin, las reglas de seguridad correctamente no dejan borrar `equipos` con una sesión anónima):**
+1. Borrar los equipos de prueba que quedaron en la base: **ZTEST HALCONES FC, ZTEST LOBOS FC, ZTEST TIGRES FC, ZTEST DRAGONES FC, ZTEST JAGUARES FC, ZTEST AGUILAS FC, ZTEST CONDORES FC, ZTEST PANTERAS FC, DEMO GATOS FC, DEMO PERROS FC** (Admin → Equipos, buscar por nombre). *Ojo: revisar caso por caso, puede haber algún equipo real mezclado en la lista según lo que dijiste.*
+2. Correr el botón de migración de credenciales (arriba).
+3. Regenerar el fixture real: Primera con el botón único nuevo, Segunda con los botones por zona de siempre. Ahora mismo la colección `partidos` está vacía (se limpió durante la sesión de hoy al aparecer un fixture mezclado con equipos de prueba).
+
+**Hallazgos del audit completo de hoy, no urgentes, quedan para más adelante:**
+- Goleadores/sanciones se acumulan sin límite de temporada — si se reusan las mismas divisiones en el próximo torneo sin archivar `partidos`, se van a mezclar con los datos viejos.
+- Un puñado de `catch` silenciosos de bajo impacto en `index.html` (fallback de `config/general`, `jsPDF.addImage`) — no rompen nada hoy, pero enmascararían un error real si alguna vez fallan.
