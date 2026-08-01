@@ -1773,7 +1773,7 @@ async function simCrearPartido(){
     const mkAlin=(jugs,offset)=>jugs.filter(j=>j.apellido||j.nombre).slice(0,15).map((j,i)=>({dni:j.dni||'SIM'+i,nombre:((j.apellido||'').toUpperCase()+', '+(j.nombre||'')).trim(),numero:String(i+1+offset).padStart(2,'0')}));
     const alinL=mkAlin(eqL.jugadores||[],0);
     const alinV=mkAlin(eqV.jugadores||[],0);
-    await db.collection('partidos').doc(SIM_PARTIDO_ID).set({equipoLocalId:eqL.id,equipoLocalNombre:eqL.nombre||'Local',equipoVisitanteId:eqV.id,equipoVisitanteNombre:eqV.nombre||'Visitante',division:eqL.division||'Primera',zona:eqL.zona||'A',numeroFecha:99,cancha:String(st.cancha||1),horario:'10:00',estado:'alineacion',jugado:false,alineacionLocal:alinL,alineacionVisitante:alinV,capitanLocalDni:alinL[0]?.dni||'',capitanVisitanteDni:alinV[0]?.dni||'',faltas:{local:{t1:0,t2:0},visitante:{t1:0,t2:0}},tiempoActual:1,eventos:[],firmas:{local:false,visitante:false},golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],_sim:true});
+    await db.collection('partidos').doc(SIM_PARTIDO_ID).set({equipoLocalId:eqL.id,equipoLocalNombre:eqL.nombre||'Local',equipoVisitanteId:eqV.id,equipoVisitanteNombre:eqV.nombre||'Visitante',division:eqL.division||'Primera',zona:eqL.zona||'A',numeroFecha:99,cancha:Number(st.cancha||1),horario:'10:00',estado:'alineacion',jugado:false,alineacionLocal:alinL,alineacionVisitante:alinV,capitanLocalDni:alinL[0]?.dni||'',capitanVisitanteDni:alinV[0]?.dni||'',faltas:{local:{t1:0,t2:0},visitante:{t1:0,t2:0}},tiempoActual:1,eventos:[],firmas:{local:false,visitante:false},golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],_sim:true});
     toast('Partido creado ✓',2000);setTimeout(()=>abrirPartido(SIM_PARTIDO_ID),800);
   }catch(e){toast('Error: '+e.message,4000);}
 }
