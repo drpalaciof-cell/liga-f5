@@ -1257,6 +1257,8 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
             <div class="section-actions" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;">
               <button class="btn" onclick="generarFixtureZona(state.adminDivisionActiva,'A')">⚙ Generar fixture Zona A</button>
               <button class="btn" onclick="generarFixtureZona(state.adminDivisionActiva,'B')">⚙ Generar fixture Zona B</button>
+              <button class="btn btn-danger" onclick="borrarPartidosZona(state.adminDivisionActiva,'A')">🗑 Borrar partidos Zona A</button>
+              <button class="btn btn-danger" onclick="borrarPartidosZona(state.adminDivisionActiva,'B')">🗑 Borrar partidos Zona B</button>
             </div>
             <div id="pa-fixture-list"></div>
           </div>
@@ -1692,13 +1694,25 @@ function switchDivisionTab(div) {
 }
 
 /* ===================== FIXTURE / POSICIONES / GOLEADORES (público) ===================== */
-async function cargarPartidosPublico() {
-  try {
-    const snap = await db.collection('partidos').where('division', '==', state.divisionActiva).get();
-    state.partidosCache = [];
-    snap.forEach(doc => state.partidosCache.push({ id: doc.id, ...doc.data() }));
-    state.partidosCache.sort((a, b) => a.numeroFecha - b.numeroFecha);
-  } catch (e) { console.error(e); state.partidosCache = []; }
+// Escucha en vivo: cuando un planillero cierra un partido (o el admin carga
+// un resultado a mano), posiciones/goleadores/fixture se actualizan solos
+// en cualquier pantalla que los tenga abiertos, sin recargar la página.
+function cargarPartidosPublico() {
+  if (state._partidosUnsub) { state._partidosUnsub(); state._partidosUnsub = null; }
+  return new Promise(resolve => {
+    let primeraCarga = true;
+    state._partidosUnsub = db.collection('partidos').where('division', '==', state.divisionActiva)
+      .onSnapshot(snap => {
+        state.partidosCache = [];
+        snap.forEach(doc => state.partidosCache.push({ id: doc.id, ...doc.data() }));
+        state.partidosCache.sort((a, b) => a.numeroFecha - b.numeroFecha);
+        if (primeraCarga) { primeraCarga = false; resolve(); }
+        else renderContentTabActivo();
+      }, e => {
+        console.error(e); state.partidosCache = [];
+        if (primeraCarga) { primeraCarga = false; resolve(); }
+      });
+  });
 }
 function switchContentTab(tab) {
   state.contentTabActivo = tab;
@@ -2656,6 +2670,7 @@ function volverATorneoHome() {
   state.adminDivisionActiva = null;
   document.getElementById('torneo-division-detail').classList.add('hidden');
   document.getElementById('torneo-home').classList.remove('hidden');
+  detenerPartidosAdmin();
 }
 function switchDivisionAdminTab(tab) {
   document.querySelectorAll('#division-subtabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.divtab === tab));
@@ -4051,15 +4066,28 @@ function generarRoundRobin(equipoIds) {
   }
   return rounds;
 }
-async function cargarPartidosAdmin(division) {
-  try {
-    const snap = await db.collection('partidos').where('division', '==', division).get();
-    partidosCacheAdmin = [];
-    snap.forEach(doc => partidosCacheAdmin.push({ id: doc.id, ...doc.data() }));
-    partidosCacheAdmin.sort((a, b) => a.numeroFecha - b.numeroFecha);
-    renderZonasAdmin();
-    renderFixtureAdminList();
-  } catch (e) { console.error(e); showToast('No se pudieron cargar los partidos.', 'error'); }
+let partidosAdminUnsub = null;
+function cargarPartidosAdmin(division) {
+  if (partidosAdminUnsub) { partidosAdminUnsub(); partidosAdminUnsub = null; }
+  return new Promise(resolve => {
+    let primeraCarga = true;
+    partidosAdminUnsub = db.collection('partidos').where('division', '==', division)
+      .onSnapshot(snap => {
+        partidosCacheAdmin = [];
+        snap.forEach(doc => partidosCacheAdmin.push({ id: doc.id, ...doc.data() }));
+        partidosCacheAdmin.sort((a, b) => a.numeroFecha - b.numeroFecha);
+        renderZonasAdmin();
+        renderFixtureAdminList();
+        renderSancionesAdmin();
+        if (primeraCarga) { primeraCarga = false; resolve(); }
+      }, e => {
+        console.error(e); showToast('No se pudieron cargar los partidos.', 'error');
+        if (primeraCarga) { primeraCarga = false; resolve(); }
+      });
+  });
+}
+function detenerPartidosAdmin() {
+  if (partidosAdminUnsub) { partidosAdminUnsub(); partidosAdminUnsub = null; }
 }
 function renderZonasAdmin() {
   const div = state.adminDivisionActiva;
@@ -4140,6 +4168,23 @@ async function generarFixtureZona(division, zona) {
     showToast(`Fixture de Zona ${zona} generado: ${rounds.length} fecha(s).`, 'ok');
     await cargarPartidosAdmin(division);
   } catch (e) { console.error(e); showToast('No se pudo generar el fixture.', 'error'); }
+}
+async function borrarPartidosZona(division, zona) {
+  const existentes = partidosCacheAdmin.filter(p => p.zona === zona);
+  if (existentes.length === 0) { showToast(`La Zona ${zona} no tiene partidos para borrar.`, 'error'); return; }
+  const conResultado = existentes.filter(p => p.jugado).length;
+  const aviso = conResultado > 0
+    ? `Esto borra los ${existentes.length} partidos de la Zona ${zona}, incluidos ${conResultado} con resultado ya cargado. Esta acción no se puede deshacer. ¿Continuar?`
+    : `Esto borra los ${existentes.length} partidos de la Zona ${zona} (ninguno tiene resultado todavía). ¿Continuar?`;
+  if (!confirm(aviso)) return;
+  try {
+    const snap = await db.collection('partidos').where('division', '==', division).where('zona', '==', zona).get();
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    showToast(`Zona ${zona}: ${snap.size} partido(s) borrado(s).`, 'ok');
+    await cargarPartidosAdmin(division);
+  } catch (e) { console.error(e); showToast('No se pudieron borrar los partidos.', 'error'); }
 }
 function renderFixtureAdminList() {
   const wrap = document.getElementById('pa-fixture-list');
