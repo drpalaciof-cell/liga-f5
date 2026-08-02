@@ -619,6 +619,11 @@ textarea.obs{
   font-family:'Manrope',sans-serif;
 }
 textarea.obs:focus{border-color:rgba(0,212,255,0.35);}
+select.planilla-select{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;color:var(--text);font-size:13px;
+  padding:9px 10px;outline:none;font-family:'Manrope',sans-serif;
+}
 
 /* ── MODAL ── */
 .modal-overlay{
@@ -752,7 +757,8 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- ══ SCREEN: CANCHA ══ -->
 <div class="screen" id="screen-cancha">
   <div class="scroll">
-    <div style="display:flex;justify-content:flex-end;padding:8px 12px 0;">
+    <div style="display:flex;justify-content:space-between;padding:8px 12px 0;">
+      <button onclick="abrirHistorial()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;font-family:'Manrope',sans-serif;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px;letter-spacing:.3px;">📄 Historial</button>
       <button onclick="irAlInicio()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;font-family:'Manrope',sans-serif;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px;letter-spacing:.3px;">⟵ Cambiar planillero</button>
     </div>
     <div class="cancha-logo">
@@ -774,6 +780,28 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
       <button class="btn btn-ghost btn-sm" onclick="simCrearPartido()">🧪 Simular partido de prueba</button>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px;color:var(--red);" onclick="simBorrarPartido()">🗑 Borrar partido simulado</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: HISTORIAL ══ -->
+<div class="screen" id="screen-historial">
+  <div class="topbar">
+    <button class="topbar-back" onclick="goScreen('screen-cancha')">←</button>
+    <div><div class="topbar-title">Historial de planillas</div><div class="topbar-sub">Ver, descargar o compartir</div></div>
+  </div>
+  <div class="scroll">
+    <div style="display:flex;gap:8px;padding:12px 14px 0;">
+      <button class="btn btn-sm" id="hist-tab-primera" style="flex:1;" onclick="cambiarDivisionHistorial('Primera')">🥇 Primera</button>
+      <button class="btn btn-sm" id="hist-tab-segunda" style="flex:1;" onclick="cambiarDivisionHistorial('Segunda')">🥈 Segunda</button>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:8px;padding:10px 14px 4px;">
+      <div style="flex:1;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Fecha</div>
+        <select id="hist-sel-fecha" class="planilla-select" onchange="renderHistorialLista()" style="width:100%;"><option value="">— Seleccioná —</option></select>
+      </div>
+      <button class="btn btn-sm" id="hist-btn-cerrar-fecha" onclick="cerrarFechaPlanillero()">✓ Cerrar fecha</button>
+    </div>
+    <div id="hist-lista" style="padding:8px 14px 20px;"></div>
   </div>
 </div>
 
@@ -1047,6 +1075,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 firebase.initializeApp({apiKey:"AIzaSyDV75qM1_QrkIqCO403vq7GYSPiuDlnP9E",authDomain:"liga-f5-3d80c.firebaseapp.com",projectId:"liga-f5-3d80c"});
 const db=firebase.firestore();
@@ -1945,6 +1974,198 @@ function generarPDFPlanilla(){
   const pw=window.open('','_blank');
   if(!pw){toast('El navegador bloqueó la ventana — activá pop-ups para este sitio.',4000);return;}
   pw.document.open();pw.document.write(fullHtml);pw.document.close();
+}
+
+/* ══ HISTORIAL DE PLANILLAS (ver/descargar/compartir por fecha) ══ */
+let _histDivision='Primera';
+let _histPartidos=[];
+function abrirHistorial(){
+  goScreen('screen-historial');
+  cambiarDivisionHistorial(_histDivision);
+}
+async function cambiarDivisionHistorial(div){
+  _histDivision=div;
+  document.getElementById('hist-tab-primera').classList.toggle('btn-primary',div==='Primera');
+  document.getElementById('hist-tab-segunda').classList.toggle('btn-primary',div==='Segunda');
+  const sel=document.getElementById('hist-sel-fecha');
+  sel.innerHTML='<option value="">Cargando...</option>';
+  document.getElementById('hist-lista').innerHTML='';
+  try{
+    const snap=await db.collection('partidos').where('division','==',div).get();
+    _histPartidos=[];
+    snap.forEach(doc=>_histPartidos.push({id:doc.id,...doc.data()}));
+    _histPartidos.sort((a,b)=>(a.cancha||0)-(b.cancha||0)||(a.horario||'').localeCompare(b.horario||''));
+    const fechas=[...new Set(_histPartidos.map(p=>p.numeroFecha||'?'))].sort((a,b)=>Number(a)-Number(b));
+    sel.innerHTML='<option value="">— Seleccioná —</option>'+fechas.map(f=>`<option value="${f}">Fecha ${f}</option>`).join('');
+    if(fechas.length){sel.value=fechas[fechas.length-1];renderHistorialLista();}
+    else document.getElementById('hist-lista').innerHTML='<div class="empty-msg">No hay partidos en esta división.</div>';
+  }catch(e){sel.innerHTML='<option value="">Error</option>';toast('Error al cargar: '+e.message,3000);}
+}
+async function renderHistorialLista(){
+  const fecha=document.getElementById('hist-sel-fecha').value;
+  const wrap=document.getElementById('hist-lista');
+  await actualizarBotonCerrarFechaPlanillero();
+  if(!fecha){wrap.innerHTML='';return;}
+  const partidos=_histPartidos.filter(p=>String(p.numeroFecha||'?')===String(fecha));
+  const labels={pendiente:'Pendiente',alineacion:'En alineación',primer_tiempo:'1° Tiempo',segundo_tiempo:'2° Tiempo',cerrado:'✓ Cerrada'};
+  if(!partidos.length){wrap.innerHTML='<div class="empty-msg">Sin partidos en esta fecha.</div>';return;}
+  wrap.innerHTML=partidos.map(p=>{
+    const estado=p.estado||'pendiente';
+    const gL=p.golesLocal??'—',gV=p.golesVisitante??'—';
+    const res=estado==='cerrado'?`<b>${gL} - ${gV}</b>`:'vs';
+    const acciones=estado==='cerrado'?`<div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn btn-sm" style="flex:1;" onclick="verPlanillaPdfPlanillero('${p.id}')">👁 Ver</button>
+        <button class="btn btn-sm" style="flex:1;" onclick="descargarPlanillaPdfPlanillero('${p.id}')">⬇ Descargar</button>
+        <button class="btn btn-sm" style="flex:1;" onclick="compartirPlanillaPdfPlanillero('${p.id}')">📤 Compartir</button>
+      </div>`:`<div style="font-size:11px;color:var(--muted);margin-top:6px;">Se genera al cerrar el partido.</div>`;
+    return `<div class="glass" style="padding:12px 14px;border-radius:12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);">
+        <span>Cancha ${p.cancha||'—'} · ${p.horario||''}</span><span>${labels[estado]||estado}</span>
+      </div>
+      <div style="font-size:14px;font-weight:700;margin-top:4px;">${esc(p.equipoLocalNombre)} ${res} ${esc(p.equipoVisitanteNombre)}</div>
+      ${acciones}
+    </div>`;
+  }).join('');
+}
+async function cerrarFechaPlanillero(){
+  const fecha=document.getElementById('hist-sel-fecha').value;
+  if(!fecha){toast('Elegí una fecha primero.',2500);return;}
+  const id=`${_histDivision}_${fecha}`;
+  try{
+    const ref=db.collection('fechasCerradas').doc(id);
+    const d=await ref.get();
+    if(d.exists){
+      if(!confirm(`La Fecha ${fecha} ya está marcada como cerrada. ¿Reabrirla?`))return;
+      await ref.delete();toast('Fecha reabierta.',2000);
+    }else{
+      if(!confirm(`¿Marcar la Fecha ${fecha} de ${_histDivision} como cerrada? Es solo organizativo.`))return;
+      await ref.set({division:_histDivision,numeroFecha:Number(fecha)||fecha,cerradaEn:firebase.firestore.FieldValue.serverTimestamp(),cerradaPor:st.planillero||'planillero'});
+      toast('Fecha cerrada.',2000);
+    }
+    await actualizarBotonCerrarFechaPlanillero();
+  }catch(e){toast('Error: '+e.message,3000);}
+}
+async function actualizarBotonCerrarFechaPlanillero(){
+  const btn=document.getElementById('hist-btn-cerrar-fecha');
+  const fecha=document.getElementById('hist-sel-fecha').value;
+  if(!fecha){btn.style.display='none';return;}
+  btn.style.display='';
+  try{
+    const d=await db.collection('fechasCerradas').doc(`${_histDivision}_${fecha}`).get();
+    btn.textContent=d.exists?'↺ Reabrir fecha':'✓ Cerrar fecha';
+    btn.classList.toggle('btn-primary',d.exists);
+  }catch(e){}
+}
+function nombreArchivoPlanilla(p){
+  return `Fecha ${p.numeroFecha||'SF'} - ${p.equipoLocalNombre||'Local'} vs ${p.equipoVisitanteNombre||'Visitante'}.pdf`.replace(/[\\/:*?"<>|]/g,'-');
+}
+function construirPdfPlanilla(p){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  const pageWidth=doc.internal.pageSize.getWidth();
+  const M=14;let y=18;
+  const nuevaPagina=()=>{doc.addPage();y=18;};
+  doc.setFontSize(16);doc.setTextColor(20,80,90);
+  doc.text('Liga F5 Formosa',pageWidth/2,y,{align:'center'});y+=8;
+  doc.setFontSize(11);doc.setTextColor(40,40,40);
+  doc.text('Planilla Oficial de Partido',pageWidth/2,y,{align:'center'});y+=10;
+  doc.setFontSize(9);doc.setTextColor(60,60,60);
+  doc.text(`${p.division||''} - Fecha ${p.numeroFecha||'-'} - Cancha ${p.cancha||'-'} - ${p.horario||'--:--'}`,M,y);
+  doc.text(`Generado: ${new Date().toLocaleDateString('es-AR')}`,pageWidth-M,y,{align:'right'});y+=10;
+  const gL=p.golesLocal??'-',gV=p.golesVisitante??'-';
+  doc.setFillColor(20,20,20);doc.rect(M,y-6,pageWidth-2*M,12,'F');
+  doc.setFontSize(14);doc.setTextColor(255,255,255);
+  doc.text(`${p.equipoLocalNombre||'Local'}   ${gL} - ${gV}   ${p.equipoVisitanteNombre||'Visitante'}`,pageWidth/2,y+2,{align:'center'});y+=16;
+  const eventos=p.eventos||[];
+  function tablaEquipo(titulo,alin,eqId,capDni){
+    if(y>255)nuevaPagina();
+    doc.setFontSize(10);doc.setTextColor(20,80,90);doc.setFont(undefined,'bold');
+    doc.text(titulo,M,y);doc.setFont(undefined,'normal');y+=6;
+    const colX={n:M+2,dni:M+16,nom:M+44,gol:M+138,tar:M+158};
+    doc.setFillColor(8,145,178);doc.rect(M,y-5,pageWidth-2*M,7,'F');
+    doc.setFontSize(8);doc.setTextColor(255,255,255);
+    doc.text('N°',colX.n,y);doc.text('DNI',colX.dni,y);doc.text('Jugador',colX.nom,y);doc.text('Goles',colX.gol,y);doc.text('Tarj.',colX.tar,y);
+    y+=6;
+    const lista=alin&&alin.length?alin:[];
+    if(!lista.length){doc.setFontSize(8.5);doc.setTextColor(150,150,150);doc.text('Sin alineación registrada',colX.n,y);y+=6;}
+    lista.forEach((j,i)=>{
+      if(y>280)nuevaPagina();
+      if(i%2===0){doc.setFillColor(230,247,250);doc.rect(M,y-4.5,pageWidth-2*M,6,'F');}
+      const evs=eventos.filter(e=>e.dni===j.dni&&e.equipoId===eqId);
+      const g=evs.filter(e=>e.tipo==='gol').length;
+      const ta=evs.filter(e=>e.tipo==='tarjeta'&&e.subtipo==='amarilla').length;
+      const td=evs.filter(e=>e.tipo==='tarjeta'&&e.subtipo==='doble').length;
+      const tr=evs.filter(e=>e.tipo==='tarjeta'&&e.subtipo==='roja').length;
+      doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+      doc.text(String(j.numero||'-'),colX.n,y);
+      doc.text(String(j.dni||''),colX.dni,y);
+      doc.text((j.nombre||'')+(j.dni===capDni?' (C)':''),colX.nom,y);
+      doc.text(g?String(g):'',colX.gol,y);
+      doc.text((ta?ta+'A':'')+(td?' DA':'')+(tr?' R':''),colX.tar,y);
+      y+=6;
+    });
+    y+=6;
+  }
+  const capL=p.capitanLocalDni||(p.alineacionLocal&&p.alineacionLocal[0]&&p.alineacionLocal[0].dni)||'';
+  const capV=p.capitanVisitanteDni||(p.alineacionVisitante&&p.alineacionVisitante[0]&&p.alineacionVisitante[0].dni)||'';
+  tablaEquipo(`${p.equipoLocalNombre||'Local'} - LOCAL`,p.alineacionLocal,p.equipoLocalId,capL);
+  tablaEquipo(`${p.equipoVisitanteNombre||'Visitante'} - VISITANTE`,p.alineacionVisitante,p.equipoVisitanteId,capV);
+  const f=p.faltas||{local:{t1:0,t2:0},visitante:{t1:0,t2:0}};
+  if(y>265)nuevaPagina();
+  doc.setFontSize(9);doc.setTextColor(20,80,90);doc.setFont(undefined,'bold');doc.text('Faltas',M,y);doc.setFont(undefined,'normal');y+=6;
+  doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text(`${p.equipoLocalNombre||'Local'}: 1°T ${f.local.t1||0} - 2°T ${f.local.t2||0}`,M,y);
+  doc.text(`${p.equipoVisitanteNombre||'Visitante'}: 1°T ${f.visitante.t1||0} - 2°T ${f.visitante.t2||0}`,pageWidth/2,y);y+=10;
+  const golesEvs=eventos.filter(e=>e.tipo==='gol');
+  const tarjEvs=eventos.filter(e=>e.tipo==='tarjeta');
+  const nomEq=eqId=>eqId===p.equipoLocalId?(p.equipoLocalNombre||'Local'):(p.equipoVisitanteNombre||'Visitante');
+  const tipoLabel={amarilla:'Amarilla',doble:'2da amarilla (expulsado)',roja:'Roja directa (expulsado)'};
+  if(y>250)nuevaPagina();
+  doc.setFontSize(9);doc.setTextColor(20,80,90);doc.setFont(undefined,'bold');doc.text('Goles',M,y);doc.setFont(undefined,'normal');y+=6;
+  doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  if(!golesEvs.length){doc.setTextColor(150,150,150);doc.text('Sin goles.',M,y);y+=6;}
+  golesEvs.forEach(e=>{if(y>280)nuevaPagina();doc.setTextColor(30,30,30);doc.text(`${e.nombre||''} (${nomEq(e.equipoId)}) - ${e.tiempo||1}° tiempo`,M,y);y+=5.5;});
+  y+=4;
+  if(y>250)nuevaPagina();
+  doc.setFontSize(9);doc.setTextColor(20,80,90);doc.setFont(undefined,'bold');doc.text('Tarjetas',M,y);doc.setFont(undefined,'normal');y+=6;
+  doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  if(!tarjEvs.length){doc.setTextColor(150,150,150);doc.text('Sin tarjetas.',M,y);y+=6;}
+  tarjEvs.forEach(e=>{if(y>280)nuevaPagina();doc.setTextColor(30,30,30);doc.text(`${e.nombre||''} (${nomEq(e.equipoId)}) - ${tipoLabel[e.subtipo]||e.subtipo} - ${e.tiempo||1}° tiempo`,M,y);y+=5.5;});
+  y+=6;
+  if(y>250)nuevaPagina();
+  doc.setFontSize(9);doc.setTextColor(20,80,90);doc.setFont(undefined,'bold');doc.text('Observaciones',M,y);doc.setFont(undefined,'normal');y+=6;
+  doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  const obsLines=doc.splitTextToSize(p.observaciones||'Sin observaciones.',pageWidth-2*M);
+  doc.text(obsLines,M,y);y+=obsLines.length*4.5+8;
+  if(y>260)nuevaPagina();
+  doc.setFontSize(8.5);doc.setTextColor(30,30,30);
+  doc.text(`Planillero: ${p.planillero||'-'}`,M,y);
+  doc.text(`Árbitros: ${[p.arbitro1,p.arbitro2].filter(Boolean).join(' / ')||'-'}`,M,y+5.5);y+=12;
+  const firmas=p.firmas||{};
+  doc.text(`Firma capitán ${p.equipoLocalNombre||'local'}: ${firmas.local?'Confirmada':'Pendiente'}`,M,y);
+  doc.text(`Firma capitán ${p.equipoVisitanteNombre||'visitante'}: ${firmas.visitante?'Confirmada':'Pendiente'}`,M,y+5.5);
+  return doc;
+}
+function verPlanillaPdfPlanillero(id){
+  const p=_histPartidos.find(x=>x.id===id);if(!p)return;
+  construirPdfPlanilla(p).output('dataurlnewwindow');
+}
+function descargarPlanillaPdfPlanillero(id){
+  const p=_histPartidos.find(x=>x.id===id);if(!p)return;
+  construirPdfPlanilla(p).save(nombreArchivoPlanilla(p));
+}
+async function compartirPlanillaPdfPlanillero(id){
+  const p=_histPartidos.find(x=>x.id===id);if(!p)return;
+  const doc=construirPdfPlanilla(p);
+  const nombre=nombreArchivoPlanilla(p);
+  const file=new File([doc.output('blob')],nombre,{type:'application/pdf'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:nombre});}
+    catch(e){if(e.name!=='AbortError')doc.save(nombre);}
+  }else{
+    doc.save(nombre);
+    toast('Tu navegador no soporta compartir archivos — se descargó el PDF.',3000);
+  }
 }
 
 function actualizarBotonesAgregarJugador(){

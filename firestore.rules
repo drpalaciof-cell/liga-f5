@@ -78,5 +78,10 @@ service cloud.firestore {
         allow read, write: if autenticado();
       }
     }
+    // Marca puramente organizativa de "esta fecha ya terminó" — no bloquea
+    // nada por sí sola, cualquier planillero o admin puede tocarla.
+    match /fechasCerradas/{id} {
+      allow read, write: if autenticado();
+    }
   }
 }
