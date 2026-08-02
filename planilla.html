@@ -2148,7 +2148,9 @@ function construirPdfPlanilla(p){
 }
 function verPlanillaPdfPlanillero(id){
   const p=_histPartidos.find(x=>x.id===id);if(!p)return;
-  construirPdfPlanilla(p).output('dataurlnewwindow');
+  // Chrome bloquea la navegación de una pestaña nueva a una URL "data:"
+  // (lo que hace 'dataurlnewwindow') — con "bloburl" sí funciona.
+  window.open(construirPdfPlanilla(p).output('bloburl'), '_blank');
 }
 function descargarPlanillaPdfPlanillero(id){
   const p=_histPartidos.find(x=>x.id===id);if(!p)return;
