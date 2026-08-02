@@ -1417,6 +1417,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <script>
 /* ===================== FIREBASE INIT ===================== */
@@ -4800,127 +4801,88 @@ async function actualizarBotonCerrarFecha() {
 function nombreArchivoPlanilla(p) {
   return `Fecha ${p.numeroFecha || 'SF'} - ${p.equipoLocalNombre || 'Local'} vs ${p.equipoVisitanteNombre || 'Visitante'}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
 }
-function construirPdfPlanilla(p) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const M = 14;
-  let y = 18;
-  const nuevaPagina = () => { doc.addPage(); y = 18; };
-
-  doc.setFontSize(16); doc.setTextColor(20, 80, 90);
-  doc.text('Liga F5 Formosa', pageWidth / 2, y, { align: 'center' });
-  y += 8;
-  doc.setFontSize(11); doc.setTextColor(40, 40, 40);
-  doc.text('Planilla Oficial de Partido', pageWidth / 2, y, { align: 'center' });
-  y += 10;
-
-  doc.setFontSize(9); doc.setTextColor(60, 60, 60);
-  doc.text(`${p.division || ''} - Fecha ${p.numeroFecha || '-'} - Cancha ${p.cancha || '-'} - ${p.horario || '--:--'}`, M, y);
-  doc.text(`Generado: ${new Date().toLocaleDateString('es-AR')}`, pageWidth - M, y, { align: 'right' });
-  y += 10;
-
-  const gL = p.golesLocal ?? '-', gV = p.golesVisitante ?? '-';
-  doc.setFillColor(20, 20, 20); doc.rect(M, y - 6, pageWidth - 2 * M, 12, 'F');
-  doc.setFontSize(14); doc.setTextColor(255, 255, 255);
-  doc.text(`${p.equipoLocalNombre || 'Local'}   ${gL} - ${gV}   ${p.equipoVisitanteNombre || 'Visitante'}`, pageWidth / 2, y + 2, { align: 'center' });
-  y += 16;
-
+// Mismo CSS y mismo HTML que "Imprimir" en planilla.html — el PDF del
+// historial tiene que ser exactamente el mismo documento, no uno nuevo.
+// Sin CSS Grid (solo flex): html2canvas no soporta bien grid.
+const PLANILLA_PRINT_CSS = `@page{size:landscape;margin:8mm 10mm;}*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,Helvetica,sans-serif;font-size:8pt;color:#111;background:#fff;}h1{font-size:11pt;font-weight:900;letter-spacing:.5px;}h2{font-size:8.5pt;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:#555;}table{border-collapse:collapse;width:100%;margin-bottom:5px;}th,td{border:1px solid #bbb;padding:2px 4px;font-size:7.5pt;}th{background:#e8e8e8;font-weight:700;text-align:center;}.hdr{display:flex;align-items:center;gap:10px;padding-bottom:6px;border-bottom:2px solid #111;margin-bottom:8px;}.hdr-logo{height:64px;width:auto;background:#111;border-radius:6px;padding:5px;}.hdr-info{margin-left:auto;text-align:right;font-size:7.5pt;line-height:1.5;}.marcador{background:#111;color:#fff;text-align:center;padding:6px 0;margin:7px 0;font-size:13pt;font-weight:900;letter-spacing:3px;border-radius:3px;}.two{display:flex;gap:8px;margin-bottom:5px;}.two>*{flex:1;min-width:0;}.lbl{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#777;margin:6px 0 2px;}.info-row{display:flex;gap:10px;margin-bottom:2px;font-size:7.5pt;}.info-row .info-pair{flex:1;white-space:nowrap;}.info-row .info-pair b{font-weight:700;color:#555;margin-right:4px;}.firmas{display:flex;gap:8px;margin-top:8px;}.firma-box{flex:1;border:1px solid #bbb;border-radius:3px;padding:6px 8px;min-height:40px;}.firma-tit{font-size:7pt;font-weight:700;text-transform:uppercase;color:#777;margin-bottom:4px;}.ok{color:#1a7a1a;font-weight:700;}.pend{color:#aaa;font-size:7pt;}.no-ev{text-align:center;color:#aaa;font-size:7.5pt;}`;
+function construirHtmlPlanilla(p) {
   const eventos = p.eventos || [];
-  function tablaEquipo(titulo, alin, eqId, capDni) {
-    if (y > 255) nuevaPagina();
-    doc.setFontSize(10); doc.setTextColor(20, 80, 90); doc.setFont(undefined, 'bold');
-    doc.text(titulo, M, y); doc.setFont(undefined, 'normal');
-    y += 6;
-    const colX = { n: M + 2, dni: M + 16, nom: M + 44, gol: M + 138, tar: M + 158 };
-    doc.setFillColor(8, 145, 178); doc.rect(M, y - 5, pageWidth - 2 * M, 7, 'F');
-    doc.setFontSize(8); doc.setTextColor(255, 255, 255);
-    doc.text('N°', colX.n, y); doc.text('DNI', colX.dni, y); doc.text('Jugador', colX.nom, y); doc.text('Goles', colX.gol, y); doc.text('Tarj.', colX.tar, y);
-    y += 6;
-    const lista = alin && alin.length ? alin : [];
-    if (!lista.length) { doc.setFontSize(8.5); doc.setTextColor(150, 150, 150); doc.text('Sin alineación registrada', colX.n, y); y += 6; }
-    lista.forEach((j, i) => {
-      if (y > 280) { nuevaPagina(); }
-      if (i % 2 === 0) { doc.setFillColor(230, 247, 250); doc.rect(M, y - 4.5, pageWidth - 2 * M, 6, 'F'); }
+  const alinLocal = p.alineacionLocal || [];
+  const alinVisitante = p.alineacionVisitante || [];
+  const faltas = p.faltas || { local: { t1: 0, t2: 0 }, visitante: { t1: 0, t2: 0 } };
+  const firmas = p.firmas || {};
+  const obsText = (p.observaciones || '').trim();
+  const planilleroNombre = p.planillero || '—';
+  function fD(d) { const n = String(d || '').replace(/\D/g, ''); if (!n || n.length < 6) return String(d || ''); if (n.length <= 7) return n.slice(0, -3) + '.' + n.slice(-3); return n.slice(0, -6) + '.' + n.slice(-6, -3) + '.' + n.slice(-3); }
+  function nC(n) { return n ? n.replace(/^0+/, '') || '0' : ''; }
+  const gL = p.golesLocal ?? eventos.filter(e => e.tipo === 'gol' && e.equipoId === p.equipoLocalId).length;
+  const gV = p.golesVisitante ?? eventos.filter(e => e.tipo === 'gol' && e.equipoId === p.equipoVisitanteId).length;
+  const capL = p.capitanLocalDni || (alinLocal[0] && alinLocal[0].dni) || '';
+  const capV = p.capitanVisitanteDni || (alinVisitante[0] && alinVisitante[0].dni) || '';
+  function buildRows(alin, eqId, capDni) {
+    if (!alin.length) return '<tr><td colspan="5" class="no-ev">Sin alineación</td></tr>';
+    return alin.map(j => {
       const evs = eventos.filter(e => e.dni === j.dni && e.equipoId === eqId);
       const g = evs.filter(e => e.tipo === 'gol').length;
       const ta = evs.filter(e => e.tipo === 'tarjeta' && e.subtipo === 'amarilla').length;
       const td = evs.filter(e => e.tipo === 'tarjeta' && e.subtipo === 'doble').length;
       const tr = evs.filter(e => e.tipo === 'tarjeta' && e.subtipo === 'roja').length;
-      doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
-      doc.text(String(j.numero || '-'), colX.n, y);
-      doc.text(String(j.dni || ''), colX.dni, y);
-      doc.text((j.nombre || '') + (j.dni === capDni ? ' (C)' : ''), colX.nom, y);
-      doc.text(g ? String(g) : '', colX.gol, y);
-      doc.text((ta ? ta + 'A' : '') + (td ? ' DA' : '') + (tr ? ' R' : ''), colX.tar, y);
-      y += 6;
-    });
-    y += 6;
+      return `<tr style="${(td || tr) ? 'opacity:.45;text-decoration:line-through' : ''}"><td style="text-align:center;font-weight:700">${j.numero || '—'}</td><td>${fD(j.dni)}</td><td>${escapeHtml(j.nombre || '')}${j.dni === capDni ? ' <b>(C)</b>' : ''}</td><td style="text-align:center">${'⚽'.repeat(g)}</td><td style="text-align:center;letter-spacing:-2px">${(ta ? '🟨'.repeat(ta) : '') + (td ? '🟧' : '') + (tr ? '🟥' : '')}</td></tr>`;
+    }).join('');
   }
-
-  const capL = p.capitanLocalDni || (p.alineacionLocal && p.alineacionLocal[0] && p.alineacionLocal[0].dni) || '';
-  const capV = p.capitanVisitanteDni || (p.alineacionVisitante && p.alineacionVisitante[0] && p.alineacionVisitante[0].dni) || '';
-  tablaEquipo(`${p.equipoLocalNombre || 'Local'} - LOCAL`, p.alineacionLocal, p.equipoLocalId, capL);
-  tablaEquipo(`${p.equipoVisitanteNombre || 'Visitante'} - VISITANTE`, p.alineacionVisitante, p.equipoVisitanteId, capV);
-
-  const f = p.faltas || { local: { t1: 0, t2: 0 }, visitante: { t1: 0, t2: 0 } };
-  if (y > 265) nuevaPagina();
-  doc.setFontSize(9); doc.setTextColor(20, 80, 90); doc.setFont(undefined, 'bold'); doc.text('Faltas', M, y); doc.setFont(undefined, 'normal');
-  y += 6;
-  doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
-  doc.text(`${p.equipoLocalNombre || 'Local'}: 1°T ${f.local.t1 || 0} - 2°T ${f.local.t2 || 0}`, M, y);
-  doc.text(`${p.equipoVisitanteNombre || 'Visitante'}: 1°T ${f.visitante.t1 || 0} - 2°T ${f.visitante.t2 || 0}`, pageWidth / 2, y);
-  y += 10;
-
+  const fL1 = (faltas.local && faltas.local.t1) || 0, fL2 = (faltas.local && faltas.local.t2) || 0;
+  const fV1 = (faltas.visitante && faltas.visitante.t1) || 0, fV2 = (faltas.visitante && faltas.visitante.t2) || 0;
   const golesEvs = eventos.filter(e => e.tipo === 'gol');
   const tarjEvs = eventos.filter(e => e.tipo === 'tarjeta');
-  const nomEq = eqId => eqId === p.equipoLocalId ? (p.equipoLocalNombre || 'Local') : (p.equipoVisitanteNombre || 'Visitante');
-  const tipoLabel = { amarilla: 'Amarilla', doble: '2da amarilla (expulsado)', roja: 'Roja directa (expulsado)' };
-
-  if (y > 250) nuevaPagina();
-  doc.setFontSize(9); doc.setTextColor(20, 80, 90); doc.setFont(undefined, 'bold'); doc.text('Goles', M, y); doc.setFont(undefined, 'normal'); y += 6;
-  doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
-  if (!golesEvs.length) { doc.setTextColor(150, 150, 150); doc.text('Sin goles.', M, y); y += 6; }
-  golesEvs.forEach(e => { if (y > 280) nuevaPagina(); doc.setTextColor(30, 30, 30); doc.text(`${e.nombre || ''} (${nomEq(e.equipoId)}) - ${e.tiempo || 1}° tiempo`, M, y); y += 5.5; });
-  y += 4;
-
-  if (y > 250) nuevaPagina();
-  doc.setFontSize(9); doc.setTextColor(20, 80, 90); doc.setFont(undefined, 'bold'); doc.text('Tarjetas', M, y); doc.setFont(undefined, 'normal'); y += 6;
-  doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
-  if (!tarjEvs.length) { doc.setTextColor(150, 150, 150); doc.text('Sin tarjetas.', M, y); y += 6; }
-  tarjEvs.forEach(e => { if (y > 280) nuevaPagina(); doc.setTextColor(30, 30, 30); doc.text(`${e.nombre || ''} (${nomEq(e.equipoId)}) - ${tipoLabel[e.subtipo] || e.subtipo} - ${e.tiempo || 1}° tiempo`, M, y); y += 5.5; });
-  y += 6;
-
-  if (y > 250) nuevaPagina();
-  doc.setFontSize(9); doc.setTextColor(20, 80, 90); doc.setFont(undefined, 'bold'); doc.text('Observaciones', M, y); doc.setFont(undefined, 'normal'); y += 6;
-  doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
-  const obsLines = doc.splitTextToSize(p.observaciones || 'Sin observaciones.', pageWidth - 2 * M);
-  doc.text(obsLines, M, y); y += obsLines.length * 4.5 + 8;
-
-  if (y > 260) nuevaPagina();
-  doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
-  doc.text(`Planillero: ${p.planillero || '-'}`, M, y);
-  doc.text(`Árbitros: ${[p.arbitro1, p.arbitro2].filter(Boolean).join(' / ') || '-'}`, M, y + 5.5);
-  y += 12;
-  const firmas = p.firmas || {};
-  doc.text(`Firma capitán ${p.equipoLocalNombre || 'local'}: ${firmas.local ? 'Confirmada' : 'Pendiente'}`, M, y);
-  doc.text(`Firma capitán ${p.equipoVisitanteNombre || 'visitante'}: ${firmas.visitante ? 'Confirmada' : 'Pendiente'}`, M, y + 5.5);
-
+  const minsEvs = eventos.filter(e => e.tipo === 'minuto');
+  const today = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return `
+<div class="hdr"><img class="hdr-logo" src="assets/logo-clausura.png" onerror="this.style.display='none'"><div><h1>LIGA F5 FORMOSA</h1><h2>Planilla Oficial de Partido</h2></div><div class="hdr-info"><div><b>${escapeHtml(p.division || '')}</b></div><div>Fecha N° <b>${p.numeroFecha || '—'}</b> · Cancha <b>${p.cancha || '—'}</b></div><div>Horario: <b>${p.horario || '—'}</b> · ${today}</div></div></div>
+<div class="info-row"><span class="info-pair"><b>Planillero</b>${escapeHtml(planilleroNombre)}</span><span class="info-pair"><b>Árbitro Principal</b>${escapeHtml(p.arbitro1 || '—')}</span></div>
+<div class="info-row"><span class="info-pair"></span><span class="info-pair"><b>Árbitro Asistente</b>${escapeHtml(p.arbitro2 || '—')}</span></div>
+<div class="marcador">${escapeHtml(p.equipoLocalNombre || '—')} &nbsp; ${gL} : ${gV} &nbsp; ${escapeHtml(p.equipoVisitanteNombre || '—')}</div>
+<div class="two"><table><thead><tr><th colspan="5">${escapeHtml(p.equipoLocalNombre || '—')} — LOCAL</th></tr><tr><th>N°</th><th>DNI</th><th>APELLIDO Y NOMBRE</th><th>⚽</th><th>TAR</th></tr></thead><tbody>${buildRows(alinLocal, p.equipoLocalId, capL)}</tbody></table><table><thead><tr><th colspan="5">${escapeHtml(p.equipoVisitanteNombre || '—')} — VISITANTE</th></tr><tr><th>N°</th><th>DNI</th><th>APELLIDO Y NOMBRE</th><th>⚽</th><th>TAR</th></tr></thead><tbody>${buildRows(alinVisitante, p.equipoVisitanteId, capV)}</tbody></table></div>
+<table><thead><tr><th>FALTAS</th><th>1° TIEMPO</th><th>2° TIEMPO</th><th>TOTAL</th></tr></thead><tbody><tr><td><b>${escapeHtml(p.equipoLocalNombre || '—')}</b></td><td style="text-align:center">${fL1}</td><td style="text-align:center">${fL2}</td><td style="text-align:center;font-weight:700">${fL1 + fL2}</td></tr><tr><td><b>${escapeHtml(p.equipoVisitanteNombre || '—')}</b></td><td style="text-align:center">${fV1}</td><td style="text-align:center">${fV2}</td><td style="text-align:center;font-weight:700">${fV1 + fV2}</td></tr></tbody></table>
+<div class="two"><div><div class="lbl">⚽ Goles</div><table><thead><tr><th>Jugador</th><th>Equipo</th><th>T°</th></tr></thead><tbody>${golesEvs.length ? golesEvs.map(e => `<tr><td>#${nC(e.numero)} ${escapeHtml(e.nombre || '')}</td><td>${escapeHtml(e.equipoId === p.equipoLocalId ? p.equipoLocalNombre : p.equipoVisitanteNombre)}</td><td style="text-align:center">${e.tiempo}°</td></tr>`).join('') : '<tr><td colspan="3" class="no-ev">Sin goles</td></tr>'}</tbody></table></div><div><div class="lbl">🟨 Tarjetas</div><table><thead><tr><th>Jugador</th><th>Equipo</th><th>Tipo</th><th>T°</th></tr></thead><tbody>${tarjEvs.length ? tarjEvs.map(e => `<tr><td>#${nC(e.numero)} ${escapeHtml(e.nombre || '')}</td><td>${escapeHtml(e.equipoId === p.equipoLocalId ? p.equipoLocalNombre : p.equipoVisitanteNombre)}</td><td>${{ amarilla: 'Amarilla', doble: '2ª Amarilla', roja: 'Roja directa' }[e.subtipo] || e.subtipo}</td><td style="text-align:center">${e.tiempo}°</td></tr>`).join('') : '<tr><td colspan="4" class="no-ev">Sin tarjetas</td></tr>'}</tbody></table>${minsEvs.length ? `<div class="lbl">⏱ Minutos Técnicos</div><table><thead><tr><th>Equipo</th><th>Período</th></tr></thead><tbody>${minsEvs.map(e => `<tr><td>${escapeHtml(e.equipoId === p.equipoLocalId ? p.equipoLocalNombre : p.equipoVisitanteNombre)}</td><td>${e.tiempo === 1 ? '1° Tiempo' : '2° Tiempo'}</td></tr>`).join('')}</tbody></table>` : ''}</div></div>
+<div class="lbl">Observaciones e Informes del Árbitro</div><div style="border:1px solid #bbb;border-radius:3px;padding:4px 8px;min-height:32px;font-size:7pt;">${obsText ? escapeHtml(obsText).replace(/\n/g, '<br>') : '<span style="color:#aaa;">Sin observaciones / Sin informes.</span>'}</div>
+<div class="firmas"><div class="firma-box"><div class="firma-tit">Capitán — ${escapeHtml(p.equipoLocalNombre || '—')}</div>${firmas.local ? '<div class="ok">✓ Confirmado</div>' : '<div class="pend">Pendiente</div>'}</div><div class="firma-box"><div class="firma-tit">Capitán — ${escapeHtml(p.equipoVisitanteNombre || '—')}</div>${firmas.visitante ? '<div class="ok">✓ Confirmado</div>' : '<div class="pend">Pendiente</div>'}</div><div class="firma-box"><div class="firma-tit">Planillero</div><div style="font-weight:700">${escapeHtml(planilleroNombre)}</div></div></div>`;
+}
+// Ojo: se arma el canvas con html2canvas y se inserta a mano vía addImage
+// con compresión JPEG — el método doc.html() de jsPDF probaba producir
+// PDFs de varios MB para esta misma planilla; controlando la inserción
+// nosotros mismos queda en ~50-100KB, práctico para compartir.
+async function generarPdfHistorial(p) {
+  const { jsPDF } = window.jspdf;
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-10000px;top:0;width:1050px;background:#fff;';
+  container.innerHTML = `<style>${PLANILLA_PRINT_CSS}</style><div style="padding:10px;">${construirHtmlPlanilla(p)}</div>`;
+  document.body.appendChild(container);
+  let canvas;
+  try { canvas = await html2canvas(container, { scale: 2 }); }
+  finally { document.body.removeChild(container); }
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const margin = 5;
+  const availW = doc.internal.pageSize.getWidth() - 2 * margin;
+  const availH = doc.internal.pageSize.getHeight() - 2 * margin;
+  let w = availW, h = w * canvas.height / canvas.width;
+  if (h > availH) { h = availH; w = h * canvas.width / canvas.height; }
+  doc.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', margin, margin, w, h);
   return doc;
 }
-function verPlanillaPdfAdmin(id) {
+async function verPlanillaPdfAdmin(id) {
   const p = _planillasCache.find(x => x.id === id); if (!p) return;
+  const doc = await generarPdfHistorial(p);
   // Chrome bloquea la navegación de una pestaña nueva a una URL "data:"
   // (lo que hace 'dataurlnewwindow') — con "bloburl" sí funciona.
-  window.open(construirPdfPlanilla(p).output('bloburl'), '_blank');
+  window.open(doc.output('bloburl'), '_blank');
 }
-function descargarPlanillaPdfAdmin(id) {
+async function descargarPlanillaPdfAdmin(id) {
   const p = _planillasCache.find(x => x.id === id); if (!p) return;
-  construirPdfPlanilla(p).save(nombreArchivoPlanilla(p));
+  (await generarPdfHistorial(p)).save(nombreArchivoPlanilla(p));
 }
 async function compartirPlanillaPdfAdmin(id) {
   const p = _planillasCache.find(x => x.id === id); if (!p) return;
-  const doc = construirPdfPlanilla(p);
+  const doc = await generarPdfHistorial(p);
   const nombre = nombreArchivoPlanilla(p);
   const file = new File([doc.output('blob')], nombre, { type: 'application/pdf' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
