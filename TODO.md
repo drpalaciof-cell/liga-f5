@@ -2,6 +2,15 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-02 (continuación) — bloqueo de partidos cerrados, orden por cancha, historial de PDFs
+
+- **Seguridad**: `partidos` ya no se puede editar/borrar una vez `estado:'cerrado'`, salvo admin. Antes cualquier sesión (hasta anónima) podía tocar un partido cerrado.
+- **Orden obligatorio por cancha**: en la planilla, solo el partido más temprano sin cerrar de cada cancha se puede abrir; los siguientes quedan bloqueados con candado hasta cerrar el anterior.
+- **Confirmación al abrir partido**: "¿Abrir este partido?" + aviso "✓ Partido abierto y sincronizado".
+- **Historial de planillas** (nuevo, en `index.html` y `planilla.html`): división → fecha → lista de partidos cerrados, cada uno con **Ver / Descargar / Compartir** un PDF real generado en el momento (jsPDF, sin Storage, sin costo). En planilla.html: botón chico "📄 Historial" junto a "Cambiar planillero". En admin: la vieja pestaña "Planillas" (dropdown de a uno) se rehízo como lista completa por fecha.
+- **"Cerrar fecha"**: solo organizativo (no bloquea nada, eso ya lo hace el punto de seguridad de arriba), colección `fechasCerradas`, disponible en ambas apps.
+- **Pendiente de limpieza (vos, requiere admin real)**: además de los ZTEST/DEMO de la sesión anterior, quedaron 2 partidos de prueba más en **Cancha "9"** (no es una cancha real) con equipos **TEST A, TEST B, TEST C, TEST D** — mismo motivo, borrar equipos/partidos requiere tu login real.
+
 ## ✅ Todo lo planeado (1–15) — commiteado y en producción
 
 - **1-11**: mensajería completa (commits `229fe91`, `271e66f`).
