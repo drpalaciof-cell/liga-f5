@@ -1,4 +1,4 @@
-const CACHE = 'ligaf5-v11';
+const CACHE = 'ligaf5-v12';
 const ASSETS = [
   './manifest.json',
   './manifest-planilla.json',

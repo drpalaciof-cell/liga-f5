@@ -4931,6 +4931,11 @@ if ('serviceWorker' in navigator) {
           }
         });
       });
+      // El panel admin suele quedar con una pestaña abierta todo el día —
+      // sin esto, un deploy nuevo nunca se detecta hasta un reinicio manual.
+      // Forzamos el chequeo cada vez que la pestaña vuelve a primer plano.
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+      window.addEventListener('focus', () => reg.update().catch(() => {}));
     }).catch(e => console.error('SW register failed', e));
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
   });
