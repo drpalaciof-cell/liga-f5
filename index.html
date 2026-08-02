@@ -1364,25 +1364,17 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           <button class="tab-btn active" data-msgdiv="Primera" onclick="filtrarDivisionMensajesAdmin('Primera')">🥇 Primera División <span id="msg-div-badge-Primera" class="msg-unread-badge hidden"></span></button>
           <button class="tab-btn" data-msgdiv="Segunda" onclick="filtrarDivisionMensajesAdmin('Segunda')">🥈 Segunda División <span id="msg-div-badge-Segunda" class="msg-unread-badge hidden"></span></button>
         </div>
-        <div class="msg-filtros">
-          <button class="tab-btn active" data-msgfiltro="todos" onclick="filtrarMensajesAdmin('todos')">Todos</button>
-          <button class="tab-btn" data-msgfiltro="inscripciones" onclick="filtrarMensajesAdmin('inscripciones')">Inscripciones</button>
-          <button class="tab-btn" data-msgfiltro="pagos" onclick="filtrarMensajesAdmin('pagos')">Pagos</button>
-          <button class="tab-btn" data-msgfiltro="seguros" onclick="filtrarMensajesAdmin('seguros')">Seguros</button>
-          <button class="tab-btn" data-msgfiltro="consultas" onclick="filtrarMensajesAdmin('consultas')">Consultas</button>
-          <button class="tab-btn" data-msgfiltro="sinresponder" onclick="filtrarMensajesAdmin('sinresponder')">Sin responder</button>
-        </div>
         <div id="msg-admin-list"><p class="muted" style="text-align:center;padding:30px 0;">Cargando mensajes...</p></div>
       </div>
-      <!-- HILO ABIERTO -->
+      <!-- CHAT DE UN EQUIPO -->
       <div id="msg-admin-hilo" class="hidden">
         <div class="msg-hilo-header">
-          <button class="btn btn-sm" onclick="volverBandejaAdmin()">← Bandeja</button>
+          <button class="btn btn-sm" onclick="volverBandejaAdmin()">← Equipos</button>
           <div style="min-width:0;flex:1;">
             <div id="msg-admin-hilo-titulo" style="font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
             <div id="msg-admin-hilo-sub" style="font-size:11px;color:var(--text-dim);margin-top:2px;"></div>
           </div>
-          <button class="btn btn-sm btn-danger" onclick="eliminarHiloAdmin()" title="Eliminar este mensaje">🗑 Eliminar</button>
+          <button class="btn btn-sm btn-danger" onclick="eliminarChatEquipoAdmin()" title="Eliminar toda la conversación con este equipo">🗑 Eliminar</button>
         </div>
         <div id="msg-admin-hilo-replies" class="msg-replies-wrap"></div>
         <div class="msg-compose">
@@ -4951,11 +4943,17 @@ let _msgListenerEquipo = null;
 let _msgHiloListenerEquipo = null;
 let _badgeListenerAdmin = null;
 let _badgeListenerEquipo = null;
-let _hiloActivoAdmin = null;
 let _hiloActivoEquipo = null;
-let _msgFiltroAdmin = 'todos';
 let _msgDivisionAdmin = 'Primera';
 let _msgHilosAdmin = [];
+// Chat consolidado por equipo (admin): un equipo puede tener varios hilos
+// (uno por asunto histórico) — se escuchan todos juntos y se muestran
+// como una sola conversación continua, en vez de dispersos por asunto.
+let _chatEquipoActivoAdmin = null;
+let _chatHilosPorId = {};
+let _chatRepliesPorHilo = {};
+let _chatHiloReplyUnsubs = {};
+let _hiloReplyTargetAdmin = null;
 let _msgAdjAdmin = null;
 let _msgAdjAdminNuevo = null;
 let _msgAdjEquipo = null;
@@ -5038,91 +5036,146 @@ function _actualizarBadgeAdmin(hilos) {
     if (bd) { bd.textContent = nd||''; bd.classList.toggle('hidden', nd===0); }
   });
 }
-function categoriaMensaje(h) {
-  const a = h.asunto || '';
-  if (a === 'Nueva inscripción' || a === 'Lista de buena fe' || a === 'Escudo del equipo') return 'inscripciones';
-  if (a === 'Comprobante de inscripción' || a === 'Estado de pago') return 'pagos';
-  if (a === 'Comprobante de seguro médico' || a === 'Seguro médico') return 'seguros';
-  return 'consultas';
-}
 function filtrarDivisionMensajesAdmin(div) {
   _msgDivisionAdmin = div;
   document.querySelectorAll('.msg-div-tabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.msgdiv===div));
   renderBandejaAdmin(_msgHilosAdmin);
 }
-function filtrarMensajesAdmin(f) {
-  _msgFiltroAdmin = f;
-  document.querySelectorAll('.msg-filtros .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.msgfiltro===f));
-  renderBandejaAdmin(_msgHilosAdmin);
+// Un equipo puede tener varios hilos (uno por asunto histórico: "Nueva
+// inscripción", "Estado de pago", consultas sueltas, etc.). En vez de listar
+// cada hilo por separado (disperso), acá se agrupan por equipo para que la
+// bandeja muestre un renglón por equipo — el chat completo se arma después
+// mezclando todos sus hilos en abrirChatEquipoAdmin.
+function agruparHilosPorEquipo(hilos) {
+  const porEquipo = {};
+  hilos.forEach(h => {
+    if (!porEquipo[h.equipoId]) porEquipo[h.equipoId] = { equipoId: h.equipoId, equipoNombre: h.equipoNombre, division: h.division, noLeido: 0, ultimaFecha: null, ultimoTexto: '' };
+    const g = porEquipo[h.equipoId];
+    g.noLeido += (h.noLeidoAdmin || 0);
+    const fMillis = h.ultimaFecha && h.ultimaFecha.toMillis ? h.ultimaFecha.toMillis() : 0;
+    const gMillis = g.ultimaFecha && g.ultimaFecha.toMillis ? g.ultimaFecha.toMillis() : -1;
+    if (fMillis >= gMillis) { g.ultimaFecha = h.ultimaFecha; g.ultimoTexto = h.ultimoTextoAdmin || h.ultimoTexto || ''; }
+  });
+  return Object.values(porEquipo).sort((a,b) => {
+    const am = a.ultimaFecha && a.ultimaFecha.toMillis ? a.ultimaFecha.toMillis() : 0;
+    const bm = b.ultimaFecha && b.ultimaFecha.toMillis ? b.ultimaFecha.toMillis() : 0;
+    return bm - am;
+  });
 }
 function renderBandejaAdmin(hilos) {
   const wrap = document.getElementById('msg-admin-list');
   if (!wrap) return;
-  let lista = hilos.filter(h => h.division === _msgDivisionAdmin);
-  if (_msgFiltroAdmin === 'sinresponder') lista = lista.filter(h=>(h.noLeidoAdmin||0)>0);
-  else if (_msgFiltroAdmin !== 'todos') lista = lista.filter(h=>categoriaMensaje(h) === _msgFiltroAdmin);
+  const lista = agruparHilosPorEquipo(hilos.filter(h => h.division === _msgDivisionAdmin));
   if (!lista.length) {
-    wrap.innerHTML = `<div class="msg-empty"><div style="font-size:32px;margin-bottom:8px;">📭</div><div>${_msgFiltroAdmin==='sinresponder'?'Todo respondido.':'Sin mensajes en esta categoría.'}</div></div>`;
+    wrap.innerHTML = `<div class="msg-empty"><div style="font-size:32px;margin-bottom:8px;">📭</div><div>Sin mensajes en esta división.</div></div>`;
     return;
   }
-  wrap.innerHTML = `<div class="msg-list">${lista.map(h=>{
-    const u=(h.noLeidoAdmin||0)>0;
-    return `<div class="msg-row${u?' unread':''}" onclick="abrirHiloAdmin('${h.id}')">
+  wrap.innerHTML = `<div class="msg-list">${lista.map(g=>{
+    const u = g.noLeido>0;
+    return `<div class="msg-row${u?' unread':''}" onclick="abrirChatEquipoAdmin('${g.equipoId}')">
       <div class="msg-row-dot"></div>
       <div class="msg-row-body">
-        <div class="msg-row-top">${badgeDiv(h.division)}<span class="msg-row-nombre">${escapeHtml(h.equipoNombre||'—')}</span><span class="msg-row-asunto">— ${escapeHtml(h.asunto||'Sin asunto')}</span></div>
-        <div class="msg-row-preview">${escapeHtml((h.ultimoTextoAdmin||h.ultimoTexto||'').substring(0,90))}</div>
+        <div class="msg-row-top">${badgeDiv(g.division)}<span class="msg-row-nombre">${escapeHtml(g.equipoNombre||'—')}</span></div>
+        <div class="msg-row-preview">${escapeHtml((g.ultimoTexto||'').substring(0,90))}</div>
       </div>
-      <div class="msg-row-meta"><span class="msg-row-fecha">${fmtFechaMensaje(h.ultimaFecha)}</span>${u?`<span class="msg-unread-badge">${h.noLeidoAdmin}</span>`:''}</div>
-      <button class="msg-row-del" title="Eliminar mensaje" onclick="event.stopPropagation();eliminarHiloAdmin('${h.id}')">🗑</button>
+      <div class="msg-row-meta"><span class="msg-row-fecha">${fmtFechaMensaje(g.ultimaFecha)}</span>${u?`<span class="msg-unread-badge">${g.noLeido}</span>`:''}</div>
     </div>`;
   }).join('')}</div>`;
 }
-function abrirHiloAdmin(hiloId) {
-  _hiloActivoAdmin = hiloId;
-  const h = _msgHilosAdmin.find(x=>x.id===hiloId)||{};
-  document.getElementById('msg-admin-hilo-titulo').textContent = (h.equipoNombre||'') + ' — ' + (h.asunto||'Sin asunto');
-  document.getElementById('msg-admin-hilo-sub').innerHTML = badgeDiv(h.division) + ' &nbsp;' + escapeHtml(h.division||'');
+function _detenerListenersChatAdmin() {
+  if (_msgHiloListenerAdmin) { _msgHiloListenerAdmin(); _msgHiloListenerAdmin=null; }
+  Object.values(_chatHiloReplyUnsubs).forEach(u=>u());
+  _chatHiloReplyUnsubs = {};
+  _chatHilosPorId = {};
+  _chatRepliesPorHilo = {};
+  _hiloReplyTargetAdmin = null;
+}
+function abrirChatEquipoAdmin(equipoId, nombrePre, divisionPre) {
+  _chatEquipoActivoAdmin = equipoId;
+  _detenerListenersChatAdmin();
+  const info = _msgHilosAdmin.find(h=>h.equipoId===equipoId) || {equipoNombre:nombrePre, division:divisionPre};
+  document.getElementById('msg-admin-hilo-titulo').textContent = info.equipoNombre || '';
+  document.getElementById('msg-admin-hilo-sub').innerHTML = badgeDiv(info.division) + ' &nbsp;' + escapeHtml(info.division||'');
   document.getElementById('msg-admin-bandeja').classList.add('hidden');
   document.getElementById('msg-admin-hilo').classList.remove('hidden');
-  if ((h.noLeidoAdmin||0)>0) db.collection('mensajes').doc(hiloId).update({noLeidoAdmin:0}).catch(()=>{});
-  if (_msgHiloListenerAdmin) { _msgHiloListenerAdmin(); _msgHiloListenerAdmin=null; }
-  _msgHiloListenerAdmin = db.collection('mensajes').doc(hiloId).collection('replies').orderBy('fecha','asc')
-    .onSnapshot(snap=>{ const r=[]; snap.forEach(d=>r.push({id:d.id,...d.data()})); renderRepliesAdmin(r); }, e=>console.error(e));
+  const renderMerge = () => {
+    const todas = [];
+    Object.entries(_chatRepliesPorHilo).forEach(([hiloId, reps]) => {
+      const asunto = (_chatHilosPorId[hiloId]||{}).asunto;
+      reps.forEach(r => todas.push({...r, _asunto: asunto}));
+    });
+    todas.sort((a,b)=>{
+      const am = a.fecha && a.fecha.toMillis ? a.fecha.toMillis() : 0;
+      const bm = b.fecha && b.fecha.toMillis ? b.fecha.toMillis() : 0;
+      return am - bm;
+    });
+    renderRepliesAdmin(todas);
+    // Responder siempre va al hilo más reciente de este equipo.
+    const hilosOrdenados = Object.values(_chatHilosPorId).sort((a,b)=>{
+      const am = a.ultimaFecha && a.ultimaFecha.toMillis ? a.ultimaFecha.toMillis() : 0;
+      const bm = b.ultimaFecha && b.ultimaFecha.toMillis ? b.ultimaFecha.toMillis() : 0;
+      return bm - am;
+    });
+    _hiloReplyTargetAdmin = hilosOrdenados[0]?.id || null;
+  };
+  _msgHiloListenerAdmin = db.collection('mensajes').where('equipoId','==',equipoId)
+    .onSnapshot(snap => {
+      const idsVistos = new Set();
+      snap.forEach(doc => {
+        idsVistos.add(doc.id);
+        _chatHilosPorId[doc.id] = {id:doc.id, ...doc.data()};
+        if ((doc.data().noLeidoAdmin||0) > 0) db.collection('mensajes').doc(doc.id).update({noLeidoAdmin:0}).catch(()=>{});
+        if (!_chatHiloReplyUnsubs[doc.id]) {
+          _chatHiloReplyUnsubs[doc.id] = db.collection('mensajes').doc(doc.id).collection('replies').orderBy('fecha','asc')
+            .onSnapshot(rsnap => {
+              _chatRepliesPorHilo[doc.id] = [];
+              rsnap.forEach(d => _chatRepliesPorHilo[doc.id].push({id:d.id,...d.data()}));
+              renderMerge();
+            }, e=>console.error(e));
+        }
+      });
+      Object.keys(_chatHiloReplyUnsubs).forEach(id => {
+        if (!idsVistos.has(id)) { _chatHiloReplyUnsubs[id](); delete _chatHiloReplyUnsubs[id]; delete _chatRepliesPorHilo[id]; delete _chatHilosPorId[id]; }
+      });
+    }, e=>console.error(e));
 }
 function renderRepliesAdmin(replies) {
   const wrap = document.getElementById('msg-admin-hilo-replies');
   if (!wrap) return;
-  if (!replies.length) { wrap.innerHTML='<p class="muted" style="text-align:center;font-size:13px;padding:20px 0;">Aún no hay mensajes en este hilo.</p>'; return; }
+  if (!replies.length) { wrap.innerHTML='<p class="muted" style="text-align:center;font-size:13px;padding:20px 0;">Aún no hay mensajes con este equipo.</p>'; return; }
   wrap.innerHTML = replies.map(r=>{
     const tipo = r.de==='admin'?'admin':r.de==='sistema'?'sistema':'equipo';
     const adj = (r.adjuntos||[]).map(a=>a.tipo&&a.tipo.startsWith('image')?`<div class="msg-bubble-adj"><img src="${a.data}" alt="" onclick="this.requestFullscreen&&this.requestFullscreen()"></div>`:'').join('');
-    return `<div class="msg-bubble ${tipo}"><div class="msg-bubble-de">${escapeHtml(r.deNombre||tipo)}</div><div class="msg-bubble-texto">${escapeHtml(r.textoAdmin||r.texto||'').replace(/\n/g,'<br>')}</div>${adj}<div class="msg-bubble-fecha">${fmtFechaMsgCompleta(r.fecha)}</div></div>`;
+    const subtag = tipo==='sistema' && r._asunto ? `<div class="msg-bubble-asunto" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.6;margin-bottom:2px;">${escapeHtml(r._asunto)}</div>` : '';
+    return `<div class="msg-bubble ${tipo}">${subtag}<div class="msg-bubble-de">${escapeHtml(r.deNombre||tipo)}</div><div class="msg-bubble-texto">${escapeHtml(r.textoAdmin||r.texto||'').replace(/\n/g,'<br>')}</div>${adj}<div class="msg-bubble-fecha">${fmtFechaMsgCompleta(r.fecha)}</div></div>`;
   }).join('');
   wrap.scrollTop = wrap.scrollHeight;
 }
 function volverBandejaAdmin() {
-  if (_msgHiloListenerAdmin) { _msgHiloListenerAdmin(); _msgHiloListenerAdmin=null; }
-  _hiloActivoAdmin = null;
+  _detenerListenersChatAdmin();
+  _chatEquipoActivoAdmin = null;
   document.getElementById('msg-admin-hilo').classList.add('hidden');
   document.getElementById('msg-admin-bandeja').classList.remove('hidden');
   document.getElementById('msg-admin-reply-texto').value='';
   _msgAdjAdmin=null; document.getElementById('msg-admin-adj-preview').innerHTML='';
   document.getElementById('msg-admin-reply-adj').value='';
 }
-async function eliminarHiloAdmin(hiloId) {
-  const id = hiloId || _hiloActivoAdmin;
-  if (!id) return;
-  if (!confirm('¿Eliminar este mensaje? Esta acción no se puede deshacer.')) return;
+async function eliminarChatEquipoAdmin() {
+  const equipoId = _chatEquipoActivoAdmin;
+  if (!equipoId) return;
+  if (!confirm('¿Eliminar toda la conversación con este equipo? Esta acción no se puede deshacer.')) return;
   try {
-    const repliesSnap = await db.collection('mensajes').doc(id).collection('replies').get();
-    const batch = db.batch();
-    repliesSnap.forEach(d => batch.delete(d.ref));
-    batch.delete(db.collection('mensajes').doc(id));
-    await batch.commit();
-    showToast('Mensaje eliminado.', 'ok');
-    if (_hiloActivoAdmin === id) volverBandejaAdmin();
-  } catch (e) { console.error(e); showToast('No se pudo eliminar el mensaje.', 'error'); }
+    const hilosSnap = await db.collection('mensajes').where('equipoId','==',equipoId).get();
+    for (const hiloDoc of hilosSnap.docs) {
+      const repliesSnap = await hiloDoc.ref.collection('replies').get();
+      const batch = db.batch();
+      repliesSnap.forEach(d => batch.delete(d.ref));
+      batch.delete(hiloDoc.ref);
+      await batch.commit();
+    }
+    showToast('Conversación eliminada.', 'ok');
+    volverBandejaAdmin();
+  } catch (e) { console.error(e); showToast('No se pudo eliminar la conversación.', 'error'); }
 }
 function previewAdjuntoAdmin(input) {
   const file=input.files[0]; if(!file) return;
@@ -5135,15 +5188,15 @@ function previewAdjuntoAdmin(input) {
 }
 function quitarAdjAdmin(){_msgAdjAdmin=null;document.getElementById('msg-admin-adj-preview').innerHTML='';document.getElementById('msg-admin-reply-adj').value='';}
 async function enviarReplyAdmin() {
-  if(!_hiloActivoAdmin) return;
+  if(!_hiloReplyTargetAdmin) return;
   const texto=document.getElementById('msg-admin-reply-texto').value.trim();
   if(!texto&&!_msgAdjAdmin){showToast('Escribí un mensaje.','error');return;}
   const btn=document.querySelector('#msg-admin-hilo .btn-primary');
   if(btn) btn.disabled=true;
   try {
     const fecha=firebase.firestore.FieldValue.serverTimestamp();
-    await db.collection('mensajes').doc(_hiloActivoAdmin).collection('replies').add({de:'admin',deNombre:'Administración',texto:texto||'',adjuntos:_msgAdjAdmin?[_msgAdjAdmin]:[],fecha});
-    await db.collection('mensajes').doc(_hiloActivoAdmin).update({ultimoTexto:texto||'📎 Imagen adjunta',ultimaFecha:fecha,noLeidoEquipo:firebase.firestore.FieldValue.increment(1),noLeidoAdmin:0});
+    await db.collection('mensajes').doc(_hiloReplyTargetAdmin).collection('replies').add({de:'admin',deNombre:'Administración',texto:texto||'',adjuntos:_msgAdjAdmin?[_msgAdjAdmin]:[],fecha});
+    await db.collection('mensajes').doc(_hiloReplyTargetAdmin).update({ultimoTexto:texto||'📎 Imagen adjunta',ultimaFecha:fecha,noLeidoEquipo:firebase.firestore.FieldValue.increment(1),noLeidoAdmin:0});
     document.getElementById('msg-admin-reply-texto').value=''; quitarAdjAdmin();
   } catch(e){console.error(e);showToast('Error al enviar.','error');}
   finally{if(btn) btn.disabled=false;}
@@ -5180,7 +5233,7 @@ async function enviarNuevoHiloAdmin(){
     const ref=await db.collection('mensajes').add({equipoId,equipoNombre,division,asunto,ultimoTexto:texto||'📎 Imagen adjunta',ultimaFecha:fecha,noLeidoAdmin:0,noLeidoEquipo:1,iniciador:'admin'});
     await ref.collection('replies').add({de:'admin',deNombre:'Administración',texto:texto||'',adjuntos:_msgAdjAdminNuevo?[_msgAdjAdminNuevo]:[],fecha});
     _msgAdjAdminNuevo=null; closeModal(); showToast('Mensaje enviado.','ok');
-    setTimeout(()=>abrirHiloAdmin(ref.id),300);
+    abrirChatEquipoAdmin(equipoId, equipoNombre, division);
   }catch(e){console.error(e);showToast('Error al enviar.','error');}
 }
 function abrirEnviarATodos(){
