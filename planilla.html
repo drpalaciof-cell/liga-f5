@@ -1174,15 +1174,20 @@ async function cargarLista(){
     }
     if(!partidos.length){body.innerHTML+='<div class="empty-msg">Todos los partidos de esta cancha ya fueron cerrados.</div>';return;}
     const labels={pendiente:'Pendiente',alineacion:'En alineación',primer_tiempo:'1° Tiempo',segundo_tiempo:'2° Tiempo',cerrado:'Cerrado'};
+    // Solo el primer partido no cerrado (en orden de horario) queda
+    // habilitado para abrir — evita que se salteen partidos fuera de orden.
+    const primerActivoId=(partidos.find(p=>(p.estado||'pendiente')!=='cerrado')||{}).id;
     partidos.forEach(p=>{
       const estado=p.estado||'pendiente';
-      body.innerHTML+=`<div class="match-card estado-${estado}" id="card-${p.id}" onclick="abrirPartido('${p.id}',this)">
+      const bloqueado=estado!=='cerrado'&&p.id!==primerActivoId;
+      const onclick=bloqueado?`toast('Primero cerrá el partido anterior de esta cancha.',2500)`:`confirmarAbrirPartido('${p.id}',this)`;
+      body.innerHTML+=`<div class="match-card estado-${estado}${bloqueado?' bloqueado':''}" id="card-${p.id}" onclick="${onclick}" style="${bloqueado?'opacity:.45;':''}">
 <div style="display:flex;align-items:center;gap:12px;">
   <div class="mc-hora">${p.horario||'--:--'}</div>
   <div style="flex:1;">
     <div class="mc-teams">${esc(p.equipoLocalNombre)}<span class="mc-vs">vs</span>${esc(p.equipoVisitanteNombre)}</div>
     <div class="mc-fecha">Zona ${p.zona||'—'}</div>
-    <span class="mc-estado ${estado}">${labels[estado]||estado}</span>
+    <span class="mc-estado ${estado}">${bloqueado?'🔒 Se habilita al cerrar el anterior':(labels[estado]||estado)}</span>
   </div>
   <span class="mc-arrow">›</span>
 </div></div>`;
@@ -1190,6 +1195,13 @@ async function cargarLista(){
   }catch(e){body.innerHTML=`<div class="empty-msg">Error al cargar.<br><small>${e.message||''}</small></div>`;}
 }
 
+async function confirmarAbrirPartido(id,cardEl){
+  if(!confirm('¿Abrir este partido?'))return;
+  await abrirPartido(id,cardEl);
+  // Confirmación explícita de que quedó realmente registrado (no solo en
+  // pantalla) — pedido para que el planillero no tenga dudas de que abrió.
+  if(st.partidoId===id)toast('✓ Partido abierto y sincronizado',2500);
+}
 async function abrirPartido(id,cardEl){
   if(_abriendo)return; // BUG4: evitar race condition con doble tap
   _abriendo=true;
@@ -1779,8 +1791,13 @@ async function simCrearPartido(){
 }
 async function simBorrarPartido(){
   if(!confirm('¿Borrar el partido simulado?'))return;
-  try{await db.collection('partidos').doc(SIM_PARTIDO_ID).delete();toast('Borrado.',2000);}
-  catch(e){toast('Error: '+e.message,3000);}
+  try{
+    // Borrar un documento requiere admin real (los partidos cerrados no se
+    // pueden tocar sin eso) — el planillero resetea el de prueba en vez de
+    // borrarlo, así el botón sigue funcionando con la sesión anónima.
+    await db.collection('partidos').doc(SIM_PARTIDO_ID).update({estado:'pendiente',jugado:false,alineacionLocal:[],alineacionVisitante:[],eventos:[],golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],firmas:{local:false,visitante:false}});
+    toast('Reiniciado.',2000);
+  }catch(e){toast('Error: '+e.message,3000);}
 }
 
 // iOS Safari no soporta overscroll-behavior — este fix evita el rubber-band

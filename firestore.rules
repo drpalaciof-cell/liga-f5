@@ -54,7 +54,13 @@ service cloud.firestore {
     }
 
     match /partidos/{id} {
-      allow read, write: if autenticado();
+      allow read: if autenticado();
+      allow create: if autenticado();
+      // Una vez cerrado el partido, la planilla queda tal cual — ni el
+      // planillero ni un equipo pueden modificarla. Solo el admin puede
+      // corregir un error después, desde "Editar resultado".
+      allow update: if autenticado() && (resource.data.estado != 'cerrado' || isAdmin());
+      allow delete: if isAdmin();
     }
     match /avisos/{id} {
       allow read, write: if autenticado();
