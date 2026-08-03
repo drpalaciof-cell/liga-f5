@@ -5001,9 +5001,13 @@ if ('serviceWorker' in navigator) {
       });
       // El panel admin suele quedar con una pestaña abierta todo el día —
       // sin esto, un deploy nuevo nunca se detecta hasta un reinicio manual.
-      // Forzamos el chequeo cada vez que la pestaña vuelve a primer plano.
+      // Forzamos el chequeo cada vez que la pestaña vuelve a primer plano...
       document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
       window.addEventListener('focus', () => reg.update().catch(() => {}));
+      // ...y además cada 5 minutos aunque la pestaña quede de fondo sin que
+      // nadie la toque, para que un deploy nuevo llegue solo sin depender
+      // de que alguien cambie de pestaña o la minimice y reabra.
+      setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000);
     }).catch(e => console.error('SW register failed', e));
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
   });

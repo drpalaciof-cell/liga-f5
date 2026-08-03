@@ -2231,9 +2231,12 @@ async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
       // desde recientes en Android — sin una navegación real, el navegador
       // nunca vuelve a chequear si sw.js cambió. Forzamos el chequeo cada vez
       // que la app vuelve a primer plano, para que las actualizaciones lleguen
-      // sin depender de un reinicio manual del dispositivo.
+      // sin depender de un reinicio manual del dispositivo...
       document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
       window.addEventListener('focus', () => reg.update().catch(() => {}));
+      // ...y además cada 5 minutos aunque la app quede de fondo sin que el
+      // planillero la toque, para no depender de que la vuelva a abrir.
+      setInterval(() => reg.update().catch(() => {}), 5 * 60 * 1000);
     }).catch(() => {});
     navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
   }
