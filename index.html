@@ -1227,6 +1227,11 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         <!-- Seguro -->
         <div id="divisiontab-seguro" class="divisiontab hidden">
           <div class="glass section-card">
+            <h3>Estado de aseguramiento por equipo</h3>
+            <p class="wizard-help" style="margin-bottom:14px;">Contra la lista de buena fe de cada equipo — se actualiza sola a medida que los equipos editan su lista o pagan seguros (pueden seguir editando hasta el 12/08).</p>
+            <div id="pa-seguros-equipo-list"></div>
+          </div>
+          <div class="glass section-card">
             <h3>Seguros médicos <span class="muted" id="pa-seguros-count" style="font-size:12px;font-weight:500;"></span></h3>
             <div class="section-actions" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;">
               <button class="btn btn-primary" data-seguro-filter="pendiente" onclick="filtrarSegurosAdmin('pendiente')">Pendientes</button>
@@ -1334,6 +1339,10 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         </div>
         <div class="row">
           <div class="field"><label>Fecha límite para pagar el seguro médico</label><input type="date" id="cfg-fecha-seguro"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Objetivo de inscripciones Primera ($)</label><input type="number" id="cfg-objetivo-primera" min="0" placeholder="Ej: 2400000"></div>
+          <div class="field"><label>Objetivo de inscripciones Segunda ($)</label><input type="number" id="cfg-objetivo-segunda" min="0" placeholder="Ej: 3300000"></div>
         </div>
         <div class="section-actions">
           <button class="btn btn-primary" onclick="guardarConfig()">Guardar configuración</button>
@@ -1583,6 +1592,7 @@ async function aplicarSesionDesdeAuth(user) {
 function logout() {
   detenerBadgeAdmin(); detenerBadgeEquipo();
   detenerMensajesAdmin(); detenerMensajesEquipo();
+  detenerSyncEquiposAdmin(); detenerPartidosAdmin();
   state.equipo = null; state.equipoId = null; state.admin = null;
   auth.signOut().catch(() => {});
   showView('landing');
@@ -2079,6 +2089,7 @@ document.getElementById('form-registro-equipo').addEventListener('submit', async
       }
     }
     const jugadores = sortJugadoresPorApellido(leerJugadoresDeTabla('reg-jugadores-body'));
+    const fechaCargaInicial = new Date().toISOString();
     const created = await crearEquipoDoc(usuario, nombre, division, pass, {
       escudo: regEscudoDataUrl,
       jugadores,
@@ -2087,8 +2098,19 @@ document.getElementById('form-registro-equipo').addEventListener('submit', async
       pagoMontoDeclarado: montoTransferido,
       pagoTipo: tipoPago,
       pagoEstado: 'pendiente',
-      pagoFechaCarga: new Date().toISOString(),
-      pagoSaldoComprobante: '', pagoSaldoNombreTransferencia: '', pagoSaldoEstado: 'sin_subir', pagoSaldoFechaCarga: ''
+      pagoFechaCarga: fechaCargaInicial,
+      pagoSaldoComprobante: '', pagoSaldoNombreTransferencia: '', pagoSaldoEstado: 'sin_subir', pagoSaldoFechaCarga: '',
+      pagoComprobantesHistorial: [{
+        id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        etapa: 'principal',
+        tipoPago,
+        comprobante: regComprobanteDataUrl,
+        nombreTransferencia,
+        montoDeclarado: montoTransferido,
+        estado: 'pendiente',
+        fechaCarga: fechaCargaInicial,
+        fechaRevision: null
+      }]
     });
     if (!created) { btn.disabled = false; return; }
     const loginRes = await functions.httpsCallable('login')({ usuario, pass });
@@ -2534,12 +2556,24 @@ document.getElementById('pe-receipt-input').addEventListener('change', async e =
     const dataUrl = await resizeImageFile(file, 1100);
     if (dataUrl.length > 900000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
     const fechaCarga = new Date().toISOString();
-    await db.collection('equipos').doc(state.equipoId).update({ pagoComprobante: dataUrl, pagoNombreTransferencia: nombreTransferencia, pagoMontoDeclarado: montoTransferido, pagoEstado: 'pendiente', pagoFechaCarga: fechaCarga });
+    const historialEntry = {
+      id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      etapa: 'principal',
+      tipoPago: state.equipo.pagoTipo || 'total',
+      comprobante: dataUrl,
+      nombreTransferencia,
+      montoDeclarado: montoTransferido,
+      estado: 'pendiente',
+      fechaCarga,
+      fechaRevision: null
+    };
+    await db.collection('equipos').doc(state.equipoId).update({ pagoComprobante: dataUrl, pagoNombreTransferencia: nombreTransferencia, pagoMontoDeclarado: montoTransferido, pagoEstado: 'pendiente', pagoFechaCarga: fechaCarga, pagoComprobantesHistorial: firebase.firestore.FieldValue.arrayUnion(historialEntry) });
     state.equipo.pagoComprobante = dataUrl;
     state.equipo.pagoNombreTransferencia = nombreTransferencia;
     state.equipo.pagoMontoDeclarado = montoTransferido;
     state.equipo.pagoEstado = 'pendiente';
     state.equipo.pagoFechaCarga = fechaCarga;
+    state.equipo.pagoComprobantesHistorial = [...(state.equipo.pagoComprobantesHistorial || []), historialEntry];
     renderPagoPanel();
     showToast('Comprobante actualizado. Queda pendiente de validación.', 'ok');
     let cfg = {};
@@ -2562,7 +2596,19 @@ document.getElementById('pe-receipt-saldo-input').addEventListener('change', asy
     const dataUrl = await resizeImageFile(file, 1100);
     if (dataUrl.length > 900000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
     const fechaCarga = new Date().toISOString();
-    await db.collection('equipos').doc(state.equipoId).update({ pagoSaldoComprobante: dataUrl, pagoSaldoNombreTransferencia: nombreTransferencia, pagoSaldoMontoDeclarado: montoTransferido, pagoSaldoEstado: 'pendiente', pagoSaldoFechaCarga: fechaCarga });
+    const historialEntry = {
+      id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      etapa: 'saldo',
+      tipoPago: 'saldo',
+      comprobante: dataUrl,
+      nombreTransferencia,
+      montoDeclarado: montoTransferido,
+      estado: 'pendiente',
+      fechaCarga,
+      fechaRevision: null
+    };
+    await db.collection('equipos').doc(state.equipoId).update({ pagoSaldoComprobante: dataUrl, pagoSaldoNombreTransferencia: nombreTransferencia, pagoSaldoMontoDeclarado: montoTransferido, pagoSaldoEstado: 'pendiente', pagoSaldoFechaCarga: fechaCarga, pagoComprobantesHistorial: firebase.firestore.FieldValue.arrayUnion(historialEntry) });
+    state.equipo.pagoComprobantesHistorial = [...(state.equipo.pagoComprobantesHistorial || []), historialEntry];
     state.equipo.pagoSaldoComprobante = dataUrl;
     state.equipo.pagoSaldoNombreTransferencia = nombreTransferencia;
     state.equipo.pagoSaldoMontoDeclarado = montoTransferido;
@@ -2634,6 +2680,7 @@ async function renderPanelAdmin() {
   volverATorneoHome();
   switchAdminTab('torneo');
   await Promise.all([cargarEquiposAdmin(), cargarPagosAdmin(), cargarAvisosAdmin(), cargarConfigAdmin(), cargarAdminsList()]);
+  iniciarSyncEquiposAdmin();
   renderBannerPlazosVencidos();
 }
 async function renderBannerPlazosVencidos() {
@@ -2677,6 +2724,7 @@ function elegirDivisionAdmin(div) {
   renderEquiposAdminList();
   renderPagosAdminList();
   renderSegurosAdminList();
+  renderSegurosPorEquipoAdmin();
   cargarPartidosAdmin(div);
 }
 function volverATorneoHome() {
@@ -3556,21 +3604,44 @@ function actualizarPickMeta() {
   document.getElementById('pick-primera-meta').textContent = `${primera} equipo(s)`;
   document.getElementById('pick-segunda-meta').textContent = `${segunda} equipo(s)`;
 }
+// Ingresos reales: suma lo que cada equipo DECLARÓ en el comprobante que quedó
+// aprobado, no el monto teórico que debería haber pagado según la configuración.
+// Un equipo puede haber transferido de más, de menos, o en cuotas raras — la plata
+// que entró es la que dice el comprobante, no una fórmula.
+//
+// EXCEPCIÓN: el campo "monto declarado" se agregó el 31/07/2026 (commit 0ad56b9). Los
+// equipos que subieron su comprobante ANTES de esa fecha quedaron aprobados sin ese
+// campo (pagoMontoDeclarado/pagoSaldoMontoDeclarado === undefined) — no es que hayan
+// declarado $0, es que la funcionalidad todavía no existía. Contarlos como $0 subestima
+// el total real, así que para esos casos puntuales usamos el monto teórico configurado
+// como estimación. tieneMontoEstimado() identifica esos equipos para poder marcarlos en
+// la UI y que el admin los revise contra el comprobante real.
+function montoInscripcionEstimadoEtapa(eq, cfg, etapa) {
+  const montoTotal = eq.division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera;
+  if (!montoTotal) return 0;
+  if (etapa === 'saldo') return montoTotal - Math.round(montoTotal / 2);
+  return (eq.pagoTipo || 'total') === 'sena' ? Math.round(montoTotal / 2) : montoTotal;
+}
 function calcularIngresoInscripcion(eq, cfg) {
-  const monto = eq.division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera;
-  if (!monto) return 0;
-  const tipo = eq.pagoTipo || 'total';
-  if (tipo !== 'sena') return eq.pagoEstado === 'aprobado' ? monto : 0;
-  const mitad = Math.round(monto / 2);
   let total = 0;
-  if (eq.pagoEstado === 'aprobado') total += mitad;
-  if (eq.pagoSaldoEstado === 'aprobado') total += (monto - mitad);
+  if (eq.pagoEstado === 'aprobado') {
+    total += eq.pagoMontoDeclarado != null ? eq.pagoMontoDeclarado : montoInscripcionEstimadoEtapa(eq, cfg, 'principal');
+  }
+  if (eq.pagoSaldoEstado === 'aprobado') {
+    total += eq.pagoSaldoMontoDeclarado != null ? eq.pagoSaldoMontoDeclarado : montoInscripcionEstimadoEtapa(eq, cfg, 'saldo');
+  }
   return total;
 }
+function tieneMontoInscripcionEstimado(eq) {
+  return (eq.pagoEstado === 'aprobado' && eq.pagoMontoDeclarado == null)
+      || (eq.pagoSaldoEstado === 'aprobado' && eq.pagoSaldoMontoDeclarado == null);
+}
+// Suma el monto DECLARADO de cada tanda de seguro aprobada (no cantidad × $5.000 teórico).
+function calcularIngresoSeguroNormal(eq) {
+  return (eq.segurosTransacciones || []).filter(t => t.estado === 'aprobado').reduce((s, t) => s + (t.montoDeclarado || 0), 0);
+}
 function calcularIngresoSeguro(eq) {
-  const normal = (eq.seguroJugadoresDni || []).length * MONTO_SEGURO_POR_JUGADOR;
-  const tardio = (eq.seguroHabilitadoManual || []).reduce((s, h) => s + (h.monto || 0), 0);
-  return normal + tardio;
+  return calcularIngresoSeguroNormal(eq) + (eq.seguroHabilitadoManual || []).reduce((s, h) => s + (h.monto || 0), 0);
 }
 async function calcularStatsTemporada() {
   let cfg = {};
@@ -3587,36 +3658,118 @@ async function calcularStatsTemporada() {
   const insSegunda = segundaEquipos.reduce((s, eq) => s + calcularIngresoInscripcion(eq, cfg), 0);
   const segPrimera = primeraEquipos.reduce((s, eq) => s + calcularIngresoSeguro(eq), 0);
   const segSegunda = segundaEquipos.reduce((s, eq) => s + calcularIngresoSeguro(eq), 0);
+  const equiposMontoEstimado = equiposCacheAdmin.filter(tieneMontoInscripcionEstimado).length;
+
+  const contarJugadores = eq => (eq.jugadores || []).filter(j => j.apellido || j.nombre || j.dni).length;
+  const jugadoresPrimera = primeraEquipos.reduce((s, eq) => s + contarJugadores(eq), 0);
+  const jugadoresSegunda = segundaEquipos.reduce((s, eq) => s + contarJugadores(eq), 0);
+
+  // Objetivo de inscripciones: monto fijo por división (no depende de cuántos equipos ya
+  // se inscribieron, porque el cupo total ya está cerrado). Se carga directo en Admin →
+  // Configuración; default $2.400.000 / $3.300.000 confirmados por el usuario.
+  const objetivoInsPrimera = cfg.objetivoInscripcionPrimera || 2400000;
+  const objetivoInsSegunda = cfg.objetivoInscripcionSegunda || 3300000;
+
   return {
     temporada: cfg.temporada || '',
     total, primera: primeraEquipos.length, segunda: segundaEquipos.length, pagoOk, pagoPendiente: total - pagoOk, segurosOk,
+    jugadoresPrimera, jugadoresSegunda, jugadoresTotal: jugadoresPrimera + jugadoresSegunda,
     insPrimera, insSegunda, segPrimera, segSegunda,
     totalIns: insPrimera + insSegunda, totalSeg: segPrimera + segSegunda,
-    totalIngresos: insPrimera + insSegunda + segPrimera + segSegunda
+    totalIngresos: insPrimera + insSegunda + segPrimera + segSegunda,
+    objetivoInsPrimera, objetivoInsSegunda, objetivoInsTotal: objetivoInsPrimera + objetivoInsSegunda,
+    equiposMontoEstimado
   };
 }
 async function abrirModalDatosTemporada() {
   const s = await calcularStatsTemporada();
   const fmt = n => `$${n.toLocaleString('es-AR')}`;
-  const row = (label, value, color) => `<div class="data-row"><span class="data-row-label">${label}</span><span class="data-row-value" style="${color ? `color:${color};` : ''}">${value}</span></div>`;
+
+  const statChip = (value, label, color) => `
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 6px;text-align:center;">
+      <div style="font-size:20px;font-weight:900;font-family:var(--font-display,inherit);color:${color};line-height:1;">${value}</div>
+      <div style="font-size:10.5px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.03em;">${label}</div>
+    </div>`;
+
+  // Fila simple $ (seguros: no hay objetivo fijo, solo se va acumulando; y para
+  // inscripciones cuando no hay objetivo configurado todavía).
+  const filaMonto = (label, value) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:var(--text-dim);"><span>${label}</span><span style="font-variant-numeric:tabular-nums;color:var(--text);">${fmt(value)}</span></div>`;
+
+  // Medidor circular (track + arco relleno del mismo tono) para "cuánto se completó
+  // del objetivo" — Primera, Segunda, y la sumatoria de ambas.
+  const anilloSvg = (pct, color, trackColor) => {
+    const r = 42, c = 2 * Math.PI * r;
+    const offset = c * (1 - pct / 100);
+    return `<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform:rotate(-90deg);">
+      <circle cx="50" cy="50" r="${r}" fill="none" stroke="${trackColor}" stroke-width="10"/>
+      <circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"/>
+    </svg>`;
+  };
+  const anillo = (label, actual, objetivo, color, trackColor) => {
+    const pct = objetivo ? Math.min(100, Math.round((actual / objetivo) * 100)) : 0;
+    return `<div style="text-align:center;">
+      <div style="position:relative;width:84px;height:84px;margin:0 auto 8px;">
+        ${anilloSvg(pct, color, trackColor)}
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;font-family:var(--font-display,inherit);color:${color};">${objetivo ? pct + '%' : '—'}</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;">${label}</div>
+      <div style="font-size:10.5px;color:var(--text-dim);font-variant-numeric:tabular-nums;line-height:1.4;">${fmt(actual)}${objetivo ? `<br>de ${fmt(objetivo)}` : ''}</div>
+    </div>`;
+  };
+
+  const cobroCard = (persona, concepto, icono, color, colorSoft, filasHtml, subtotal) => `
+    <div style="border-left:4px solid ${color};background:${colorSoft};border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+        <div style="font-weight:800;font-size:14.5px;">${icono} ${escapeHtml(persona)}</div>
+        <span class="badge" style="background:${colorSoft};color:${color};border:1px solid ${color};">${concepto}</span>
+      </div>
+      ${filasHtml}
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;margin-top:6px;border-top:1px solid ${color}55;">
+        <span style="font-size:12px;color:var(--text-dim);">Subtotal a cobrar</span>
+        <span style="font-size:18px;font-weight:900;color:${color};font-variant-numeric:tabular-nums;">${fmt(subtotal)}</span>
+      </div>
+    </div>`;
+
+  const inscripcionFilas = filaMonto('Primera', s.insPrimera) + filaMonto('Segunda', s.insSegunda);
+  const seguroFilas = filaMonto('Primera', s.segPrimera) + filaMonto('Segunda', s.segSegunda);
+  const anillosHtml = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px;">
+    ${anillo('Primera', s.insPrimera, s.objetivoInsPrimera, 'var(--cyan)', 'var(--cyan-soft)')}
+    ${anillo('Segunda', s.insSegunda, s.objetivoInsSegunda, 'var(--segunda)', 'var(--segunda-soft)')}
+    ${anillo('Total', s.insPrimera + s.insSegunda, s.objetivoInsTotal, '#4ade80', 'rgba(74,222,128,.15)')}
+  </div>`;
+
   openModal(`
     <h2 style="margin-bottom:4px;">📊 Datos de la Temporada</h2>
-    <p class="muted" style="margin-bottom:6px;">${s.temporada ? `Temporada ${s.temporada}` : ''}</p>
-    <div class="data-section-sep">Equipos y pagos</div>
-    ${row('Equipos inscriptos', s.total)}
-    ${row('Primera División', s.primera, 'var(--cyan)')}
-    ${row('Segunda División', s.segunda, 'var(--segunda)')}
-    ${row('Pago confirmado', s.pagoOk, '#4ade80')}
-    ${row('Pago pendiente', s.pagoPendiente, '#fbbf24')}
-    ${row('Jugadores asegurados', s.segurosOk, '#4ade80')}
-    <div class="data-section-sep">Financiero</div>
-    ${row('Inscripciones · Primera', fmt(s.insPrimera), 'var(--cyan)')}
-    ${row('Seguros · Primera', fmt(s.segPrimera), 'var(--cyan)')}
-    ${row('Inscripciones · Segunda', fmt(s.insSegunda), 'var(--segunda)')}
-    ${row('Seguros · Segunda', fmt(s.segSegunda), 'var(--segunda)')}
-    ${row('Total inscripciones', fmt(s.totalIns))}
-    ${row('Total seguros', fmt(s.totalSeg))}
-    <div class="data-row data-row-total"><span class="data-row-label">Total de ingresos</span><span class="data-row-value">${fmt(s.totalIngresos)}</span></div>
+    <p class="muted" style="margin-bottom:14px;">${s.temporada ? `Temporada ${s.temporada}` : ''}</p>
+
+    <div class="data-section-sep" style="margin-top:0;">Equipos</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+      ${statChip(s.primera, 'Primera', 'var(--cyan)')}
+      ${statChip(s.segunda, 'Segunda', 'var(--segunda)')}
+      ${statChip(s.total, 'Total', 'var(--text)')}
+    </div>
+    <div class="data-section-sep">Jugadores en lista de buena fe</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+      ${statChip(s.jugadoresPrimera, 'Primera', 'var(--cyan)')}
+      ${statChip(s.jugadoresSegunda, 'Segunda', 'var(--segunda)')}
+      ${statChip(s.jugadoresTotal, 'Total', 'var(--text)')}
+    </div>
+    <p class="muted" style="font-size:11.5px;margin-bottom:16px;">✅ ${s.pagoOk} equipo(s) con pago al día · 🩺 ${s.segurosOk} jugador(es) asegurados</p>
+
+    ${s.equiposMontoEstimado > 0 ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;">⚠️ <strong>${s.equiposMontoEstimado} equipo(s)</strong> quedaron aprobados antes de que existiera el campo "monto declarado" (31/07/2026) — su parte de "Inscripciones" de abajo es una <strong>estimación</strong> con el monto teórico, no lo que dice el comprobante real. Buscalos con el badge "⚠️ Monto estimado" en la pestaña Inscripciones y confirmalos a mano contra la imagen.</div>` : ''}
+
+    <div class="data-section-sep" style="margin-top:0;">Objetivo de inscripciones (cupo × monto)</div>
+    ${anillosHtml}
+
+    <div class="data-section-sep" style="margin-top:0;">Plata que va entrando (solo comprobantes aprobados)</div>
+    ${cobroCard('Mariano Gauna', 'Inscripciones', '💵', 'var(--cyan)', 'var(--cyan-soft)', inscripcionFilas, s.insPrimera + s.insSegunda)}
+    ${cobroCard('Facundo Palacio', 'Seguros', '🩺', 'var(--segunda)', 'var(--segunda-soft)', seguroFilas, s.segPrimera + s.segSegunda)}
+
+    <div style="margin-top:6px;padding:16px;border-radius:14px;background:linear-gradient(135deg, rgba(74,222,128,.18), rgba(74,222,128,.05));border:1.5px solid #4ade80;text-align:center;">
+      <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4ade80;font-weight:800;">Total general de ingresos</div>
+      <div style="font-size:30px;font-weight:900;margin-top:4px;font-variant-numeric:tabular-nums;">${fmt(s.totalIngresos)}</div>
+    </div>
+
     <div class="section-actions">
       <button class="btn btn-primary" onclick="generarPDFFinanciero()">📄 Descargar informe detallado</button>
     </div>
@@ -3659,7 +3812,31 @@ async function cargarPagosAdmin() {
     snap.forEach(doc => pagosCacheAdmin.push({ id: doc.id, ...doc.data() }));
     renderPagosAdminList();
     renderSegurosAdminList();
+    renderSegurosPorEquipoAdmin();
   } catch (e) { console.error(e); showToast('No se pudieron cargar los pagos.', 'error'); }
+}
+// Mantiene equiposCacheAdmin/pagosCacheAdmin al día en vivo: la lista de buena fe y
+// los seguros de un equipo pueden cambiar mientras el admin tiene la pantalla abierta
+// (los equipos pueden seguir editando hasta el 12/08), y las vistas de admin no deben
+// quedar desactualizadas hasta que el admin haga una acción propia.
+let equiposAdminUnsub = null;
+function iniciarSyncEquiposAdmin() {
+  if (equiposAdminUnsub) return;
+  equiposAdminUnsub = db.collection('equipos').orderBy('nombreLower').onSnapshot(snap => {
+    const lista = [];
+    snap.forEach(doc => lista.push({ id: doc.id, ...doc.data() }));
+    equiposCacheAdmin = lista;
+    pagosCacheAdmin = lista;
+    if (!state.admin) return;
+    renderEquiposAdminList();
+    actualizarPickMeta();
+    renderPagosAdminList();
+    renderSegurosAdminList();
+    renderSegurosPorEquipoAdmin();
+  }, e => console.error(e));
+}
+function detenerSyncEquiposAdmin() {
+  if (equiposAdminUnsub) { equiposAdminUnsub(); equiposAdminUnsub = null; }
 }
 function filtrarPagosAdmin(filtro) {
   state.pagoFiltroActivo = filtro;
@@ -3687,6 +3864,21 @@ function montoRequeridoEtapa(eq, cfg, etapaLabel) {
   if (etapaLabel === 'Saldo') return montoTotal - Math.round(montoTotal / 2);
   if (etapaLabel === 'Seña') return Math.round(montoTotal / 2);
   return montoTotal;
+}
+function montoTotalRequerido(eq, cfg) {
+  return (eq.division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera) || null;
+}
+// Lo efectivamente aprobado, según lo que el equipo declaró en su comprobante —
+// no el reparto teórico (mitad/mitad) del monto configurado. Usa el mismo fallback
+// que calcularIngresoInscripcion para equipos aprobados antes de que existiera el
+// campo "monto declarado" (31/07/2026).
+function montoTotalAprobado(eq, cfg) {
+  return calcularIngresoInscripcion(eq, cfg);
+}
+function saldoPendienteEquipo(eq, cfg) {
+  const total = montoTotalRequerido(eq, cfg);
+  if (!total) return null;
+  return Math.max(0, total - montoTotalAprobado(eq, cfg));
 }
 function estadoGeneralPago(eq) {
   const info = infoEtapaPago(eq);
@@ -3718,6 +3910,11 @@ async function renderPagosAdminList() {
       : `<div class="receipt-thumb ph">Sin comprobante</div>`;
     const tipoTexto = (eq.pagoTipo || 'total') === 'sena' ? 'Seña (50%)' : 'Pago total';
     const requerido = montoRequeridoEtapa(eq, cfg, info.label);
+    const saldoPend = saldoPendienteEquipo(eq, cfg);
+    const saldoBadge = saldoPend == null ? ''
+      : saldoPend === 0 ? `<span class="badge badge-ok">Sin saldo pendiente</span>`
+      : `<span class="badge badge-warn">Falta cancelar $${saldoPend.toLocaleString('es-AR')}</span>`;
+    const estimadoBadge = tieneMontoInscripcionEstimado(eq) ? `<span class="badge badge-warn" title="Aprobado antes de que existiera el campo de monto declarado (31/07) — el monto es una estimación, no lo declarado en el comprobante.">⚠️ Monto estimado</span>` : '';
     return `<div class="team-row" style="--row-accent:${accent};animation-delay:${idx * 35}ms">
       <div class="team-row-main">
         ${receiptHtml}
@@ -3726,6 +3923,8 @@ async function renderPagosAdminList() {
           <div class="team-row-meta">
             <span class="badge" style="background:${accentSoft};color:${accent};border:1px solid ${accent};">${escapeHtml(eq.division || '-')}</span>
             ${badgesPago(info)}
+            ${saldoBadge}
+            ${estimadoBadge}
             <span class="team-row-sub">${tipoTexto} · Transfirió: ${escapeHtml(info.nombreTransferencia) || 'sin dato'}</span>
           </div>
           ${htmlResumenMonto(info.montoDeclarado, requerido, 'Declarado')}
@@ -3733,6 +3932,7 @@ async function renderPagosAdminList() {
       </div>
       <div class="admin-table-actions">
         ${info.comprobante ? `<button class="btn btn-sm" onclick="verComprobanteAdmin('${eq.id}')">Ver comprobante</button>` : ''}
+        <button class="btn btn-sm" onclick="verHistorialComprobantes('${eq.id}')">🗂 Historial</button>
         <button class="btn btn-sm btn-primary" ${!info.etapa ? 'disabled' : ''} onclick="aprobarPago('${eq.id}')">✓ Aprobar</button>
         <button class="btn btn-sm btn-danger" ${!info.etapa ? 'disabled' : ''} onclick="rechazarPago('${eq.id}')">✕ Rechazar</button>
       </div>
@@ -3755,6 +3955,74 @@ function verComprobanteAdmin(id) {
     </div>
   `);
 }
+function badgeEstadoComprobante(estado) {
+  if (estado === 'aprobado') return `<span class="badge badge-ok">Aprobado</span>`;
+  if (estado === 'rechazado') return `<span class="badge badge-danger">Rechazado</span>`;
+  return `<span class="badge badge-warn">Pendiente</span>`;
+}
+async function verHistorialComprobantes(id) {
+  const eq = pagosCacheAdmin.find(e => e.id === id);
+  if (!eq) return;
+  let cfg = {};
+  try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
+  const requerido = montoTotalRequerido(eq, cfg);
+  const aprobado = montoTotalAprobado(eq, cfg);
+  const pendiente = saldoPendienteEquipo(eq, cfg);
+  const esEstimado = tieneMontoInscripcionEstimado(eq);
+
+  const etapaLabel = { principal: (eq.pagoTipo || 'total') === 'sena' ? 'Inscripción · Seña' : 'Inscripción · Pago total', saldo: 'Inscripción · Saldo' };
+  const filas = [
+    ...(eq.pagoComprobantesHistorial || []).map(t => ({
+      fecha: t.fechaCarga, estado: t.estado, monto: t.montoDeclarado, nombreTransferencia: t.nombreTransferencia,
+      comprobante: t.comprobante, etiqueta: etapaLabel[t.etapa] || 'Inscripción'
+    })),
+    ...(eq.segurosTransacciones || []).map(t => ({
+      fecha: t.fechaCarga, estado: t.estado, monto: t.dnis.length * MONTO_SEGURO_POR_JUGADOR, nombreTransferencia: t.nombreTransferencia,
+      comprobante: t.comprobante, etiqueta: `Seguro médico · ${t.dnis.length} jugador(es)`
+    }))
+  ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+  const resumenHtml = requerido
+    ? `<div class="glass" style="border-radius:12px;padding:12px 14px;margin-bottom:${esEstimado ? '6px' : '14px'};display:flex;gap:18px;flex-wrap:wrap;font-size:13px;">
+        <div>Requerido inscripción: <strong>$${requerido.toLocaleString('es-AR')}</strong></div>
+        <div>Aprobado: <strong style="color:var(--ok);">$${aprobado.toLocaleString('es-AR')}</strong></div>
+        <div>Falta cancelar: <strong style="color:${pendiente > 0 ? 'var(--warn)' : 'var(--ok)'};">$${pendiente.toLocaleString('es-AR')}</strong></div>
+      </div>`
+    : `<p class="muted" style="margin-bottom:14px;">El monto de inscripción de ${escapeHtml(eq.division || '')} todavía no fue configurado.</p>`;
+  const avisoEstimadoHtml = esEstimado
+    ? `<p style="font-size:11.5px;color:var(--warn);margin-bottom:14px;">⚠️ Este equipo quedó aprobado antes de que existiera el campo "monto declarado" (31/07/2026) — el "Aprobado" de arriba es una estimación con el monto teórico, no lo que dice el comprobante real. Revisá la imagen abajo y confirmá el monto a mano si hace falta.</p>`
+    : '';
+
+  const filasHtml = filas.length === 0
+    ? `<p class="muted">Todavía no hay comprobantes cargados.</p>`
+    : filas.map(f => `
+      <div class="list-row" style="align-items:center;">
+        <img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="window.open('${f.comprobante}','_blank')">
+        <div style="flex:1;min-width:0;">
+          <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
+          <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transfirió: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
+        </div>
+        ${badgeEstadoComprobante(f.estado)}
+      </div>`).join('');
+
+  openModal(`
+    <h2 style="margin-bottom:4px;">${escapeHtml(eq.nombre)} — Historial de comprobantes</h2>
+    <p class="muted" style="margin-bottom:14px;">Todos los comprobantes cargados por el equipo, aprobados o no, para volver a revisarlos cuando haga falta.</p>
+    ${resumenHtml}
+    ${avisoEstimadoHtml}
+    ${filasHtml}
+    <button class="btn btn-block" style="margin-top:14px;" onclick="closeModal()">Cerrar</button>
+  `);
+}
+function marcarUltimaEntradaHistorial(historial, etapa, estado, fechaRevision) {
+  const lista = historial || [];
+  let idx = -1;
+  for (let i = lista.length - 1; i >= 0; i--) {
+    if (lista[i].etapa === etapa && lista[i].estado === 'pendiente') { idx = i; break; }
+  }
+  if (idx === -1) return lista;
+  return lista.map((t, i) => i === idx ? { ...t, estado, fechaRevision } : t);
+}
 async function aprobarPago(id) {
   const eq = pagosCacheAdmin.find(e => e.id === id);
   if (!eq) return;
@@ -3763,7 +4031,10 @@ async function aprobarPago(id) {
   try {
     const campo = info.etapa === 'saldo' ? 'pagoSaldoEstado' : 'pagoEstado';
     const campoFecha = info.etapa === 'saldo' ? 'pagoSaldoFechaRevision' : 'pagoFechaRevision';
-    await db.collection('equipos').doc(id).update({ [campo]: 'aprobado', [campoFecha]: new Date().toISOString() });
+    const fechaRevision = new Date().toISOString();
+    const historialEtapa = info.etapa === 'saldo' ? 'saldo' : 'principal';
+    const pagoComprobantesHistorial = marcarUltimaEntradaHistorial(eq.pagoComprobantesHistorial, historialEtapa, 'aprobado', fechaRevision);
+    await db.collection('equipos').doc(id).update({ [campo]: 'aprobado', [campoFecha]: fechaRevision, pagoComprobantesHistorial });
     showToast('Pago aprobado.', 'ok');
     crearMensajeSistema(id, eq.nombre, eq.division, 'Estado de pago', `✅ Tu pago de ${info.etapa === 'saldo' ? 'saldo (50%)' : 'inscripción (50%)'} fue aprobado por la organización. ¡Ya estás habilitado!`, 'equipo', `✅ Se aprobó el pago de ${info.etapa === 'saldo' ? 'saldo (50%)' : 'inscripción (50%)'} de ${eq.nombre}. Equipo habilitado.`);
     await cargarPagosAdmin();
@@ -3778,7 +4049,10 @@ async function rechazarPago(id) {
   try {
     const campo = info.etapa === 'saldo' ? 'pagoSaldoEstado' : 'pagoEstado';
     const campoFecha = info.etapa === 'saldo' ? 'pagoSaldoFechaRevision' : 'pagoFechaRevision';
-    await db.collection('equipos').doc(id).update({ [campo]: 'rechazado', [campoFecha]: new Date().toISOString() });
+    const fechaRevision = new Date().toISOString();
+    const historialEtapa = info.etapa === 'saldo' ? 'saldo' : 'principal';
+    const pagoComprobantesHistorial = marcarUltimaEntradaHistorial(eq.pagoComprobantesHistorial, historialEtapa, 'rechazado', fechaRevision);
+    await db.collection('equipos').doc(id).update({ [campo]: 'rechazado', [campoFecha]: fechaRevision, pagoComprobantesHistorial });
     showToast('Pago rechazado.', 'ok');
     crearMensajeSistema(id, eq.nombre, eq.division, 'Estado de pago', `❌ Tu comprobante de ${info.etapa === 'saldo' ? 'saldo (50%)' : 'inscripción (50%)'} fue rechazado. Por favor subí un nuevo comprobante o comunicate con la organización.`, 'equipo', `❌ Se rechazó el comprobante de ${info.etapa === 'saldo' ? 'saldo (50%)' : 'inscripción (50%)'} de ${eq.nombre}.`);
     await cargarPagosAdmin();
@@ -3835,6 +4109,62 @@ function jugadoresAseguradosDe(eq) {
   const dnis = new Set(eq.seguroJugadoresDni || []);
   return (eq.jugadores || []).filter(j => j.dni && dnis.has(j.dni));
 }
+// Estado de aseguramiento de un equipo contra SU lista de buena fe actual (no una copia
+// vieja): solo cuentan los jugadores con DNI cargado, igual criterio que usa el propio
+// panel del equipo para habilitar el checkbox de "Asegurado".
+function estadoSeguroEquipo(eq) {
+  const lista = (eq.jugadores || []).filter(j => j.apellido || j.nombre || j.dni).filter(j => j.dni);
+  const aseguradosSet = new Set(eq.seguroJugadoresDni || []);
+  const manual = eq.seguroHabilitadoManual || [];
+  const manualSet = new Set(manual.map(h => h.dni));
+  const asegurados = lista.filter(j => aseguradosSet.has(j.dni));
+  const habilitadosManual = lista.filter(j => !aseguradosSet.has(j.dni) && manualSet.has(j.dni));
+  const faltantes = lista.filter(j => !aseguradosSet.has(j.dni) && !manualSet.has(j.dni));
+  return { totalLista: lista.length, asegurados, habilitadosManual, faltantes, dineroFalta: faltantes.length * MONTO_SEGURO_POR_JUGADOR };
+}
+function nombreJugador(j) { return `${j.apellido || ''} ${j.nombre || ''}`.trim() || j.dni || '—'; }
+function renderSegurosPorEquipoAdmin() {
+  const wrap = document.getElementById('pa-seguros-equipo-list');
+  if (!wrap) return;
+  const equipos = pagosCacheAdmin.filter(eq => eq.division === state.adminDivisionActiva)
+    .slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  if (equipos.length === 0) { wrap.innerHTML = `<div class="empty-state">No hay equipos en esta división.</div>`; return; }
+  wrap.innerHTML = equipos.map((eq, idx) => {
+    const s = estadoSeguroEquipo(eq);
+    const cubiertos = s.asegurados.length + s.habilitadosManual.length;
+    const completo = s.totalLista > 0 && cubiertos === s.totalLista;
+    return `<div class="list-row" style="animation-delay:${idx * 30}ms">
+      <div style="flex:1;min-width:0;">
+        <strong>${escapeHtml(eq.nombre)}</strong>
+        <div class="muted" style="font-size:12px;margin-top:3px;">${s.totalLista} jugador(es) en lista de buena fe</div>
+      </div>
+      <span class="badge ${completo ? 'badge-ok' : 'badge-warn'}">${cubiertos}/${s.totalLista} cubiertos</span>
+      ${s.dineroFalta > 0 ? `<span class="badge badge-danger">Falta $${s.dineroFalta.toLocaleString('es-AR')}</span>` : ''}
+      <button class="btn btn-sm" onclick="verDetalleSeguroEquipo('${eq.id}')">Ver jugadores</button>
+      <button class="btn btn-sm" onclick="verHistorialComprobantes('${eq.id}')">🗂 Historial</button>
+    </div>`;
+  }).join('');
+}
+function verDetalleSeguroEquipo(id) {
+  const eq = pagosCacheAdmin.find(e => e.id === id);
+  if (!eq) return;
+  const s = estadoSeguroEquipo(eq);
+  const lista = (items, vacio) => items.length === 0
+    ? `<p class="muted" style="font-size:12.5px;">${vacio}</p>`
+    : `<ul style="margin:0 0 0 18px;padding:0;font-size:13px;line-height:1.7;">${items.map(j => `<li>${escapeHtml(nombreJugador(j))} — DNI ${escapeHtml(j.dni)}</li>`).join('')}</ul>`;
+  openModal(`
+    <h2 style="margin-bottom:4px;">${escapeHtml(eq.nombre)} — Seguro médico</h2>
+    <p class="muted" style="margin-bottom:14px;">${s.totalLista} jugador(es) en la lista de buena fe (con DNI cargado).</p>
+    <div class="data-section-sep">✅ Asegurados (${s.asegurados.length})</div>
+    ${lista(s.asegurados, 'Ninguno todavía.')}
+    <div class="data-section-sep">🩹 Habilitados manualmente (${s.habilitadosManual.length})</div>
+    ${lista(s.habilitadosManual, 'Ninguno.')}
+    <div class="data-section-sep">❌ Faltan asegurar (${s.faltantes.length})</div>
+    ${lista(s.faltantes, '¡Ninguno! Plantel completo.')}
+    ${s.dineroFalta > 0 ? `<div class="data-row data-row-total" style="margin-top:10px;"><span class="data-row-label">Falta pagar en seguros</span><span class="data-row-value">$${s.dineroFalta.toLocaleString('es-AR')}</span></div>` : ''}
+    <button class="btn btn-block" style="margin-top:14px;" onclick="closeModal()">Cerrar</button>
+  `);
+}
 function renderSegurosAdminList() {
   const filtro = state.seguroFiltroActivo || 'pendiente';
   const equipos = pagosCacheAdmin.filter(eq => eq.division === state.adminDivisionActiva);
@@ -3872,6 +4202,7 @@ function renderSegurosAdminList() {
       </div>
       <div class="admin-table-actions">
         <button class="btn btn-sm" onclick="verComprobanteSeguroAdmin('${eq.id}','${tx.id}')">Ver detalle</button>
+        <button class="btn btn-sm" onclick="verHistorialComprobantes('${eq.id}')">🗂 Historial</button>
         <button class="btn btn-sm btn-primary" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="aprobarSeguro('${eq.id}','${tx.id}')">✓ Aprobar</button>
         <button class="btn btn-sm btn-danger" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="rechazarSeguro('${eq.id}','${tx.id}')">✕ Rechazar</button>
       </div>
@@ -3976,10 +4307,7 @@ function generarPDFSeguros() {
 }
 async function generarPDFFinanciero() {
   let cfg = {};
-  try {
-    const cfgDoc = await db.collection('config').doc('general').get();
-    cfg = cfgDoc.exists ? cfgDoc.data() : {};
-  } catch (e) { console.error(e); }
+  try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -4031,14 +4359,20 @@ async function generarPDFFinanciero() {
   ensureSpace(); doc.text('Detalle por equipo', 14, y); y += 8;
 
   equiposCacheAdmin.forEach(eq => {
-    const monto = eq.division === 'Segunda' ? cfg.montoInscripcionSegunda : cfg.montoInscripcionPrimera;
     const tipo = eq.pagoTipo || 'total';
-    if (tipo !== 'sena' && eq.pagoEstado === 'aprobado' && monto) {
-      addConcepto(eq.nombre, eq.division, 'Inscripción · Pago total', monto);
-    } else if (tipo === 'sena' && monto) {
-      const mitad = Math.round(monto / 2);
-      if (eq.pagoEstado === 'aprobado') addConcepto(eq.nombre, eq.division, 'Inscripción · Seña (50%)', mitad);
-      if (eq.pagoSaldoEstado === 'aprobado') addConcepto(eq.nombre, eq.division, 'Inscripción · Saldo (50%)', monto - mitad);
+    const estimadoTxt = tieneMontoInscripcionEstimado(eq) ? ' (estimado, sin monto declarado)' : '';
+    if (tipo !== 'sena' && eq.pagoEstado === 'aprobado') {
+      const monto = eq.pagoMontoDeclarado != null ? eq.pagoMontoDeclarado : montoInscripcionEstimadoEtapa(eq, cfg, 'principal');
+      if (monto) addConcepto(eq.nombre, eq.division, 'Inscripción · Pago total' + estimadoTxt, monto);
+    } else if (tipo === 'sena') {
+      if (eq.pagoEstado === 'aprobado') {
+        const monto = eq.pagoMontoDeclarado != null ? eq.pagoMontoDeclarado : montoInscripcionEstimadoEtapa(eq, cfg, 'principal');
+        if (monto) addConcepto(eq.nombre, eq.division, 'Inscripción · Seña (50%)' + estimadoTxt, monto);
+      }
+      if (eq.pagoSaldoEstado === 'aprobado') {
+        const monto = eq.pagoSaldoMontoDeclarado != null ? eq.pagoSaldoMontoDeclarado : montoInscripcionEstimadoEtapa(eq, cfg, 'saldo');
+        if (monto) addConcepto(eq.nombre, eq.division, 'Inscripción · Saldo (50%)' + estimadoTxt, monto);
+      }
     }
     const seguroMonto = calcularIngresoSeguro(eq);
     if (seguroMonto > 0) {
@@ -4422,6 +4756,7 @@ async function crearEquipoDoc(usuario, nombre, division, pass, extra = {}) {
     jugadores: emptyJugadores(),
     pagoComprobante: '', pagoEstado: 'aprobado', pagoFechaCarga: '', pagoNombreTransferencia: '', pagoTipo: 'total',
     pagoSaldoComprobante: '', pagoSaldoNombreTransferencia: '', pagoSaldoEstado: 'sin_subir', pagoSaldoFechaCarga: '',
+    pagoComprobantesHistorial: [],
     seguroJugadoresDni: [], segurosTransacciones: [],
     zona: '',
     fechaCreacion: new Date().toISOString(), fechaActualizacion: new Date().toISOString(),
@@ -4493,6 +4828,7 @@ async function verDetalleEquipoAdmin(id) {
         <table><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Seguro</th></tr></thead><tbody>${rows}</tbody></table>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--glass-border);padding-top:12px;">
+        <button class="btn btn-sm" onclick="closeModal();abrirModalRenombrarEquipo('${id}','${escapeHtml(eq.nombre)}')">✏️ Cambiar nombre</button>
         <label class="btn btn-sm" style="cursor:pointer;">🖼 ${eq.escudo?'Cambiar escudo':'Subir escudo'}<input type="file" accept="image/png,image/jpeg,image/jpg,image/*" class="hidden" onchange="adminSubirEscudo('${id}',this)"></label>
         ${eq.escudo?`<a class="btn btn-sm" href="${eq.escudo}" download="${archivo}">⬇ Escudo</a>`:''}
         <button class="btn btn-sm btn-primary" onclick='closeModal();generarPDFEquipo(${JSON.stringify(eq).replace(/'/g,"&#39;")})'>⬇ PDF lista</button>
@@ -4504,6 +4840,48 @@ async function verDetalleEquipoAdmin(id) {
   } catch (e) { console.error(e); showToast('No se pudo cargar el equipo.', 'error'); }
 }
 async function verListaEquipo(id) { return verDetalleEquipoAdmin(id); }
+function abrirModalRenombrarEquipo(id, nombreActual) {
+  openModal(`
+    <h2 style="margin-bottom:6px;">Cambiar nombre del equipo</h2>
+    <p class="muted" style="margin-bottom:16px;">Actual: <strong>${escapeHtml(nombreActual)}</strong></p>
+    <form id="form-renombrar-equipo">
+      <div class="field"><label>Nombre nuevo</label><input type="text" id="rn-nombre" required maxlength="60" value="${escapeHtml(nombreActual)}"></div>
+      <p class="wizard-help" style="margin-bottom:14px;">Se actualiza en el equipo, el fixture, las tablas de posiciones y las planillas. El historial de mensajes viejos conserva el nombre con el que se enviaron.</p>
+      <button type="submit" class="btn btn-primary btn-block">Guardar nombre</button>
+    </form>
+  `);
+  document.getElementById('form-renombrar-equipo').addEventListener('submit', e => {
+    e.preventDefault();
+    renombrarEquipo(id, document.getElementById('rn-nombre').value.trim());
+  });
+}
+async function renombrarEquipo(id, nombreNuevo) {
+  if (!nombreNuevo) { showToast('Ingresá un nombre.', 'error'); return; }
+  const nombreLower = nombreNuevo.toLowerCase();
+  try {
+    const existing = await db.collection('equipos').where('nombreLower', '==', nombreLower).limit(1).get();
+    if (!existing.empty && existing.docs[0].id !== id) { showToast('Ya existe otro equipo con ese nombre.', 'error'); return; }
+
+    await db.collection('equipos').doc(id).update({ nombre: nombreNuevo, nombreLower, fechaActualizacion: new Date().toISOString() });
+
+    // El fixture guarda una copia del nombre en cada partido (no una referencia viva) —
+    // sin esto, los partidos ya generados seguirían mostrando el nombre viejo.
+    const [comoLocal, comoVisitante] = await Promise.all([
+      db.collection('partidos').where('equipoLocalId', '==', id).get(),
+      db.collection('partidos').where('equipoVisitanteId', '==', id).get()
+    ]);
+    const batch = db.batch();
+    comoLocal.forEach(doc => batch.update(doc.ref, { equipoLocalNombre: nombreNuevo }));
+    comoVisitante.forEach(doc => batch.update(doc.ref, { equipoVisitanteNombre: nombreNuevo }));
+    if (comoLocal.size + comoVisitante.size > 0) await batch.commit();
+
+    if (state.equipoId === id) { state.equipo = { ...state.equipo, nombre: nombreNuevo }; }
+    closeModal();
+    showToast(`Nombre actualizado a "${nombreNuevo}"${comoLocal.size + comoVisitante.size ? ` (${comoLocal.size + comoVisitante.size} partido(s) actualizados)` : ''}.`, 'ok');
+    cargarEquiposAdmin();
+    cargarPagosAdmin();
+  } catch (e) { console.error(e); showToast('No se pudo cambiar el nombre.', 'error'); }
+}
 async function habilitarSeguroTardio(equipoId, dni, nombreJugador) {
   if (!confirm(`¿Habilitar a ${nombreJugador} por pago tardío del seguro médico ($7.000)?\n\nConfirmá que ya recibiste ese pago antes de continuar — esta acción lo marca como habilitado para jugar.`)) return;
   try {
@@ -4625,6 +5003,8 @@ async function cargarConfigAdmin() {
     document.getElementById('cfg-monto-segunda').value = cfg.montoInscripcionSegunda || '';
     document.getElementById('cfg-fecha-pago-total').value = cfg.fechaLimitePagoTotal || '';
     document.getElementById('cfg-fecha-seguro').value = cfg.fechaLimiteSeguro || '';
+    document.getElementById('cfg-objetivo-primera').value = cfg.objetivoInscripcionPrimera || '';
+    document.getElementById('cfg-objetivo-segunda').value = cfg.objetivoInscripcionSegunda || '';
     document.getElementById('torneo-temporada-txt').textContent = cfg.temporada ? `Temporada ${cfg.temporada}` : 'Temporada';
   } catch (e) { console.error(e); }
 }
@@ -4637,9 +5017,11 @@ async function guardarConfig() {
   const montoInscripcionSegunda = Number(document.getElementById('cfg-monto-segunda').value) || 0;
   const fechaLimitePagoTotal = document.getElementById('cfg-fecha-pago-total').value;
   const fechaLimiteSeguro = document.getElementById('cfg-fecha-seguro').value;
+  const objetivoInscripcionPrimera = Number(document.getElementById('cfg-objetivo-primera').value) || 0;
+  const objetivoInscripcionSegunda = Number(document.getElementById('cfg-objetivo-segunda').value) || 0;
   try {
     const cfgRef = db.collection('config').doc('general');
-    const datos = { temporada, fechaLimiteInscripcion, fechaLimiteBuenaFe, fechaLimiteEscudo, montoInscripcionPrimera, montoInscripcionSegunda, fechaLimitePagoTotal, fechaLimiteSeguro };
+    const datos = { temporada, fechaLimiteInscripcion, fechaLimiteBuenaFe, fechaLimiteEscudo, montoInscripcionPrimera, montoInscripcionSegunda, fechaLimitePagoTotal, fechaLimiteSeguro, objetivoInscripcionPrimera, objetivoInscripcionSegunda };
     const actual = await cfgRef.get();
     if (actual.exists && actual.data().fechaLimiteSeguro !== fechaLimiteSeguro) datos.avisoSeguroCierreEnviado = false;
     await cfgRef.set(datos, { merge: true });

@@ -2,6 +2,76 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 3) — objetivo de inscripciones: monto directo, no cupo × precio
+
+- **Cambio de enfoque**: el objetivo dejó de calcularse como `cupo de equipos × monto de inscripción` (indirecto, generaba confusión y números que no cerraban) y ahora es un **monto fijo por división**, cargado directo en Admin → Configuración: "Objetivo de inscripciones Primera ($)" / "...Segunda ($)". Reemplaza los campos "Cupo de equipos" de la sesión anterior.
+- **Confirmado con el usuario**: Primera $2.400.000, Segunda $3.300.000, total $5.700.000 (el usuario había escrito "$2.300.000" para Primera por error de tipeo — no cerraba con el total de $5.700.000 que pidió ni con el cálculo de 12 equipos × $200.000 de una sesión anterior; se le preguntó y confirmó $2.400.000).
+- Esos dos valores son el default en código (`objetivoInscripcionPrimera || 2400000`, `...Segunda || 3300000`) si el campo de Configuración está vacío, así que los 3 anillos ("📊 Datos de la Temporada") muestran el objetivo correcto aunque nadie haya tocado Configuración todavía. Se pueden pisar ahí si cambia la temporada que viene.
+- **Sin probar en el navegador.**
+
+## ✅ Sesión 2026-08-08 (continuación 2) — botón "Historial" también visible desde la pestaña Seguro
+
+- El botón "🗂 Historial" (agregado en una sesión anterior) solo estaba en la pestaña **Inscripciones**, aunque el modal que abre ya mezclaba ahí mismo los comprobantes de inscripción Y de seguro médico. El usuario no lo encontraba buscando desde la pestaña **Seguro**.
+- Se agregó el mismo botón en dos lugares de la pestaña Seguro: en "Estado de aseguramiento por equipo" (arriba) y en cada fila de tanda de seguro (pendiente/aprobado/rechazado, abajo) — mismo modal, mismo comportamiento, ahora accesible desde donde el admin naturalmente esté mirando.
+- **Sin probar en el navegador.**
+
+## ✅ Sesión 2026-08-08 (continuación) — editar nombre de equipo desde admin
+
+- **Nuevo**: botón "✏️ Cambiar nombre" en el detalle de equipo (Admin → Equipos → tocar un equipo). Valida que no exista otro equipo con ese nombre, y actualiza `nombre`/`nombreLower` en `equipos/{id}`.
+- **Importante**: el fixture guarda una COPIA del nombre en cada partido (`equipoLocalNombre`/`equipoVisitanteNombre`), no una referencia al equipo — así que renombrar también actualiza esos campos en todos los partidos donde ese equipo ya jugó o tiene fecha generada, para no dejar el nombre viejo dando vueltas en fixture/posiciones/planillas. El historial de mensajes (`mensajes`) NO se toca — queda con el nombre con el que se mandó cada mensaje en su momento, como cualquier chat.
+- **Pendiente, requiere que lo hagas vos**: cambiar **AURA → FONTANA F.C.** — no tengo credenciales de admin ni acceso a la base real, así que no puedo hacerlo yo directamente. Usá el botón nuevo.
+- **Sin probar en el navegador.**
+
+## ✅ Sesión 2026-08-08 — anillos circulares de objetivo + default de cupo 12/22
+
+- **Motivo del ajuste**: el objetivo mostraba mal (o en $0) porque el cupo de equipos (`cfg.cupoEquiposPrimera/Segunda`) todavía no estaba cargado en Admin → Configuración. Ahora tiene default **12 (Primera) / 22 (Segunda)** si el campo está vacío — confirmados por el usuario como el cupo real ya cerrado — así que el objetivo (Primera $2.400.000 / Segunda $3.300.000 / Total $5.700.000) se ve bien apenas `montoInscripcionPrimera`/`montoInscripcionSegunda` estén en 200.000/150.000. Sigue siendo editable desde Config por si el cupo cambia.
+- **"📊 Datos de la Temporada"**: las barras lineales de objetivo se reemplazaron por 3 medidores circulares (Primera / Segunda / Total) — arco relleno del mismo tono que el track, no un pie chart de 2 porciones (se consultó la skill de dataviz: para "ratio contra un límite" el pie de 2 porciones es explícitamente lo que NO usar; el medidor circular con track+arco es la variante que sí respeta esa guía y a la vez es lo que pidió el usuario). Probado con datos de prueba en Chrome headless antes de avisar — captura verificada visualmente.
+- **Sigo sin poder confirmar**: si `montoInscripcionPrimera`/`montoInscripcionSegunda` realmente están en 200.000/150.000 en la base real — eso sigue siendo algo que solo se puede chequear con sesión de admin real.
+
+## ✅ Sesión 2026-08-07 (continuación 4) — fix: equipos aprobados antes del 31/07 sin "monto declarado"
+
+- **Confirmado con `git log`**: el sitio quedó en producción el 25/07/2026 (`fa43d86`) y el campo "monto declarado" recién se agregó el 31/07/2026 (`0ad56b9`). Cualquier equipo que subió su comprobante en esa ventana de 6 días quedó aprobado con `pagoMontoDeclarado`/`pagoSaldoMontoDeclarado` inexistente (no en `$0` — el campo directamente no existía todavía).
+- Como `calcularIngresoInscripcion` suma ese campo, esos equipos se estaban contando como **$0** de ingreso pese a estar aprobados — subestimaba el total real. **No puedo saber cuántos son ni cuáles** sin acceso a la base en vivo.
+- **Fix**: para un equipo aprobado sin monto declarado, se usa como respaldo el monto teórico configurado (mitad/mitad si es seña) — mejor estimación que $0, pero sigue siendo una estimación, no lo que dice el comprobante real.
+- Se marcan en 3 lugares para que sea fácil encontrarlos y corregirlos a mano: badge **"⚠️ Monto estimado"** en cada equipo de la pestaña Inscripciones, aviso amarillo dentro del modal "🗂 Historial" de ese equipo, y un cartel con el conteo total arriba de "📊 Datos de la Temporada" si hay alguno.
+- **Sin probar en el navegador**, igual que el resto de la sesión.
+
+## ✅ Sesión 2026-08-07 (continuación 3) — objetivo de inscripciones + contador de jugadores
+
+- **Nuevo en Admin → Configuración**: "Cupo de equipos Primera/Segunda" (ej. 12 y 22 — el cupo ya está cerrado, faltan que terminen de inscribirse). Guardado en `config/general.cupoEquiposPrimera/Segunda`. **Falta que lo cargues vos** — sin esto, la tarjeta de inscripciones no muestra objetivo, solo el monto acumulado.
+- **"📊 Datos de la Temporada"**: la tarjeta de Mariano Gauna (inscripciones) ahora tiene barra de progreso por división contra el objetivo = cupo × monto configurado (ej. 12×$200.000 = $2.400.000 en Primera), con "falta $X (Y%)" o "✅ Objetivo cumplido". La de Facundo Palacio (seguros) sigue sin objetivo fijo, solo acumulando — no hay forma de saber de antemano cuánto va a dar porque depende de cuántos jugadores se terminen asegurando.
+- Se agregó contador de **jugadores en lista de buena fe** (Primera / Segunda / Total), separado de la cantidad de equipos.
+- **Aclaración importante sobre los montos que se ven**: no se sacan de mirar la imagen del comprobante — vienen de `pagoMontoDeclarado`/`montoDeclarado`, el número que el propio equipo tipeó al subir el comprobante. Nadie (ni el código, ni yo) lee el monto de la foto automáticamente; el admin es quien tiene que cotejar visualmente la imagen contra ese número declarado antes de aprobar. Si un equipo declaró mal el monto y el admin lo aprobó igual, ese error se arrastra a estos totales.
+- **Sin probar en el navegador** todavía por mí (no tengo credenciales de admin), pero el usuario está probando en local (`node static-server.mjs`, puerto 8080) contra la base de datos real.
+
+## ✅ Sesión 2026-08-07 (continuación 2) — rediseño "Datos de la Temporada": por cobrador, no por lista plana
+
+- A pedido explícito (no gustaba el listado plano de filas): la tarjeta "📊 Datos de la Temporada" ahora tiene 4 chips arriba (equipos 1ª/2ª, pago OK, asegurados) y dos tarjetas de "cobro" con acento de color — **Mariano Gauna** (Inscripciones, Primera + Segunda + subtotal) y **Facundo Palacio** (Seguros, ídem) — más un total general destacado abajo. Se sacó la tabla de desglose por concepto (seña/saldo/tardío) que se había agregado en la sesión anterior: no era lo que pedían y sumaba desorden — ese detalle línea por línea sigue disponible en el PDF ("📄 Descargar informe detallado").
+- **Por qué "Mariano Gauna" / "Facundo Palacio"**: el usuario aclaró que las inscripciones se le pasan en mano a Mariano Gauna y los seguros a Facundo Palacio — necesitaba ver cuánto se va juntando para cada uno por separado, no solo el total. Si en algún momento cambia quién cobra qué, esos dos nombres están hardcodeados en `abrirModalDatosTemporada()`.
+
+## ✅ Sesión 2026-08-07 (continuación) — fix: los ingresos usaban el monto teórico, no el declarado
+
+- **Bug**: `calcularIngresoInscripcion`/`calcularIngresoSeguro` (y sus versiones "por concepto") calculaban la plata que entró a partir del monto configurado (`montoInscripcionPrimera/Segunda` dividido a la mitad, o jugadores asegurados × $5.000 fijo) — no de lo que el equipo realmente declaró en su comprobante. Si un equipo transfirió de más, de menos, o en un split distinto al 50/50, el reporte mostraba el número "teórico" en vez del real.
+- **Fix**: ahora suman `pagoMontoDeclarado` / `pagoSaldoMontoDeclarado` (inscripción) y el `montoDeclarado` de cada tanda aprobada en `segurosTransacciones` (seguro médico) — la plata que dice el comprobante, sumada tal cual. Afecta: "📊 Datos de la Temporada" (totales y tabla por concepto), el PDF "Informe financiero", y el badge "Falta cancelar $X" / modal de historial de comprobantes de la sesión anterior.
+- El monto configurado (`montoInscripcionPrimera/Segunda`) se sigue usando SOLO como referencia de "cuánto debería pagar" (columna "Requerido"), nunca para calcular lo que ya entró.
+- **Sin probar en el navegador**, igual que las dos sesiones anteriores.
+
+## ✅ Sesión 2026-08-07 — ingresos por concepto + estado de aseguramiento por equipo (en vivo)
+
+- **Admin → Torneo → división → Seguro**: nueva sección arriba de todo, "Estado de aseguramiento por equipo" — por cada equipo muestra cuántos jugadores de su lista de buena fe ya están cubiertos (asegurados + habilitados manual) vs cuántos faltan, y cuánto dinero falta pagar (faltantes × $5.000). Botón "Ver jugadores" abre el detalle con nombre y DNI en 3 grupos: asegurados, habilitados manualmente, y faltantes.
+- **Admin → Torneo → "📊 Datos de la Temporada"**: se agregó una tabla de ingresos por concepto (inscripción pago total / seña / saldo, seguro normal / habilitación tardía) cruzada por división, además de los totales que ya existían.
+- **Sincronización en vivo de datos de equipos**: hasta ahora `equiposCacheAdmin`/`pagosCacheAdmin` solo se refrescaban cuando el admin hacía una acción propia (aprobar, rechazar, etc.). Como los equipos pueden seguir editando su lista de buena fe hasta el **12/08**, se agregó una suscripción `onSnapshot` (`iniciarSyncEquiposAdmin`, arranca al loguearse el admin) que mantiene esas vistas al día automáticamente aunque el cambio lo haga el equipo desde su propio panel, sin que el admin tenga que recargar nada.
+- **Sin probar en el navegador** — mismo motivo que la sesión anterior (necesita sesión real de equipo + admin). Revisado por lectura de código y chequeo de sintaxis de todo el JS embebido.
+
+## ✅ Sesión 2026-08-06 — historial de comprobantes de pago + saldo pendiente por equipo
+
+- **Problema**: al aprobar un pago (inscripción o saldo), el comprobante de esa etapa quedaba "pisado" apenas se subía uno nuevo (el campo `pagoComprobante`/`pagoSaldoComprobante` es único, no un historial) — no había forma de volver a revisar comprobantes viejos.
+- **Solución**: nuevo array `pagoComprobantesHistorial` en cada equipo (mismo patrón que ya usaba `segurosTransacciones` para el seguro médico). Cada vez que un equipo sube un comprobante (inscripción inicial, re-subida, saldo) se agrega una entrada nueva sin borrar las anteriores; al aprobar/rechazar desde el admin, se marca la entrada correspondiente en vez de perderla.
+- **Admin → Pagos**: botón nuevo "🗂 Historial" por equipo que abre un modal con **todos** los comprobantes cargados alguna vez (inscripción y seguro médico juntos, distintas "índoles"), con imagen, monto declarado, fecha y estado de cada uno.
+- **Saldo pendiente por equipo**: badge "Falta cancelar $X" / "Sin saldo pendiente" en cada fila de la lista de Pagos, calculado contra el monto total de inscripción configurado por división (`config/general.montoInscripcionPrimera/Segunda` — confirmar que estén en $200.000 / $150.000).
+- No requirió cambios en `firestore.rules`: el equipo ya podía escribir cualquier campo propio salvo la lista puntual de campos de admin, y `pagoComprobantesHistorial` no está en esa lista (mismo criterio que `segurosTransacciones`, ya en producción).
+- **Sin probar en el navegador** (requiere sesión real de equipo + admin para subir y aprobar un comprobante de punta a punta) — revisado por lectura de código y chequeo de sintaxis, no en vivo.
+
 ## ✅ Sesión 2026-08-02 (continuación) — bloqueo de partidos cerrados, orden por cancha, historial de PDFs
 
 - **Seguridad**: `partidos` ya no se puede editar/borrar una vez `estado:'cerrado'`, salvo admin. Antes cualquier sesión (hasta anónima) podía tocar un partido cerrado.
