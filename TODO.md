@@ -2,6 +2,14 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 12) — fix: foto de carnet perdida por condición de carrera + mejores mensajes de error
+
+- **Bug real en `subirFotoJugador`**: guardaba TODO el mapa `fotosJugadores` con lee-modifica-escribe local (`fotos[dni]=...; update({fotosJugadores: fotos})`). Si un delegado subía varias fotos de jugadores seguidas (caso típico armando los carnets de todo el plantel), dos subidas que terminan en momentos distintos podían pisarse entre sí — la última en escribir ganaba con SU copia del mapa (basada en el estado de cuando arrancó, no en lo que la otra subida ya había guardado), perdiendo fotos ya subidas sin ningún error visible. Coincide con el reporte de "rotens": la foto se sube (toast de éxito) pero no aparece en el carnet descargado.
+- **Fix**: `subirFotoJugador` ahora actualiza un solo campo con notación de punto (`fotosJugadores.${dni}`), que Firestore mergea de forma atómica sin pisar el resto del mapa — elimina la carrera de raíz. También se agregó un fallback visual (`onerror`) en la foto del carnet por si la imagen de un jugador puntual estuviera corrupta.
+- **Mensajes de error de Firestore más específicos**: `mensajeErrorComprobante` ahora distingue "documento lleno" (`resource-exhausted`), "sin permiso", y "sin conexión" del error genérico — antes cualquier causa mostraba el mismo "No se pudo cargar el comprobante" sin pista de qué hacer. Esto se aplica a los 4 lugares de comprobantes Y a la subida de foto de carnet.
+- **Seguro médico de "rotens" sigue sin poder subirse** y no tengo más info todavía — con este mensaje más específico, el próximo intento debería decir la causa real (documento lleno / sin conexión / etc.) en vez del mensaje genérico; hace falta que el usuario reporte qué dice ese mensaje la próxima vez.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 11) — anillos de cobertura de seguro (sin objetivo en $)
 
 - A pedido: 3 anillos más en "📊 Datos de la Temporada" (Primera/Segunda/Total) para seguros — sin objetivo en $ como pidió el usuario ("no se puede saber de antemano cuánto va a dar"). El techo de cada anillo es **% del plantel asegurado** (asegurados + habilitados manual, sobre el total de la lista de buena fe de esa división) — un techo natural que sí existe (100% = todos asegurados), a diferencia de la plata que no tiene límite conocido. Debajo del % se muestra "X/Y asegurados" y "$ recaudado" como dato informativo.

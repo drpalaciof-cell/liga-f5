@@ -1534,13 +1534,23 @@ function resizeImageFile(file, maxSize = 220) {
     reader.readAsDataURL(file);
   });
 }
-// Mensaje más útil cuando el navegador no puede abrir la imagen elegida — típicamente fotos
-// sacadas directo con la cámara de un iPhone (formato HEIC), que Chrome no puede decodificar.
+// Mensaje más útil según la causa real del fallo — antes todo cualquier error (imagen que el
+// navegador no puede abrir, documento de Firestore lleno, sin conexión, sin permiso) mostraba
+// el mismo "No se pudo cargar el comprobante" sin ninguna pista de qué hacer al respecto.
 function mensajeErrorComprobante(err) {
   if (err && err.message === 'IMG_DECODE_FAILED') {
     return 'No pudimos abrir esa imagen. Si la sacaste con la cámara de un iPhone, probá sacarle una captura de pantalla al comprobante y subí esa captura en vez de la foto original.';
   }
-  return 'No se pudo cargar el comprobante.';
+  if (err && err.code === 'resource-exhausted') {
+    return 'Este equipo ya no tiene espacio para guardar más comprobantes/fotos (se acumularon demasiados). Avisale a la organización para que libere espacio borrando alguno viejo.';
+  }
+  if (err && err.code === 'permission-denied') {
+    return 'No se pudo guardar por un problema de permisos — probá cerrar sesión y volver a entrar. Si sigue fallando, avisale a la organización.';
+  }
+  if (err && (err.code === 'unavailable' || /network|fetch/i.test(err.message || ''))) {
+    return 'Parece que no hay conexión a internet en este momento. Probá de nuevo cuando tengas señal.';
+  }
+  return 'No se pudo cargar el comprobante. Volvé a intentar; si sigue fallando, avisale a la organización.';
 }
 
 /* ===================== VIEW ROUTING ===================== */
@@ -3335,14 +3345,18 @@ async function subirFotoJugador(dni, input) {
   try {
     showToast('Subiendo foto...', 'info');
     const dataUrl = await resizeImageFile(file, 400, 400);
-    const fotos = state.equipo.fotosJugadores || {};
-    fotos[dni] = dataUrl;
-    await db.collection('equipos').doc(state.equipoId).update({ fotosJugadores: fotos });
-    state.equipo.fotosJugadores = fotos;
+    // Update de un solo campo con notación de punto (no lee-modifica-escribe el mapa
+    // entero): si el delegado sube varias fotos rápido, cada subida termina en un
+    // momento distinto y la versión vieja de "fotos" en memoria de una subida más lenta
+    // podía pisarle el mapa entero a otra que ya había terminado, perdiendo esa foto sin
+    // ningún error visible. Con dot-notation, Firestore mergea cada clave por separado.
+    await db.collection('equipos').doc(state.equipoId).update({ [`fotosJugadores.${dni}`]: dataUrl });
+    if (!state.equipo.fotosJugadores) state.equipo.fotosJugadores = {};
+    state.equipo.fotosJugadores[dni] = dataUrl;
     showToast('✅ Foto guardada. Recordá: debe ser tipo carnet 4×4, fondo blanco.', 'ok');
     renderSancionesEquipo();
     renderCarnetTab();
-  } catch(e) { console.error(e); showToast('No se pudo subir la foto.', 'error'); }
+  } catch(e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
 }
 
 async function subirComprobanteSancion(dni, input) {
@@ -3444,7 +3458,7 @@ function abrirVentanaCarnets(jugadores) {
     const edad     = edades[dni] ? edades[dni] + ' años' : '—';
     const fotoUrl  = fotos[dni];
     const fotoTag  = fotoUrl
-      ? `<img src="${fotoUrl}" class="c-foto">`
+      ? `<img src="${fotoUrl}" class="c-foto" onerror="this.outerHTML='<div class=&quot;c-foto-ph&quot;><span>4×4</span></div>'">`
       : `<div class="c-foto-ph"><span>4×4</span></div>`;
     return `
 <div class="carnet">
