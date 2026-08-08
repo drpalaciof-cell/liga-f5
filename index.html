@@ -3900,12 +3900,19 @@ function renderEquiposAdminList() {
         : `<div class="admin-eq-shield-ph">${escapeHtml((eq.nombre || '?').slice(0,2).toUpperCase())}</div>`;
       const pagoOk = eq.pagoEstado === 'aprobado';
       const pagoDot = `<span title="${pagoOk?'Pago aprobado':'Pago pendiente'}" style="width:8px;height:8px;border-radius:50%;background:${pagoOk?'var(--ok)':'rgba(255,255,255,.15)'};display:inline-block;flex-shrink:0;"></span>`;
+      // Aproximación del tamaño del documento — para detectar equipos cerca del límite de
+      // 1MB de Firestore ANTES de que se traben, en vez de enterarse cuando ya fallaron.
+      const pctLimite = Math.min(100, Math.round((new Blob([JSON.stringify(eq)]).size / 1048576) * 100));
+      const sizeDot = pctLimite >= 70
+        ? `<span title="${pctLimite}% del límite de tamaño de Firestore" style="width:8px;height:8px;border-radius:50%;background:${pctLimite >= 90 ? 'var(--danger)' : 'var(--warn)'};display:inline-block;flex-shrink:0;"></span>`
+        : '';
       return `<div class="admin-eq-row" onclick="verDetalleEquipoAdmin('${eq.id}')">
         ${shield}
         <span class="admin-eq-nombre">${escapeHtml(eq.nombre)}</span>
         <span style="font-size:10px;font-weight:700;color:${accent};background:${accentSoft};border:1px solid ${accent};border-radius:5px;padding:1px 5px;flex-shrink:0;">${isPrimera?'1°':'2°'}</span>
         <span style="font-size:11px;color:var(--text-dim);flex-shrink:0;">${count}/${NUM_JUGADORES}</span>
         ${pagoDot}
+        ${sizeDot}
         <span class="admin-eq-arrow">›</span>
       </div>`;
     }).join('')}</div>`;
@@ -5046,6 +5053,20 @@ async function verDetalleEquipoAdmin(id) {
       ? `<p style="font-size:11.5px;color:var(--warn);margin-bottom:10px;">⚠️ Alguna tanda de seguro es de antes del 31/07/2026 (sin monto declarado) — su parte del "Recaudado" de arriba es una estimación, no lo que dice el comprobante real.</p>`
       : '';
 
+    // Tamaño aproximado del documento — para ver de un vistazo si un equipo está cerca del
+    // límite de 1MB de Firestore en vez de tener que adivinarlo. JSON.stringify no es
+    // byte-exacto contra la codificación interna de Firestore, pero como la enorme mayoría
+    // del documento son strings base64 (puro ASCII), la aproximación es muy cercana.
+    const tamanioBytes = new Blob([JSON.stringify(eq)]).size;
+    const tamanioKB = Math.round(tamanioBytes / 1024);
+    const pctLimite = Math.min(100, Math.round((tamanioBytes / 1048576) * 100));
+    const colorTamanio = pctLimite >= 90 ? 'var(--danger)' : pctLimite >= 70 ? 'var(--warn)' : 'var(--ok)';
+    const avisoTamanioHtml = pctLimite >= 70
+      ? `<div style="background:${pctLimite >= 90 ? 'rgba(248,113,113,.1)' : 'rgba(251,191,36,.1)'};border:1px solid ${colorTamanio};border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;">
+          ${pctLimite >= 90 ? '🔴' : '🟡'} Este equipo está usando <strong>${tamanioKB} KB de 1024 KB</strong> (${pctLimite}% del límite de Firestore) — ${pctLimite >= 90 ? 'muy probable que las próximas subidas fallen. Borrá fotos/comprobantes viejos de abajo para liberar espacio.' : 'se está acercando al límite, conviene ir liberando espacio de a poco.'}
+        </div>`
+      : '';
+
     document.getElementById('ed-nombre-title').textContent = eq.nombre || '';
     document.getElementById('ed-content').innerHTML = `
       <div class="glass section-card">
@@ -5056,10 +5077,20 @@ async function verDetalleEquipoAdmin(id) {
             <div style="font-size:12px;color:var(--text-dim);">${escapeHtml(eq.division || '')} · ${count}/${NUM_JUGADORES} en lista de buena fe</div>
           </div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);margin-bottom:10px;">
           <span>👤 Capitán: <b style="color:var(--text);">${escapeHtml(eq.capitan || '-')}</b></span>
           <span>📞 ${escapeHtml(eq.contacto || '-')}</span>
         </div>
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:4px;">
+            <span>📦 Tamaño del documento</span>
+            <span style="font-variant-numeric:tabular-nums;">${tamanioKB} KB / 1024 KB</span>
+          </div>
+          <div style="height:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;">
+            <div style="height:100%;width:${pctLimite}%;background:${colorTamanio};border-radius:4px;"></div>
+          </div>
+        </div>
+        ${avisoTamanioHtml}
         <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--glass-border);margin-top:12px;padding-top:12px;">
           <button class="btn btn-sm" onclick="abrirModalRenombrarEquipo('${id}','${escapeHtml(eq.nombre)}')">✏️ Cambiar nombre</button>
           <label class="btn btn-sm" style="cursor:pointer;">🖼 ${eq.escudo ? 'Cambiar escudo' : 'Subir escudo'}<input type="file" accept="image/png,image/jpeg,image/jpg,image/*" class="hidden" onchange="adminSubirEscudo('${id}',this)"></label>

@@ -2,6 +2,17 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 15) — CONFIRMADO: límite de 1MB de Firestore, con indicador visible
+
+- **Confirmado en producción**: el usuario probó con las credenciales reales de "rotens" y le apareció el mensaje nuevo tal cual — "Este equipo ya no tiene espacio para guardar más comprobantes/fotos (llegó al límite de tamaño)". La hipótesis del límite de 1MB por documento (sesiones anteriores) queda 100% confirmada, ya no es una suposición.
+- **Nuevo — visibilidad del tamaño, no solo el error cuando ya pasó**:
+  - Barra de tamaño ("📦 Tamaño del documento: X KB / 1024 KB", con color verde/amarillo/rojo según % del límite) arriba de todo en el panel de cada equipo, con aviso explícito si está ≥70%.
+  - Punto de color (amarillo ≥70%, rojo ≥90%) junto a cada fila en la lista de "Equipos" por división, para detectar equipos en riesgo ANTES de que se traben, sin tener que entrar a cada uno.
+  - Aproximación vía `new Blob([JSON.stringify(eq)]).size` — no es byte-exacto contra la codificación interna de Firestore, pero como el documento es en su enorme mayoría strings base64 (puro ASCII), es una aproximación muy cercana.
+- **Pendiente para el usuario, ahora mismo**: en el panel de "rotens", borrar algunas fotos de carnet o comprobantes viejos (botones 🗑 ya construidos en sesiones anteriores) hasta bajar del ~90%, y que el equipo reintente subir.
+- **Pendiente de fondo, no resuelto esta sesión** (se le explicó el riesgo al usuario y decidió no hacerlo ahora): migrar el almacenamiento de imágenes de comprobantes/fotos de "incrustado en el documento de Firestore" a Firebase Storage, que no tiene este límite. Es el fix real y definitivo — hasta que se haga, cualquier equipo activo puede volver a toparse con este límite.
+- **Sin probar en el navegador de mi lado** (el usuario sí probó en producción con la cuenta real del equipo).
+
 ## ✅ Sesión 2026-08-08 (continuación 14) — admin puede subir/borrar foto de carnet + fix real del detector de "documento lleno"
 
 - **Bug encontrado en mi propio fix de la sesión anterior**: el chequeo de "documento de Firestore lleno" comparaba `err.code === 'resource-exhausted'`, pero ese código es para límites de cuota/velocidad — la validación de tamaño máximo (1 MB) es del lado del cliente, tira un `Error` sin ese código, con el tamaño en bytes mencionado en `.message`. Por eso, aunque "rotens" probablemente SÍ está chocando con el límite de tamaño (falla tanto la foto de carnet como el comprobante de seguro — dos subidas de imagen distintas, mismo síntoma genérico), mi mensaje específico nunca se disparaba. Ahora se detecta por contenido del mensaje ("longer than", "exceeds the maximum", etc.), no por código.
