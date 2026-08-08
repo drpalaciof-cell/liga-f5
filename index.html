@@ -4123,6 +4123,11 @@ function verImagenGrande(dataUrl) {
 // Corrige un monto declarado mal tipeado por el equipo (ej. "90" en vez de "90000") después
 // de cotejarlo contra la imagen real — no hay forma de detectar esto solo, hace falta que el
 // admin mire la foto y confirme el número correcto.
+// Refresca pagosCacheAdmin/equiposCacheAdmin además de reescribir el documento — si no, el
+// monto corregido se ve bien en el panel del equipo (que relee directo de Firestore) pero
+// sigue mal en todos lados que dependen de esos cachés (pestaña Pagos/Seguro, Datos de la
+// Temporada) hasta que se recarga la página entera. Devuelve una promesa para que el caller
+// pueda encadenar su propio refresco (ej. volver a abrir el panel del equipo) después.
 async function editarMontoDeclaradoInscripcion(equipoId, etapa) {
   const nuevoStr = prompt(`Monto correcto para ${etapa === 'saldo' ? 'el saldo' : 'la seña/pago'} (mirá la foto y confirmá el número real):`);
   if (nuevoStr == null) return;
@@ -4136,7 +4141,8 @@ async function editarMontoDeclaradoInscripcion(equipoId, etapa) {
     const historial = marcarMontoUltimaEntradaHistorial(eq.pagoComprobantesHistorial, etapa, nuevo);
     await db.collection('equipos').doc(equipoId).update({ [campo]: nuevo, pagoComprobantesHistorial: historial });
     showToast('Monto corregido.', 'ok');
-    verDetalleEquipoAdmin(equipoId);
+    await cargarPagosAdmin();
+    await cargarEquiposAdmin();
   } catch (e) { console.error(e); showToast('No se pudo corregir el monto.', 'error'); }
 }
 function marcarMontoUltimaEntradaHistorial(historial, etapa, montoDeclarado) {
@@ -4158,7 +4164,8 @@ async function editarMontoDeclaradoSeguro(equipoId, txId) {
     const nuevasTransacciones = (eq.segurosTransacciones || []).map(t => t.id === txId ? { ...t, montoDeclarado: nuevo } : t);
     await db.collection('equipos').doc(equipoId).update({ segurosTransacciones: nuevasTransacciones });
     showToast('Monto corregido.', 'ok');
-    verDetalleEquipoAdmin(equipoId);
+    await cargarPagosAdmin();
+    await cargarEquiposAdmin();
   } catch (e) { console.error(e); showToast('No se pudo corregir el monto.', 'error'); }
 }
 // Cada equipo es UN documento de Firestore, con límite duro de 1 MB — cada imagen guardada
@@ -4346,6 +4353,7 @@ function renderSegurosAdminList() {
       : `<span class="badge badge-warn">Pendiente</span>`;
     const monto = tx.dnis.length * MONTO_SEGURO_POR_JUGADOR;
     const receiptHtml = `<img src="${tx.comprobante}" class="receipt-thumb" onclick="verComprobanteSeguroAdmin('${eq.id}','${tx.id}')" style="cursor:pointer;">`;
+    const sinDeclararBadge = tx.montoDeclarado == null ? `<span class="badge badge-warn" title="Todavía nadie miró el comprobante y confirmó el monto real transferido — este $${monto.toLocaleString('es-AR')} es solo la cuenta teórica (jugadores × $${MONTO_SEGURO_POR_JUGADOR.toLocaleString('es-AR')}).">⚠️ Sin monto confirmado</span>` : '';
     return `<div class="team-row" style="--row-accent:${accent};animation-delay:${idx * 35}ms">
       <div class="team-row-main">
         ${receiptHtml}
@@ -4354,6 +4362,7 @@ function renderSegurosAdminList() {
           <div class="team-row-meta">
             <span class="badge" style="background:${accentSoft};color:${accent};border:1px solid ${accent};">${escapeHtml(eq.division || '-')}</span>
             ${badge}
+            ${sinDeclararBadge}
             <span class="team-row-sub">${tx.dnis.length} jugador(es) · $${monto.toLocaleString('es-AR')} · ${fmtFechaSeguroTx(tx.fechaCarga)} · Transfirió: ${escapeHtml(tx.nombreTransferencia) || 'sin dato'}</span>
           </div>
           ${htmlResumenMonto(tx.montoDeclarado, monto, 'Declarado')}
@@ -4361,6 +4370,7 @@ function renderSegurosAdminList() {
       </div>
       <div class="admin-table-actions">
         <button class="btn btn-sm" onclick="verComprobanteSeguroAdmin('${eq.id}','${tx.id}')">Ver detalle</button>
+        <button class="btn btn-sm" onclick="editarMontoDeclaradoSeguro('${eq.id}','${tx.id}')">✏️ Corregir monto</button>
         <button class="btn btn-sm" onclick="verDetalleEquipoAdmin('${eq.id}')">🗂 Ver todo</button>
         <button class="btn btn-sm btn-primary" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="aprobarSeguro('${eq.id}','${tx.id}')">✓ Aprobar</button>
         <button class="btn btn-sm btn-danger" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="rechazarSeguro('${eq.id}','${tx.id}')">✕ Rechazar</button>
@@ -4387,6 +4397,7 @@ function verComprobanteSeguroAdmin(equipoId, txId) {
     <img src="${tx.comprobante}" style="width:100%;border-radius:10px;border:1px solid var(--glass-border);margin-bottom:14px;">
     <div class="section-actions">
       <a class="btn" href="${tx.comprobante}" download="comprobante_seguro_${(eq.nombre || 'equipo').replace(/[^a-z0-9]+/gi, '_')}.jpg">⬇ Descargar</a>
+      <button class="btn" onclick="closeModal();editarMontoDeclaradoSeguro('${eq.id}','${tx.id}')">✏️ Corregir monto</button>
       <button class="btn btn-primary" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="closeModal();aprobarSeguro('${eq.id}','${tx.id}')">✓ Aprobar</button>
       <button class="btn btn-danger" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="closeModal();rechazarSeguro('${eq.id}','${tx.id}')">✕ Rechazar</button>
     </div>
@@ -5026,7 +5037,7 @@ async function verDetalleEquipoAdmin(id) {
     // el cambio sin tener que volver a entrar.
     const pagoComprobantesHtml = pagoHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de inscripción.</p>`
-      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}')`, borrarOnclick: t.id ? `eliminarComprobanteInscripcion('${id}','${t.id}')` : null, aprobarOnclick: `aprobarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))` })).join('');
+      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}').then(()=>verDetalleEquipoAdmin('${id}'))`, borrarOnclick: t.id ? `eliminarComprobanteInscripcion('${id}','${t.id}')` : null, aprobarOnclick: `aprobarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))` })).join('');
 
     // --- Seguro médico ---
     const s = estadoSeguroEquipo(eq);
@@ -5059,7 +5070,7 @@ async function verDetalleEquipoAdmin(id) {
       </div>`;
     const seguroComprobantesHtml = seguroHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de seguro.</p>`
-      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}')`, borrarOnclick: `eliminarComprobanteSeguro('${id}','${t.id}')`, aprobarOnclick: `aprobarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))` })).join('');
+      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, borrarOnclick: `eliminarComprobanteSeguro('${id}','${t.id}')`, aprobarOnclick: `aprobarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))` })).join('');
 
     // --- Carnets ---
     // El admin necesita poder generar el carnet de un equipo él mismo (ej. si el equipo

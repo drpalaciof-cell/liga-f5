@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 19) — corregir monto de seguro desde la cola de revisión, y fix de caché stale tras corregir un monto
+
+- **Reportado**: "sigue erroneo" el monto de seguros, a pesar de que `editarMontoDeclaradoSeguro` ya existía. Causa real: esa herramienta solo vivía en el panel de equipo (`verDetalleEquipoAdmin`) — la pestaña "Seguro" (la cola de revisión división por división, donde el admin realmente aprueba/rechaza a medida que llegan los comprobantes) no tenía forma de corregir el monto, solo mostraba la cuenta teórica (jugadores × $5.000) sin avisar que no era el monto real confirmado.
+- **Nuevo**: botón "✏️ Corregir monto" agregado en cada fila de `renderSegurosAdminList` y en el modal `verComprobanteSeguroAdmin` ("Ver detalle"). Se agregó también un badge "⚠️ Sin monto confirmado" en la fila cuando `tx.montoDeclarado` todavía no existe, para que sea visible de un vistazo cuáles faltan corregir en vez de asumir que la cuenta teórica ya es correcta.
+- **Bug de fondo corregido**: `editarMontoDeclaradoInscripcion`/`editarMontoDeclaradoSeguro` reescribían el documento pero solo refrescaban el panel de equipo (que relee directo de Firestore) — nunca `pagosCacheAdmin`/`equiposCacheAdmin`. Resultado: corregías el monto viendo el número actualizado en el panel del equipo, pero la pestaña Seguro/Pagos y "Datos de la Temporada" seguían mostrando el monto viejo hasta recargar la página entera — esto es, con altísima probabilidad, la causa real de "sigue erroneo". Ahora ambas funciones llaman a `cargarPagosAdmin()` + `cargarEquiposAdmin()` (que ya re-renderizan todas las listas dependientes), y devuelven una promesa — los dos call sites dentro del panel de equipo encadenan `.then(()=>verDetalleEquipoAdmin(id))` para seguir refrescando el panel abierto también.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 18) — Aprobar/Rechazar directo en el panel de cada equipo
 
 - **A pedido del usuario** ("me sacaste la función de aprobar los comprobantes de los seguros"): no era una función borrada — las cuatro ubicaciones (`renderPagosAdminList`, `verComprobanteAdmin`, `renderSegurosAdminList`, `verComprobanteSeguroAdmin`) seguían intactas. El gap real era que el panel consolidado de equipo (`verDetalleEquipoAdmin`, la pantalla completa a la que ahora se manda casi todo el tráfico de admin) nunca tuvo estos botones en sus propias filas de comprobante.
