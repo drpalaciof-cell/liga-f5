@@ -1610,7 +1610,7 @@ async function aplicarSesionDesdeAuth(user) {
         const doc = await db.collection('equipos').doc(equipoId).get();
         if (doc.exists) {
           state.equipoId = equipoId; state.equipo = doc.data();
-          state.equipo.fotosJugadores = await cargarFotosJugadores(equipoId);
+          state.equipo.fotosJugadores = await cargarFotosJugadores(equipoId, state.equipo.fotosJugadores);
           renderPanelEquipo(); showView('panel-equipo');
           subscribirPush('equipo', equipoId); iniciarBadgeEquipo();
         } else {
@@ -1955,7 +1955,7 @@ document.getElementById('form-login-equipo').addEventListener('submit', async e 
     }
     const doc = await db.collection('equipos').doc(id).get();
     state.equipoId = id; state.equipo = doc.data();
-    state.equipo.fotosJugadores = await cargarFotosJugadores(id);
+    state.equipo.fotosJugadores = await cargarFotosJugadores(id, state.equipo.fotosJugadores);
     renderPanelEquipo();
     showView('panel-equipo');
     showToast(`Bienvenido, ${state.equipo.nombre}`, 'ok');
@@ -3347,6 +3347,13 @@ async function renderPartidosEquipo() {
   } catch(e) { console.error(e); wrap.innerHTML = '<p class="muted" style="text-align:center;padding:20px 0;">Error al cargar los partidos.</p>'; }
 }
 
+// Limpia la copia vieja embebida (campo fotosJugadores.{dni} del documento del equipo, de
+// antes de la migración a subcolección) si todavía existe — si no se hace esto, subir o
+// borrar una foto nueva no libera nada de espacio real para un equipo que ya estaba cerca
+// del límite, porque la copia grande sigue viviendo en el documento igual.
+function limpiarFotoViejaEmbebida(equipoId, dni) {
+  return db.collection('equipos').doc(equipoId).update({ [`fotosJugadores.${dni}`]: firebase.firestore.FieldValue.delete() }).catch(() => {});
+}
 async function subirFotoJugador(dni, input) {
   const file = input.files[0];
   if (!file) return;
@@ -3357,6 +3364,7 @@ async function subirFotoJugador(dni, input) {
     // equipo) — cada jugador tiene su propio casillero de 1MB, así el plantel completo
     // nunca puede por sí solo hacer chocar al equipo contra el límite de tamaño.
     await db.collection('equipos').doc(state.equipoId).collection('fotos').doc(dni).set({ dataUrl, actualizado: new Date().toISOString() });
+    await limpiarFotoViejaEmbebida(state.equipoId, dni);
     if (!state.equipo.fotosJugadores) state.equipo.fotosJugadores = {};
     state.equipo.fotosJugadores[dni] = dataUrl;
     showToast('✅ Foto guardada. Recordá: debe ser tipo carnet 4×4, fondo blanco.', 'ok');
@@ -3373,15 +3381,19 @@ async function adminSubirFotoJugador(equipoId, dni, input) {
     showToast('Subiendo foto...', 'info');
     const dataUrl = await resizeImageFile(file, 400, 400);
     await db.collection('equipos').doc(equipoId).collection('fotos').doc(dni).set({ dataUrl, actualizado: new Date().toISOString() });
+    await limpiarFotoViejaEmbebida(equipoId, dni);
     showToast('✅ Foto guardada.', 'ok');
     verDetalleEquipoAdmin(equipoId);
   } catch(e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
 }
-// Para liberar espacio de un equipo — borra la foto de UN jugador puntual.
+// Para liberar espacio de un equipo — borra la foto de UN jugador puntual, en los dos
+// lugares posibles (subcolección nueva y campo viejo embebido, por si es de antes de la
+// migración y todavía no se tocó).
 async function adminBorrarFotoJugador(equipoId, dni) {
   if (!confirm('¿Borrar la foto de este jugador? Va a tener que subir una nueva para su carnet.')) return;
   try {
     await db.collection('equipos').doc(equipoId).collection('fotos').doc(dni).delete();
+    await limpiarFotoViejaEmbebida(equipoId, dni);
     showToast('Foto eliminada.', 'ok');
     verDetalleEquipoAdmin(equipoId);
   } catch (e) { console.error(e); showToast('No se pudo eliminar la foto.', 'error'); }
@@ -3469,7 +3481,7 @@ async function generarCarnetIndividualAdmin(equipoId, dni) {
   if (!jugador) { showToast('No se encontró el jugador.', 'error'); return; }
   // Estas listas en caché no traen la subcolección de fotos — se busca aparte para no
   // mostrar el carnet sin foto por error.
-  const fotosJugadores = await cargarFotosJugadores(equipoId);
+  const fotosJugadores = await cargarFotosJugadores(equipoId, eq.fotosJugadores);
   abrirVentanaCarnets([jugador], { ...eq, fotosJugadores });
 }
 function abrirVentanaCarnets(jugadores, eq) {
@@ -4084,8 +4096,13 @@ function badgeEstadoComprobante(estado) {
 // propio documento, con su propio límite de 1MB solo para ella). Se lee una vez y se
 // mergea en memoria como si fuera el campo de siempre, para no tener que tocar todo el
 // código que ya lee `eq.fotosJugadores[dni]` de forma sincrónica.
-async function cargarFotosJugadores(equipoId) {
-  const fotos = {};
+// `fotosViejas` es el mapa embebido de ANTES de esta migración (equipos que ya habían
+// subido fotos cuando esto todavía era un campo del documento) — sin este fallback, esas
+// fotos desaparecerían de golpe para todos los equipos existentes apenas se despliegue
+// esto, porque el código dejó de leer ese campo. La subcolección manda si un jugador
+// tiene foto en los dos lados (es la más nueva).
+async function cargarFotosJugadores(equipoId, fotosViejas) {
+  const fotos = { ...(fotosViejas || {}) };
   try {
     const snap = await db.collection('equipos').doc(equipoId).collection('fotos').get();
     snap.forEach(doc => { const d = doc.data(); if (d && d.dataUrl) fotos[doc.id] = d.dataUrl; });
@@ -4942,7 +4959,7 @@ async function verDetalleEquipoAdmin(id) {
     // Las fotos de carnet ya no viven en este documento (ver cargarFotosJugadores) — se
     // traen aparte y se mergean acá para que el resto de esta función las use exactamente
     // igual que antes de la migración, sin tener que tocar el resto del código.
-    eq.fotosJugadores = await cargarFotosJugadores(id);
+    eq.fotosJugadores = await cargarFotosJugadores(id, eq.fotosJugadores);
     let cfg = {};
     try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
 

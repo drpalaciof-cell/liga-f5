@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 17) — fix urgente a la migración: compatibilidad con fotos viejas
+
+- **Encontrado antes de que impactara**: la migración de la continuación 16, tal cual quedó, iba a hacer que **todas las fotos de carnet ya subidas por cualquier equipo desaparecieran** apenas se desplegó — el código dejó de leer el campo viejo `fotosJugadores` del documento, y la subcolección nueva arranca vacía para todo el mundo. Un regresión mucho peor que el problema que se estaba arreglando.
+- **Fix**: `cargarFotosJugadores(equipoId, fotosViejas)` ahora arranca con el mapa viejo como base y lo pisa con lo que haya en la subcolección — las fotos de antes de la migración se siguen viendo con normalidad. Los 4 lugares que la llaman le pasan el campo viejo si existe.
+- **Además**: subir o borrar una foto ahora también limpia esa misma clave del campo viejo embebido (`limpiarFotoViejaEmbebida`) — si no, el botón "🗑 Borrar" de un equipo que todavía tiene sus fotos viejas (como rotens, ahora mismo) no liberaba nada de espacio real, porque solo tocaba la subcolección (vacía) y la copia grande seguía intacta en el documento.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 16) — fix de fondo: fotos de carnet migradas a subcolección
 
 - **A pedido explícito** (el usuario no quería seguir con borrado manual como única solución, y pidió prevenir el mismo problema para equipos con más jugadores en su lista) — se migraron las **fotos de carnet** de un campo `fotosJugadores` embebido en el documento del equipo a una subcolección `equipos/{id}/fotos/{dni}`, un documento por jugador. Cada foto tiene ahora su propio límite de 1MB para ella sola — el tamaño de la lista de buena fe ya no puede, por sí sola, empujar a un equipo contra el límite del documento.
