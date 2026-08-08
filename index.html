@@ -3932,7 +3932,7 @@ async function renderPagosAdminList() {
       </div>
       <div class="admin-table-actions">
         ${info.comprobante ? `<button class="btn btn-sm" onclick="verComprobanteAdmin('${eq.id}')">Ver comprobante</button>` : ''}
-        <button class="btn btn-sm" onclick="verHistorialComprobantes('${eq.id}')">🗂 Historial</button>
+        <button class="btn btn-sm" onclick="verDetalleEquipoAdmin('${eq.id}')">🗂 Ver todo</button>
         <button class="btn btn-sm btn-primary" ${!info.etapa ? 'disabled' : ''} onclick="aprobarPago('${eq.id}')">✓ Aprobar</button>
         <button class="btn btn-sm btn-danger" ${!info.etapa ? 'disabled' : ''} onclick="rechazarPago('${eq.id}')">✕ Rechazar</button>
       </div>
@@ -3959,60 +3959,6 @@ function badgeEstadoComprobante(estado) {
   if (estado === 'aprobado') return `<span class="badge badge-ok">Aprobado</span>`;
   if (estado === 'rechazado') return `<span class="badge badge-danger">Rechazado</span>`;
   return `<span class="badge badge-warn">Pendiente</span>`;
-}
-async function verHistorialComprobantes(id) {
-  const eq = pagosCacheAdmin.find(e => e.id === id);
-  if (!eq) return;
-  let cfg = {};
-  try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
-  const requerido = montoTotalRequerido(eq, cfg);
-  const aprobado = montoTotalAprobado(eq, cfg);
-  const pendiente = saldoPendienteEquipo(eq, cfg);
-  const esEstimado = tieneMontoInscripcionEstimado(eq);
-
-  const etapaLabel = { principal: (eq.pagoTipo || 'total') === 'sena' ? 'Inscripción · Seña' : 'Inscripción · Pago total', saldo: 'Inscripción · Saldo' };
-  const filas = [
-    ...(eq.pagoComprobantesHistorial || []).map(t => ({
-      fecha: t.fechaCarga, estado: t.estado, monto: t.montoDeclarado, nombreTransferencia: t.nombreTransferencia,
-      comprobante: t.comprobante, etiqueta: etapaLabel[t.etapa] || 'Inscripción'
-    })),
-    ...(eq.segurosTransacciones || []).map(t => ({
-      fecha: t.fechaCarga, estado: t.estado, monto: t.dnis.length * MONTO_SEGURO_POR_JUGADOR, nombreTransferencia: t.nombreTransferencia,
-      comprobante: t.comprobante, etiqueta: `Seguro médico · ${t.dnis.length} jugador(es)`
-    }))
-  ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-  const resumenHtml = requerido
-    ? `<div class="glass" style="border-radius:12px;padding:12px 14px;margin-bottom:${esEstimado ? '6px' : '14px'};display:flex;gap:18px;flex-wrap:wrap;font-size:13px;">
-        <div>Requerido inscripción: <strong>$${requerido.toLocaleString('es-AR')}</strong></div>
-        <div>Aprobado: <strong style="color:var(--ok);">$${aprobado.toLocaleString('es-AR')}</strong></div>
-        <div>Falta cancelar: <strong style="color:${pendiente > 0 ? 'var(--warn)' : 'var(--ok)'};">$${pendiente.toLocaleString('es-AR')}</strong></div>
-      </div>`
-    : `<p class="muted" style="margin-bottom:14px;">El monto de inscripción de ${escapeHtml(eq.division || '')} todavía no fue configurado.</p>`;
-  const avisoEstimadoHtml = esEstimado
-    ? `<p style="font-size:11.5px;color:var(--warn);margin-bottom:14px;">⚠️ Este equipo quedó aprobado antes de que existiera el campo "monto declarado" (31/07/2026) — el "Aprobado" de arriba es una estimación con el monto teórico, no lo que dice el comprobante real. Revisá la imagen abajo y confirmá el monto a mano si hace falta.</p>`
-    : '';
-
-  const filasHtml = filas.length === 0
-    ? `<p class="muted">Todavía no hay comprobantes cargados.</p>`
-    : filas.map(f => `
-      <div class="list-row" style="align-items:center;">
-        <img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="window.open('${f.comprobante}','_blank')">
-        <div style="flex:1;min-width:0;">
-          <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
-          <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transfirió: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
-        </div>
-        ${badgeEstadoComprobante(f.estado)}
-      </div>`).join('');
-
-  openModal(`
-    <h2 style="margin-bottom:4px;">${escapeHtml(eq.nombre)} — Historial de comprobantes</h2>
-    <p class="muted" style="margin-bottom:14px;">Todos los comprobantes cargados por el equipo, aprobados o no, para volver a revisarlos cuando haga falta.</p>
-    ${resumenHtml}
-    ${avisoEstimadoHtml}
-    ${filasHtml}
-    <button class="btn btn-block" style="margin-top:14px;" onclick="closeModal()">Cerrar</button>
-  `);
 }
 function marcarUltimaEntradaHistorial(historial, etapa, estado, fechaRevision) {
   const lista = historial || [];
@@ -4122,7 +4068,6 @@ function estadoSeguroEquipo(eq) {
   const faltantes = lista.filter(j => !aseguradosSet.has(j.dni) && !manualSet.has(j.dni));
   return { totalLista: lista.length, asegurados, habilitadosManual, faltantes, dineroFalta: faltantes.length * MONTO_SEGURO_POR_JUGADOR };
 }
-function nombreJugador(j) { return `${j.apellido || ''} ${j.nombre || ''}`.trim() || j.dni || '—'; }
 function renderSegurosPorEquipoAdmin() {
   const wrap = document.getElementById('pa-seguros-equipo-list');
   if (!wrap) return;
@@ -4140,30 +4085,9 @@ function renderSegurosPorEquipoAdmin() {
       </div>
       <span class="badge ${completo ? 'badge-ok' : 'badge-warn'}">${cubiertos}/${s.totalLista} cubiertos</span>
       ${s.dineroFalta > 0 ? `<span class="badge badge-danger">Falta $${s.dineroFalta.toLocaleString('es-AR')}</span>` : ''}
-      <button class="btn btn-sm" onclick="verDetalleSeguroEquipo('${eq.id}')">Ver jugadores</button>
-      <button class="btn btn-sm" onclick="verHistorialComprobantes('${eq.id}')">🗂 Historial</button>
+      <button class="btn btn-sm" onclick="verDetalleEquipoAdmin('${eq.id}')">🗂 Ver todo</button>
     </div>`;
   }).join('');
-}
-function verDetalleSeguroEquipo(id) {
-  const eq = pagosCacheAdmin.find(e => e.id === id);
-  if (!eq) return;
-  const s = estadoSeguroEquipo(eq);
-  const lista = (items, vacio) => items.length === 0
-    ? `<p class="muted" style="font-size:12.5px;">${vacio}</p>`
-    : `<ul style="margin:0 0 0 18px;padding:0;font-size:13px;line-height:1.7;">${items.map(j => `<li>${escapeHtml(nombreJugador(j))} — DNI ${escapeHtml(j.dni)}</li>`).join('')}</ul>`;
-  openModal(`
-    <h2 style="margin-bottom:4px;">${escapeHtml(eq.nombre)} — Seguro médico</h2>
-    <p class="muted" style="margin-bottom:14px;">${s.totalLista} jugador(es) en la lista de buena fe (con DNI cargado).</p>
-    <div class="data-section-sep">✅ Asegurados (${s.asegurados.length})</div>
-    ${lista(s.asegurados, 'Ninguno todavía.')}
-    <div class="data-section-sep">🩹 Habilitados manualmente (${s.habilitadosManual.length})</div>
-    ${lista(s.habilitadosManual, 'Ninguno.')}
-    <div class="data-section-sep">❌ Faltan asegurar (${s.faltantes.length})</div>
-    ${lista(s.faltantes, '¡Ninguno! Plantel completo.')}
-    ${s.dineroFalta > 0 ? `<div class="data-row data-row-total" style="margin-top:10px;"><span class="data-row-label">Falta pagar en seguros</span><span class="data-row-value">$${s.dineroFalta.toLocaleString('es-AR')}</span></div>` : ''}
-    <button class="btn btn-block" style="margin-top:14px;" onclick="closeModal()">Cerrar</button>
-  `);
 }
 function renderSegurosAdminList() {
   const filtro = state.seguroFiltroActivo || 'pendiente';
@@ -4202,7 +4126,7 @@ function renderSegurosAdminList() {
       </div>
       <div class="admin-table-actions">
         <button class="btn btn-sm" onclick="verComprobanteSeguroAdmin('${eq.id}','${tx.id}')">Ver detalle</button>
-        <button class="btn btn-sm" onclick="verHistorialComprobantes('${eq.id}')">🗂 Historial</button>
+        <button class="btn btn-sm" onclick="verDetalleEquipoAdmin('${eq.id}')">🗂 Ver todo</button>
         <button class="btn btn-sm btn-primary" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="aprobarSeguro('${eq.id}','${tx.id}')">✓ Aprobar</button>
         <button class="btn btn-sm btn-danger" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="rechazarSeguro('${eq.id}','${tx.id}')">✕ Rechazar</button>
       </div>
@@ -4784,54 +4708,117 @@ async function crearEquipo(e) {
     cargarEquiposAdmin();
   } catch (err) { console.error(err); showToast('No se pudo crear el equipo.', 'error'); }
 }
+// Panel único por equipo: inscripción (comprobantes + monto) y seguro (cobertura por
+// jugador + comprobantes) juntos en un solo lugar — antes estaban repartidos entre este
+// modal, "🗂 Historial" y "Ver jugadores", que era justo lo que generaba la queja de
+// "está todo disperso".
 async function verDetalleEquipoAdmin(id) {
   try {
     const doc = await db.collection('equipos').doc(id).get();
     if (!doc.exists) return;
     const eq = { id: doc.id, ...doc.data() };
+    let cfg = {};
+    try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
+
     const jugadores = eq.jugadores && eq.jugadores.length > 0 ? eq.jugadores : emptyJugadores();
     const count = jugadores.filter(j => j.apellido || j.nombre || j.dni).length;
-    let cfgSeguro = {};
-    try { const cfgDoc = await db.collection('config').doc('general').get(); cfgSeguro = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
-    const venciSeguroAdmin = !!(cfgSeguro.fechaLimiteSeguro && new Date() > new Date(cfgSeguro.fechaLimiteSeguro + 'T23:00:00'));
-    const seguroAprobados = new Set(eq.seguroJugadoresDni || []);
-    const seguroManualDnis = new Set((eq.seguroHabilitadoManual || []).map(h => h.dni));
-    const seguroPendientes = new Set((eq.segurosTransacciones || []).filter(t => t.estado === 'pendiente').flatMap(t => t.dnis));
-    const rows = jugadores.map((j, i) => {
-      let seguroCell = '<span class="muted">-</span>';
+    const archivo = `escudo_${(eq.nombre || 'equipo').replace(/[^a-z0-9]+/gi, '_')}.jpg`;
+
+    // --- Inscripción ---
+    const requerido = montoTotalRequerido(eq, cfg);
+    const aprobadoIns = montoTotalAprobado(eq, cfg);
+    const pendienteIns = saldoPendienteEquipo(eq, cfg);
+    const esEstimado = tieneMontoInscripcionEstimado(eq);
+    const pagoHistorial = (eq.pagoComprobantesHistorial || []).slice().sort((a, b) => new Date(b.fechaCarga) - new Date(a.fechaCarga));
+    const etapaLabel = { principal: (eq.pagoTipo || 'total') === 'sena' ? 'Seña' : 'Pago total', saldo: 'Saldo' };
+    const totalDeclaradoIns = pagoHistorial.reduce((s, t) => s + (t.montoDeclarado || 0), 0);
+
+    const resumenInsHtml = requerido
+      ? `<div class="glass" style="border-radius:12px;padding:12px 14px;margin-bottom:${esEstimado ? '6px' : '10px'};display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
+          <div>Requerido: <strong>$${requerido.toLocaleString('es-AR')}</strong></div>
+          <div>Aprobado: <strong style="color:var(--ok);">$${aprobadoIns.toLocaleString('es-AR')}</strong></div>
+          <div>Falta cancelar: <strong style="color:${pendienteIns > 0 ? 'var(--warn)' : 'var(--ok)'};">$${pendienteIns.toLocaleString('es-AR')}</strong></div>
+        </div>`
+      : `<p class="muted" style="margin-bottom:10px;">El monto de inscripción de ${escapeHtml(eq.division || '')} todavía no fue configurado.</p>`;
+    const avisoEstimadoHtml = esEstimado
+      ? `<p style="font-size:11.5px;color:var(--warn);margin-bottom:10px;">⚠️ Aprobado antes de que existiera el campo "monto declarado" (31/07/2026) — el "Aprobado" de arriba es una estimación, no lo que dice el comprobante real.</p>`
+      : '';
+    const comprobanteRow = (f) => `
+      <div class="list-row" style="align-items:center;">
+        <img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="window.open('${f.comprobante}','_blank')">
+        <div style="flex:1;min-width:0;">
+          <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
+          <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transfirió: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
+        </div>
+        ${badgeEstadoComprobante(f.estado)}
+      </div>`;
+    const pagoComprobantesHtml = pagoHistorial.length === 0
+      ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de inscripción.</p>`
+      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción' })).join('');
+
+    // --- Seguro médico ---
+    const s = estadoSeguroEquipo(eq);
+    const cubiertos = s.asegurados.length + s.habilitadosManual.length;
+    const seguroHistorial = (eq.segurosTransacciones || []).slice().sort((a, b) => new Date(b.fechaCarga) - new Date(a.fechaCarga));
+    const seguroAprobadoTotal = calcularIngresoSeguro(eq);
+    const cubiertosSet = new Set([...s.asegurados, ...s.habilitadosManual].map(j => j.dni));
+    const pendientesSet = new Set((eq.segurosTransacciones || []).filter(t => t.estado === 'pendiente').flatMap(t => t.dnis));
+    const venciSeguroAdmin = !!(cfg.fechaLimiteSeguro && new Date() > new Date(cfg.fechaLimiteSeguro + 'T23:00:00'));
+
+    const rosterRows = jugadores.filter(j => j.apellido || j.nombre || j.dni).map((j, i) => {
+      const cubierto = j.dni && cubiertosSet.has(j.dni);
+      const pendiente = j.dni && !cubierto && pendientesSet.has(j.dni);
+      const bg = !j.dni ? 'transparent' : cubierto ? 'rgba(74,222,128,.12)' : pendiente ? 'rgba(251,191,36,.10)' : 'rgba(248,113,113,.10)';
+      let estadoTxt = '<span class="muted">Sin DNI</span>';
       if (j.dni) {
-        if (seguroAprobados.has(j.dni)) seguroCell = '<span class="badge badge-ok">Asegurado</span>';
-        else if (seguroManualDnis.has(j.dni)) seguroCell = '<span class="badge badge-cyan">Pago tardío</span>';
-        else if (seguroPendientes.has(j.dni)) seguroCell = '<span class="badge badge-warn">Pendiente</span>';
-        else if (venciSeguroAdmin) seguroCell = `<span class="badge badge-danger">No habilitado</span> <button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" onclick="habilitarSeguroTardio('${id}','${escapeHtml(j.dni)}','${escapeHtml(((j.apellido||'')+' '+(j.nombre||'')).trim())}')">Habilitar $7.000</button>`;
-        else seguroCell = '<span class="muted">Sin gestionar</span>';
+        if (s.asegurados.some(a => a.dni === j.dni)) estadoTxt = '<span class="badge badge-ok">Asegurado</span>';
+        else if (s.habilitadosManual.some(a => a.dni === j.dni)) estadoTxt = '<span class="badge badge-cyan">Pago tardío</span>';
+        else if (pendiente) estadoTxt = '<span class="badge badge-warn">Comprobante pendiente</span>';
+        else if (venciSeguroAdmin) estadoTxt = `<span class="badge badge-danger">No habilitado</span> <button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" onclick="habilitarSeguroTardio('${id}','${escapeHtml(j.dni)}','${escapeHtml(((j.apellido || '') + ' ' + (j.nombre || '')).trim())}')">Habilitar $7.000</button>`;
+        else estadoTxt = '<span class="badge badge-danger">Falta asegurar</span>';
       }
-      return `<tr><td class="idx-cell"><span class="jersey-num">${j.numero||i+1}</span></td><td class="uppercase-bold">${escapeHtml(j.apellido)||'-'}</td><td>${escapeHtml(j.nombre)||'-'}</td><td style="font-variant-numeric:tabular-nums;">${escapeHtml(j.dni)||'-'}</td><td>${seguroCell}</td></tr>`;
+      return `<tr style="background:${bg};"><td class="idx-cell"><span class="jersey-num">${j.numero || i + 1}</span></td><td class="uppercase-bold">${escapeHtml(j.apellido) || '-'}</td><td>${escapeHtml(j.nombre) || '-'}</td><td style="font-variant-numeric:tabular-nums;">${escapeHtml(j.dni) || '-'}</td><td>${estadoTxt}</td></tr>`;
     }).join('');
-    const archivo = `escudo_${(eq.nombre||'equipo').replace(/[^a-z0-9]+/gi,'_')}.jpg`;
-    const pagoEstado = eq.pagoEstado || 'sin_subir';
-    const pagoColor = pagoEstado==='aprobado'?'var(--ok)':pagoEstado==='rechazado'?'var(--danger)':'var(--text-dim)';
+
+    const resumenSeguroHtml = `<div class="glass" style="border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
+        <div>Cubiertos: <strong style="color:var(--ok);">${cubiertos}/${s.totalLista}</strong></div>
+        <div>Recaudado: <strong style="color:var(--ok);">$${seguroAprobadoTotal.toLocaleString('es-AR')}</strong></div>
+        ${s.dineroFalta > 0 ? `<div>Falta para asegurar a los ${s.faltantes.length} restantes: <strong style="color:var(--warn);">$${s.dineroFalta.toLocaleString('es-AR')}</strong></div>` : `<div style="color:var(--ok);">✅ Plantel completo</div>`}
+      </div>`;
+    const seguroComprobantesHtml = seguroHistorial.length === 0
+      ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de seguro.</p>`
+      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)` })).join('');
+
     openModal(`
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;">
-        ${eq.escudo ? `<img src="${eq.escudo}" style="width:54px;height:54px;border-radius:12px;object-fit:cover;border:1px solid var(--glass-border);flex-shrink:0;">` : `<div class="team-shield" style="width:54px;height:54px;margin:0;font-size:16px;flex-shrink:0;">${escapeHtml((eq.nombre||'?').slice(0,2).toUpperCase())}</div>`}
+        ${eq.escudo ? `<img src="${eq.escudo}" style="width:54px;height:54px;border-radius:12px;object-fit:cover;border:1px solid var(--glass-border);flex-shrink:0;">` : `<div class="team-shield" style="width:54px;height:54px;margin:0;font-size:16px;flex-shrink:0;">${escapeHtml((eq.nombre || '?').slice(0, 2).toUpperCase())}</div>`}
         <div style="min-width:0;">
           <h2 style="margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(eq.nombre)}</h2>
-          <div style="font-size:12px;color:var(--text-dim);">${escapeHtml(eq.division||'')} · ${count}/${NUM_JUGADORES} jugadores</div>
+          <div style="font-size:12px;color:var(--text-dim);">${escapeHtml(eq.division || '')} · ${count}/${NUM_JUGADORES} en lista de buena fe</div>
         </div>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--text-dim);">
-        <span>👤 Capitán: <b style="color:var(--text);">${escapeHtml(eq.capitan||'-')}</b></span>
-        <span>📞 ${escapeHtml(eq.contacto||'-')}</span>
-        <span>💳 Pago: <b style="color:${pagoColor};">${pagoEstado}</b></span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
+        <span>👤 Capitán: <b style="color:var(--text);">${escapeHtml(eq.capitan || '-')}</b></span>
+        <span>📞 ${escapeHtml(eq.contacto || '-')}</span>
       </div>
-      <div class="tbl-wrap" style="max-height:280px;overflow-y:auto;overflow-x:auto;margin-bottom:14px;">
-        <table><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Seguro</th></tr></thead><tbody>${rows}</tbody></table>
+
+      <div class="data-section-sep" style="margin-top:0;">💳 Inscripción — ${pagoHistorial.length} comprobante(s) · $${totalDeclaradoIns.toLocaleString('es-AR')} declarado en total</div>
+      ${resumenInsHtml}
+      ${avisoEstimadoHtml}
+      <div style="max-height:220px;overflow-y:auto;margin-bottom:16px;">${pagoComprobantesHtml}</div>
+
+      <div class="data-section-sep">🩺 Seguro médico — ${seguroHistorial.length} comprobante(s)</div>
+      ${resumenSeguroHtml}
+      <div class="tbl-wrap" style="max-height:260px;overflow-y:auto;overflow-x:auto;margin-bottom:10px;">
+        <table><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Estado</th></tr></thead><tbody>${rosterRows}</tbody></table>
       </div>
+      <div style="max-height:220px;overflow-y:auto;margin-bottom:16px;">${seguroComprobantesHtml}</div>
+
       <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--glass-border);padding-top:12px;">
         <button class="btn btn-sm" onclick="closeModal();abrirModalRenombrarEquipo('${id}','${escapeHtml(eq.nombre)}')">✏️ Cambiar nombre</button>
-        <label class="btn btn-sm" style="cursor:pointer;">🖼 ${eq.escudo?'Cambiar escudo':'Subir escudo'}<input type="file" accept="image/png,image/jpeg,image/jpg,image/*" class="hidden" onchange="adminSubirEscudo('${id}',this)"></label>
-        ${eq.escudo?`<a class="btn btn-sm" href="${eq.escudo}" download="${archivo}">⬇ Escudo</a>`:''}
-        <button class="btn btn-sm btn-primary" onclick='closeModal();generarPDFEquipo(${JSON.stringify(eq).replace(/'/g,"&#39;")})'>⬇ PDF lista</button>
+        <label class="btn btn-sm" style="cursor:pointer;">🖼 ${eq.escudo ? 'Cambiar escudo' : 'Subir escudo'}<input type="file" accept="image/png,image/jpeg,image/jpg,image/*" class="hidden" onchange="adminSubirEscudo('${id}',this)"></label>
+        ${eq.escudo ? `<a class="btn btn-sm" href="${eq.escudo}" download="${archivo}">⬇ Escudo</a>` : ''}
+        <button class="btn btn-sm btn-primary" onclick='closeModal();generarPDFEquipo(${JSON.stringify(eq).replace(/'/g, "&#39;")})'>⬇ PDF lista</button>
         <button class="btn btn-sm" onclick="closeModal();abrirRedactarAdmin('${id}')">✉️ Mensaje</button>
         <button class="btn btn-sm" onclick="closeModal();resetPasswordEquipo('${id}','${escapeHtml(eq.nombre)}')">🔑 Contraseña</button>
         <button class="btn btn-sm btn-danger" onclick="closeModal();eliminarEquipo('${id}','${escapeHtml(eq.nombre)}')">🗑 Eliminar</button>

@@ -2,6 +2,16 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 4) — panel único por equipo (inscripción + seguro juntos)
+
+- **Motivo**: quejas de "todo disperso" — antes había 3 lugares distintos para ver datos de un mismo equipo (detalle del equipo, "🗂 Historial", "Ver jugadores" del seguro), cada uno con parte de la info.
+- **Fix**: `verDetalleEquipoAdmin` (se abre tocando cualquier equipo, desde Equipos/Inscripciones/Seguro — todos los botones "🗂 Ver todo" y "Ver jugadores" ahora abren esto mismo) es ahora el panel único con:
+  - **Inscripción**: cantidad de comprobantes + monto declarado total, resumen requerido/aprobado/falta, y la lista de cada comprobante con imagen.
+  - **Seguro médico**: resumen cubiertos/recaudado/falta, tabla de TODA la lista de buena fe con la fila sombreada verde (asegurado) o roja (falta asegurar) — amarillo si tiene un comprobante pendiente de aprobar — y la lista de cada comprobante de seguro con imagen. El botón "Habilitar $7.000" (pago tardío) sigue ahí, en la fila del jugador vencido.
+- Se borraron las funciones viejas (`verHistorialComprobantes`, `verDetalleSeguroEquipo`) que quedaron redundantes — ya no hay 3 lugares, hay 1.
+- **Hallazgo de la sesión, no arreglado por mí (dato mal cargado, no bug)**: `montoInscripcionSegunda` en Configuración estaba guardado como `150` en vez de `150000` — el usuario ya lo corrigió a mano. Si el número de seguros sigue sin cerrar contra el banco, lo más probable es que haya comprobantes de seguro pendientes de aprobar (equipos que mandaron un comprobante por jugador en vez de agrupados) — no confirmado todavía, pendiente de que el usuario revise el filtro "Pendientes".
+- **Sin probar en el navegador** — no se pudo lograr acceso de admin en vivo esta sesión (múltiples intentos fallidos de sincronizar la pestaña automatizada con la del usuario). Revisado por lectura de código y chequeo de sintaxis.
+
 ## ✅ Sesión 2026-08-08 (continuación 3) — objetivo de inscripciones: monto directo, no cupo × precio
 
 - **Cambio de enfoque**: el objetivo dejó de calcularse como `cupo de equipos × monto de inscripción` (indirecto, generaba confusión y números que no cerraban) y ahora es un **monto fijo por división**, cargado directo en Admin → Configuración: "Objetivo de inscripciones Primera ($)" / "...Segunda ($)". Reemplaza los campos "Cupo de equipos" de la sesión anterior.
