@@ -3646,9 +3646,17 @@ function tieneMontoInscripcionEstimado(eq) {
   return (eq.pagoEstado === 'aprobado' && eq.pagoMontoDeclarado == null)
       || (eq.pagoSaldoEstado === 'aprobado' && eq.pagoSaldoMontoDeclarado == null);
 }
-// Suma el monto DECLARADO de cada tanda de seguro aprobada (no cantidad × $5.000 teórico).
+// Suma el monto DECLARADO de cada tanda de seguro aprobada (no cantidad × $5.000 teórico) —
+// salvo que esa tanda sea de antes del 31/07/2026 (mismo commit que agregó "monto declarado"
+// para inscripción), en cuyo caso montoDeclarado no existe y se estima cantidad × $5.000 en
+// vez de contarla como $0. Sin este fallback, cada tanda vieja restaba $5.000 × sus jugadores
+// del total real.
 function calcularIngresoSeguroNormal(eq) {
-  return (eq.segurosTransacciones || []).filter(t => t.estado === 'aprobado').reduce((s, t) => s + (t.montoDeclarado || 0), 0);
+  return (eq.segurosTransacciones || []).filter(t => t.estado === 'aprobado')
+    .reduce((s, t) => s + (t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR), 0);
+}
+function tieneTandaSeguroEstimada(eq) {
+  return (eq.segurosTransacciones || []).some(t => t.estado === 'aprobado' && t.montoDeclarado == null);
 }
 function calcularIngresoSeguro(eq) {
   return calcularIngresoSeguroNormal(eq) + (eq.seguroHabilitadoManual || []).reduce((s, h) => s + (h.monto || 0), 0);
@@ -4834,7 +4842,10 @@ async function verDetalleEquipoAdmin(id) {
       </div>`;
     const seguroComprobantesHtml = seguroHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de seguro.</p>`
-      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)` })).join('');
+      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}` })).join('');
+    const avisoSeguroEstimadoHtml = tieneTandaSeguroEstimada(eq)
+      ? `<p style="font-size:11.5px;color:var(--warn);margin-bottom:10px;">⚠️ Alguna tanda de seguro es de antes del 31/07/2026 (sin monto declarado) — su parte del "Recaudado" de arriba es una estimación, no lo que dice el comprobante real.</p>`
+      : '';
 
     document.getElementById('ed-nombre-title').textContent = eq.nombre || '';
     document.getElementById('ed-content').innerHTML = `
@@ -4874,6 +4885,7 @@ async function verDetalleEquipoAdmin(id) {
         <h3>🩺 Seguro médico</h3>
         <p class="wizard-help" style="margin-bottom:12px;">${seguroHistorial.length} comprobante(s) subido(s)</p>
         ${resumenSeguroHtml}
+        ${avisoSeguroEstimadoHtml}
         <div class="tbl-wrap" style="overflow-x:auto;margin-bottom:14px;">
           <table><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Estado</th></tr></thead><tbody>${rosterRows}</tbody></table>
         </div>

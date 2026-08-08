@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 7) — fix: seguros sumaba $0 por cada tanda anterior al 31/07
+
+- **Bug**: 10 jugadores asegurados a $5.000 c/u debería dar $50.000, pero "Recaudado" mostraba $45.000. Misma causa raíz que el "$90" de inscripción: el campo `montoDeclarado` se agregó el 31/07/2026 **en el mismo commit** para inscripción Y seguro — cualquier tanda de seguro aprobada antes de esa fecha no tiene ese campo, y `calcularIngresoSeguroNormal` la sumaba como `$0` en vez de estimarla.
+- **Fix**: mismo criterio que inscripción — si `montoDeclarado` no existe en una tanda aprobada, se usa `cantidad de jugadores × $5.000` como estimación en vez de $0. Afecta a todos los lugares que ya calculaban esto (`calcularIngresoSeguro` es la función común): "Datos de la Temporada", los 2 PDF de informes, y el panel de equipo. También se corrigió la fila de cada comprobante de seguro en el panel de equipo, que **siempre** mostraba el monto teórico en vez del declarado real (aunque existiera) — ahora muestra el real cuando hay, y marca "· estimado" cuando no.
+- Nuevo aviso ⚠️ en el panel de equipo si alguna tanda de ese equipo es de las viejas sin monto declarado.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 6) — fix: no se podía abrir la imagen del comprobante
 
 - **Bug**: al tocar la miniatura de un comprobante en el panel de equipo, no pasaba nada. Causa: `window.open()` con una URL `data:` (que es como se guardan las imágenes, sin Storage) está bloqueado silenciosamente por Chrome desde hace varias versiones (política anti-phishing) — no tira error, simplemente no abre nada.
