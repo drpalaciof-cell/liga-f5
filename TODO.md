@@ -2,6 +2,12 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 5) — panel de equipo a pantalla completa + fix del "$90"
+
+- **Pantalla completa, no modal**: a pedido explícito ("no quiero una ventanita"), `verDetalleEquipoAdmin` dejó de usar `openModal()` — ahora es una pantalla nueva (`#equipo-detalle-admin`) dentro del flujo normal: Torneo Clausura → división → lista de equipos → tocás un equipo → pantalla completa con todo (botón "← Volver a Equipos" arriba). Mismo contenido que el panel unificado de la iteración anterior (inscripción + seguro + roster verde/rojo), solo que ahora ocupa toda la pantalla en vez de un recuadro de 520px.
+- **Bug real encontrado y corregido — el "$90 Aprobado" con "0 comprobantes"**: `pagoComprobantesHistorial` (el array nuevo) solo tiene entradas de subidas hechas DESPUÉS de que se agregó ese historial. Un equipo aprobado antes de eso (o cargado a mano por el admin con "+ Nuevo equipo", que arranca `pagoEstado:'aprobado'` sin comprobante) tenía su único comprobante viviendo solo en los campos sueltos `pagoComprobante`/`pagoSaldoComprobante` — el panel los ignoraba y por eso decía "0 comprobantes" mientras "Aprobado" mostraba un monto de otro lado. Fix: si esos campos sueltos existen y no están ya representados en el historial, se agregan como una entrada más (con su imagen real, si la tiene). Si un equipo figura aprobado y NO tiene comprobante en ningún lado (ninguna imagen), ahora se avisa explícito en rojo en vez de mostrar el monto mudo — probablemente sea un equipo cargado a mano por el admin, no una imagen real con el número mal.
+- **Sin probar en el navegador** — no se logró acceso de admin en vivo esta sesión.
+
 ## ✅ Sesión 2026-08-08 (continuación 4) — panel único por equipo (inscripción + seguro juntos)
 
 - **Motivo**: quejas de "todo disperso" — antes había 3 lugares distintos para ver datos de un mismo equipo (detalle del equipo, "🗂 Historial", "Ver jugadores" del seguro), cada uno con parte de la info.
