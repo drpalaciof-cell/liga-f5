@@ -3457,14 +3457,21 @@ async function guardarEdadJugador(dni, valor) {
   catch(e) { console.error(e); }
 }
 
-function generarCarnetsPDF() {
+// `state.equipo.fotosJugadores` solo se carga una vez, al iniciar sesión — si el admin sube
+// o corrige una foto mientras el delegado ya tenía la app abierta (algo muy común en el
+// celular, donde la sesión queda abierta días), esa copia en memoria queda vieja y el PDF
+// sale sin esas fotos aunque ya estén guardadas. Por eso se vuelve a traer fresco acá, igual
+// que ya se hacía del lado del admin (generarCarnetIndividualAdmin).
+async function generarCarnetsPDF() {
   const jugadores = (state.equipo.jugadores || []).filter(j => j.apellido || j.nombre || j.dni);
   if (jugadores.length === 0) { showToast('No hay jugadores en la lista.', 'error'); return; }
+  state.equipo.fotosJugadores = await cargarFotosJugadores(state.equipoId, state.equipo.fotosJugadores);
   abrirVentanaCarnets(jugadores, state.equipo);
 }
-function generarCarnetIndividual(dni) {
+async function generarCarnetIndividual(dni) {
   const jugador = (state.equipo.jugadores || []).find(j => j.dni === dni);
   if (!jugador) { showToast('No se encontró el jugador.', 'error'); return; }
+  state.equipo.fotosJugadores = await cargarFotosJugadores(state.equipoId, state.equipo.fotosJugadores);
   abrirVentanaCarnets([jugador], state.equipo);
 }
 // El admin puede generar el carnet de cualquier equipo (ej. si el equipo no puede subir

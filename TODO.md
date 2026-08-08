@@ -2,6 +2,14 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 20) — fix: el PDF de carnets del propio equipo salía sin las fotos recién subidas por el admin
+
+- **Reportado**: rotens (ya destrabado en continuaciones anteriores) quiso imprimir sus carnets y las fotos que el admin borró y volvió a subir por él no le aparecían al delegado — pero al usuario (admin) recién entrar a la cuenta de rotens sí le aparecía el PDF completo.
+- **Causa**: `state.equipo.fotosJugadores` se carga UNA sola vez, al iniciar sesión (fix de sesiones anteriores). Si el delegado ya tenía la app/PWA abierta desde antes de que el admin subiera las fotos — muy común en el celular, donde la sesión queda abierta días — su copia en memoria queda vieja para siempre hasta que vuelva a loguearse. `generarCarnetsPDF()`/`generarCarnetIndividual()` (los botones de "Descargar carnet(s) PDF" del lado del equipo) usaban esa copia directamente sin volver a consultarla. El admin, en cambio, al entrar con una sesión nueva a la cuenta de rotens, sí disparaba la recarga de login y veía todo bien — de ahí la diferencia entre lo que veía el admin y lo que veía el delegado.
+- **Fix**: ambas funciones ahora son `async` y llaman a `cargarFotosJugadores(state.equipoId, state.equipo.fotosJugadores)` justo antes de armar el PDF — mismo patrón que ya se había aplicado del lado admin (`generarCarnetIndividualAdmin`), ahora también del lado del equipo.
+- **Recomendación para el usuario**: si esto vuelve a pasar con otro equipo, la solución inmediata mientras se probaba este fix es pedirle al delegado que cierre sesión y vuelva a entrar (o cierre y reabra la app) antes de descargar el PDF — con este fix ya no debería hacer falta.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 19) — corregir monto de seguro desde la cola de revisión, y fix de caché stale tras corregir un monto
 
 - **Reportado**: "sigue erroneo" el monto de seguros, a pesar de que `editarMontoDeclaradoSeguro` ya existía. Causa real: esa herramienta solo vivía en el panel de equipo (`verDetalleEquipoAdmin`) — la pestaña "Seguro" (la cola de revisión división por división, donde el admin realmente aprueba/rechaza a medida que llegan los comprobantes) no tenía forma de corregir el monto, solo mostraba la cuenta teórica (jugadores × $5.000) sin avisar que no era el monto real confirmado.
