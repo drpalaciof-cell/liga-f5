@@ -5018,10 +5018,15 @@ async function verDetalleEquipoAdmin(id) {
           <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transfirió: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
         </div>
         ${badgeEstadoComprobante(f.estado)}
+        ${f.estado === 'pendiente' && f.aprobarOnclick ? `<button class="btn btn-sm btn-primary" onclick="${f.aprobarOnclick}">✓ Aprobar</button>` : ''}
+        ${f.estado === 'pendiente' && f.rechazarOnclick ? `<button class="btn btn-sm btn-danger" onclick="${f.rechazarOnclick}">✕ Rechazar</button>` : ''}
       </div>`;
+    // Aprobar/rechazar acá mismo (no solo desde las pestañas Inscripciones/Seguro de la
+    // división) — refresca este mismo panel después, no solo las listas, para que se vea
+    // el cambio sin tener que volver a entrar.
     const pagoComprobantesHtml = pagoHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de inscripción.</p>`
-      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}')`, borrarOnclick: t.id ? `eliminarComprobanteInscripcion('${id}','${t.id}')` : null })).join('');
+      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}')`, borrarOnclick: t.id ? `eliminarComprobanteInscripcion('${id}','${t.id}')` : null, aprobarOnclick: `aprobarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))` })).join('');
 
     // --- Seguro médico ---
     const s = estadoSeguroEquipo(eq);
@@ -5054,7 +5059,7 @@ async function verDetalleEquipoAdmin(id) {
       </div>`;
     const seguroComprobantesHtml = seguroHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de seguro.</p>`
-      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}')`, borrarOnclick: `eliminarComprobanteSeguro('${id}','${t.id}')` })).join('');
+      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}')`, borrarOnclick: `eliminarComprobanteSeguro('${id}','${t.id}')`, aprobarOnclick: `aprobarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))` })).join('');
 
     // --- Carnets ---
     // El admin necesita poder generar el carnet de un equipo él mismo (ej. si el equipo

@@ -2,6 +2,12 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 18) — Aprobar/Rechazar directo en el panel de cada equipo
+
+- **A pedido del usuario** ("me sacaste la función de aprobar los comprobantes de los seguros"): no era una función borrada — las cuatro ubicaciones (`renderPagosAdminList`, `verComprobanteAdmin`, `renderSegurosAdminList`, `verComprobanteSeguroAdmin`) seguían intactas. El gap real era que el panel consolidado de equipo (`verDetalleEquipoAdmin`, la pantalla completa a la que ahora se manda casi todo el tráfico de admin) nunca tuvo estos botones en sus propias filas de comprobante.
+- **Fix**: `comprobanteRow` ahora acepta `aprobarOnclick`/`rechazarOnclick` opcionales y muestra "✓ Aprobar"/"✕ Rechazar" solo cuando `f.estado === 'pendiente'`. Se conectó en ambos call sites (comprobantes de inscripción → `aprobarPago`/`rechazarPago`; comprobantes de seguro → `aprobarSeguro`/`rechazarSeguro`), encadenado con `.then(() => verDetalleEquipoAdmin(id))` para refrescar el panel abierto sin tener que volver a entrar. `verDetalleEquipoAdmin` relee directo de Firestore (no de caché), así que el refresco siempre muestra el estado recién escrito.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 17) — fix urgente a la migración: compatibilidad con fotos viejas
 
 - **Encontrado antes de que impactara**: la migración de la continuación 16, tal cual quedó, iba a hacer que **todas las fotos de carnet ya subidas por cualquier equipo desaparecieran** apenas se desplegó — el código dejó de leer el campo viejo `fotosJugadores` del documento, y la subcolección nueva arranca vacía para todo el mundo. Un regresión mucho peor que el problema que se estaba arreglando.
