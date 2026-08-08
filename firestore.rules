@@ -38,6 +38,14 @@ service cloud.firestore {
       allow create: if autenticado();
       allow update: if isAdmin() || (isEquipoPropio(id) && noTocaCamposAdmin());
       allow delete: if isAdmin();
+
+      // Fotos de carnet, una por jugador, en su propio documento — así el tamaño de la
+      // lista de buena fe nunca puede por sí solo empujar al documento del equipo contra
+      // el límite de 1MB de Firestore.
+      match /fotos/{dni} {
+        allow read: if autenticado();
+        allow write: if isAdmin() || isEquipoPropio(id);
+      }
     }
 
     // Hash de contraseña de cada equipo, separado del documento público de

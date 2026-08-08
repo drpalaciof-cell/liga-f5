@@ -1610,6 +1610,7 @@ async function aplicarSesionDesdeAuth(user) {
         const doc = await db.collection('equipos').doc(equipoId).get();
         if (doc.exists) {
           state.equipoId = equipoId; state.equipo = doc.data();
+          state.equipo.fotosJugadores = await cargarFotosJugadores(equipoId);
           renderPanelEquipo(); showView('panel-equipo');
           subscribirPush('equipo', equipoId); iniciarBadgeEquipo();
         } else {
@@ -1954,6 +1955,7 @@ document.getElementById('form-login-equipo').addEventListener('submit', async e 
     }
     const doc = await db.collection('equipos').doc(id).get();
     state.equipoId = id; state.equipo = doc.data();
+    state.equipo.fotosJugadores = await cargarFotosJugadores(id);
     renderPanelEquipo();
     showView('panel-equipo');
     showToast(`Bienvenido, ${state.equipo.nombre}`, 'ok');
@@ -3351,12 +3353,10 @@ async function subirFotoJugador(dni, input) {
   try {
     showToast('Subiendo foto...', 'info');
     const dataUrl = await resizeImageFile(file, 400, 400);
-    // Update de un solo campo con notación de punto (no lee-modifica-escribe el mapa
-    // entero): si el delegado sube varias fotos rápido, cada subida termina en un
-    // momento distinto y la versión vieja de "fotos" en memoria de una subida más lenta
-    // podía pisarle el mapa entero a otra que ya había terminado, perdiendo esa foto sin
-    // ningún error visible. Con dot-notation, Firestore mergea cada clave por separado.
-    await db.collection('equipos').doc(state.equipoId).update({ [`fotosJugadores.${dni}`]: dataUrl });
+    // Documento propio dentro de la subcolección "fotos" (no un campo del documento del
+    // equipo) — cada jugador tiene su propio casillero de 1MB, así el plantel completo
+    // nunca puede por sí solo hacer chocar al equipo contra el límite de tamaño.
+    await db.collection('equipos').doc(state.equipoId).collection('fotos').doc(dni).set({ dataUrl, actualizado: new Date().toISOString() });
     if (!state.equipo.fotosJugadores) state.equipo.fotosJugadores = {};
     state.equipo.fotosJugadores[dni] = dataUrl;
     showToast('✅ Foto guardada. Recordá: debe ser tipo carnet 4×4, fondo blanco.', 'ok');
@@ -3372,17 +3372,16 @@ async function adminSubirFotoJugador(equipoId, dni, input) {
   try {
     showToast('Subiendo foto...', 'info');
     const dataUrl = await resizeImageFile(file, 400, 400);
-    await db.collection('equipos').doc(equipoId).update({ [`fotosJugadores.${dni}`]: dataUrl });
+    await db.collection('equipos').doc(equipoId).collection('fotos').doc(dni).set({ dataUrl, actualizado: new Date().toISOString() });
     showToast('✅ Foto guardada.', 'ok');
     verDetalleEquipoAdmin(equipoId);
   } catch(e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
 }
-// Para liberar espacio en un equipo que llegó al límite de 1MB del documento (ver
-// mensajeErrorComprobante) — borra la foto de UN jugador puntual, no todo el mapa.
+// Para liberar espacio de un equipo — borra la foto de UN jugador puntual.
 async function adminBorrarFotoJugador(equipoId, dni) {
   if (!confirm('¿Borrar la foto de este jugador? Va a tener que subir una nueva para su carnet.')) return;
   try {
-    await db.collection('equipos').doc(equipoId).update({ [`fotosJugadores.${dni}`]: firebase.firestore.FieldValue.delete() });
+    await db.collection('equipos').doc(equipoId).collection('fotos').doc(dni).delete();
     showToast('Foto eliminada.', 'ok');
     verDetalleEquipoAdmin(equipoId);
   } catch (e) { console.error(e); showToast('No se pudo eliminar la foto.', 'error'); }
@@ -3463,12 +3462,15 @@ function generarCarnetsPDFAdmin(eq) {
   if (jugadores.length === 0) { showToast('No hay jugadores en la lista.', 'error'); return; }
   abrirVentanaCarnets(jugadores, eq);
 }
-function generarCarnetIndividualAdmin(equipoId, dni) {
+async function generarCarnetIndividualAdmin(equipoId, dni) {
   const eq = pagosCacheAdmin.find(e => e.id === equipoId) || equiposCacheAdmin.find(e => e.id === equipoId);
   if (!eq) return;
   const jugador = (eq.jugadores || []).find(j => j.dni === dni);
   if (!jugador) { showToast('No se encontró el jugador.', 'error'); return; }
-  abrirVentanaCarnets([jugador], eq);
+  // Estas listas en caché no traen la subcolección de fotos — se busca aparte para no
+  // mostrar el carnet sin foto por error.
+  const fotosJugadores = await cargarFotosJugadores(equipoId);
+  abrirVentanaCarnets([jugador], { ...eq, fotosJugadores });
 }
 function abrirVentanaCarnets(jugadores, eq) {
   eq = eq || state.equipo;
@@ -4075,6 +4077,20 @@ function badgeEstadoComprobante(estado) {
   if (estado === 'aprobado') return `<span class="badge badge-ok">Aprobado</span>`;
   if (estado === 'rechazado') return `<span class="badge badge-danger">Rechazado</span>`;
   return `<span class="badge badge-warn">Pendiente</span>`;
+}
+// Las fotos de carnet viven en su propia subcolección (equipos/{id}/fotos/{dni}), no
+// adentro del documento del equipo — así un plantel de 25 jugadores nunca puede, por sí
+// solo, empujar a ese equipo contra el límite de 1MB de Firestore (cada foto tiene su
+// propio documento, con su propio límite de 1MB solo para ella). Se lee una vez y se
+// mergea en memoria como si fuera el campo de siempre, para no tener que tocar todo el
+// código que ya lee `eq.fotosJugadores[dni]` de forma sincrónica.
+async function cargarFotosJugadores(equipoId) {
+  const fotos = {};
+  try {
+    const snap = await db.collection('equipos').doc(equipoId).collection('fotos').get();
+    snap.forEach(doc => { const d = doc.data(); if (d && d.dataUrl) fotos[doc.id] = d.dataUrl; });
+  } catch (e) { console.error(e); }
+  return fotos;
 }
 // Chrome bloquea silenciosamente window.open() con URLs "data:" (política anti-phishing) —
 // por eso hacía falta un modal en vez de abrir la imagen en una pestaña nueva.
@@ -4923,6 +4939,10 @@ async function verDetalleEquipoAdmin(id) {
     const doc = await db.collection('equipos').doc(id).get();
     if (!doc.exists) return;
     const eq = { id: doc.id, ...doc.data() };
+    // Las fotos de carnet ya no viven en este documento (ver cargarFotosJugadores) — se
+    // traen aparte y se mergean acá para que el resto de esta función las use exactamente
+    // igual que antes de la migración, sin tener que tocar el resto del código.
+    eq.fotosJugadores = await cargarFotosJugadores(id);
     let cfg = {};
     try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
 
@@ -5057,7 +5077,10 @@ async function verDetalleEquipoAdmin(id) {
     // límite de 1MB de Firestore en vez de tener que adivinarlo. JSON.stringify no es
     // byte-exacto contra la codificación interna de Firestore, pero como la enorme mayoría
     // del documento son strings base64 (puro ASCII), la aproximación es muy cercana.
-    const tamanioBytes = new Blob([JSON.stringify(eq)]).size;
+    // Ojo: se mide sobre doc.data() (lo que realmente está en ESTE documento), no sobre
+    // `eq` — las fotos de carnet ya se mergearon ahí para mostrarlas, pero viven en su
+    // propia subcolección y no cuentan para el tamaño de este documento puntual.
+    const tamanioBytes = new Blob([JSON.stringify(doc.data())]).size;
     const tamanioKB = Math.round(tamanioBytes / 1024);
     const pctLimite = Math.min(100, Math.round((tamanioBytes / 1048576) * 100));
     const colorTamanio = pctLimite >= 90 ? 'var(--danger)' : pctLimite >= 70 ? 'var(--warn)' : 'var(--ok)';
@@ -5227,6 +5250,14 @@ async function eliminarEquipo(id, nombre) {
   `);
   document.getElementById('confirm-del-equipo').addEventListener('click', async () => {
     try {
+      // Borrar el documento del equipo no borra su subcolección de fotos sola — hay que
+      // hacerlo a mano para no dejar fotos huérfanas dando vueltas en la base.
+      try {
+        const fotosSnap = await db.collection('equipos').doc(id).collection('fotos').get();
+        const batchFotos = db.batch();
+        fotosSnap.forEach(d => batchFotos.delete(d.ref));
+        if (!fotosSnap.empty) await batchFotos.commit();
+      } catch (e) { console.error(e); }
       await db.collection('equipos').doc(id).delete();
       await db.collection('credenciales').doc(id).delete().catch(() => {});
       closeModal();
