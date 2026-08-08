@@ -3970,6 +3970,17 @@ function badgeEstadoComprobante(estado) {
   if (estado === 'rechazado') return `<span class="badge badge-danger">Rechazado</span>`;
   return `<span class="badge badge-warn">Pendiente</span>`;
 }
+// Chrome bloquea silenciosamente window.open() con URLs "data:" (política anti-phishing) —
+// por eso hacía falta un modal en vez de abrir la imagen en una pestaña nueva.
+function verImagenGrande(dataUrl) {
+  openModal(`
+    <img src="${dataUrl}" style="width:100%;border-radius:10px;border:1px solid var(--glass-border);">
+    <div class="section-actions">
+      <a class="btn" href="${dataUrl}" download="comprobante.jpg">⬇ Descargar</a>
+      <button class="btn btn-primary" onclick="closeModal()">Cerrar</button>
+    </div>
+  `);
+}
 function marcarUltimaEntradaHistorial(historial, etapa, estado, fechaRevision) {
   const lista = historial || [];
   let idx = -1;
@@ -4781,7 +4792,7 @@ async function verDetalleEquipoAdmin(id) {
       : '';
     const comprobanteRow = (f) => `
       <div class="list-row" style="align-items:center;">
-        <img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="window.open('${f.comprobante}','_blank')">
+        <img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrande('${f.comprobante}')">
         <div style="flex:1;min-width:0;">
           <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
           <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transfirió: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>

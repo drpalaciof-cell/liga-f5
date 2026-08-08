@@ -2,6 +2,12 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 6) — fix: no se podía abrir la imagen del comprobante
+
+- **Bug**: al tocar la miniatura de un comprobante en el panel de equipo, no pasaba nada. Causa: `window.open()` con una URL `data:` (que es como se guardan las imágenes, sin Storage) está bloqueado silenciosamente por Chrome desde hace varias versiones (política anti-phishing) — no tira error, simplemente no abre nada.
+- **Fix**: nueva función `verImagenGrande(dataUrl)` que abre un modal con la imagen a tamaño completo + botón de descarga, mismo patrón que ya usaban `verComprobanteAdmin`/`verComprobanteSeguroAdmin` en otras partes de la app. Reemplaza el `window.open()` roto en las miniaturas del panel de equipo.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 5) — panel de equipo a pantalla completa + fix del "$90"
 
 - **Pantalla completa, no modal**: a pedido explícito ("no quiero una ventanita"), `verDetalleEquipoAdmin` dejó de usar `openModal()` — ahora es una pantalla nueva (`#equipo-detalle-admin`) dentro del flujo normal: Torneo Clausura → división → lista de equipos → tocás un equipo → pantalla completa con todo (botón "← Volver a Equipos" arriba). Mismo contenido que el panel unificado de la iteración anterior (inscripción + seguro + roster verde/rojo), solo que ahora ocupa toda la pantalla en vez de un recuadro de 520px.
