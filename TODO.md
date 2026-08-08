@@ -2,6 +2,14 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 9) — equipo sin poder subir comprobante: límite de 1MB por documento
+
+- **Diagnóstico**: equipo "rotens" no podía subir comprobante de seguro, error genérico "No se pudo cargar el comprobante". Causa más probable: cada equipo es UN documento de Firestore con límite duro de **1 MB**, y ahí adentro se guardan (como base64, sin usar Storage) el escudo + comprobante de inscripción + saldo + TODO el historial de comprobantes de seguro con imagen incluida. Un equipo que mandó muchos comprobantes sueltos (uno por jugador) puede llegar al límite y quedar sin poder guardar ninguno más.
+- **Fix preventivo**: se bajó el tamaño máximo de las fotos de comprobante de 1100px/900KB a **900px/350KB** en los 4 lugares donde se suben (registro, pago principal, saldo, seguro) — deja mucho más margen para que un equipo pueda seguir subiendo antes de llegar al límite.
+- **Herramienta para destrabar equipos ya al límite**: botón "🗑 Borrar" en cada comprobante del historial (inscripción y seguro) del panel de equipo, para liberar espacio borrando copias viejas o duplicadas. Si la tanda borrada estaba aprobada, los jugadores que cubría vuelven a figurar como no asegurados (avisa antes de borrar).
+- **No confirmado con datos reales** — no tengo forma de ver el tamaño del documento de "rotens" en Firestore; esto es la explicación más consistente con el código y el síntoma reportado, pero valdría la pena chequear el tamaño real del documento en la consola de Firebase si el problema persiste.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 8) — corregir a mano un monto declarado mal tipeado
 
 - **No era un bug**: el "$90" de ARCANGEL F.C. resultó ser un dato real — alguien declaró literalmente "90" al subir el comprobante el 6/8/2026 (probablemente le faltaron ceros). El código mostraba fielmente lo que hay guardado; no había forma de detectar esto automáticamente sin comparar contra la imagen.

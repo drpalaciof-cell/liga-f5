@@ -2041,8 +2041,8 @@ document.getElementById('re-receipt-input').addEventListener('change', async e =
   const file = e.target.files[0];
   if (!file) return;
   try {
-    regComprobanteDataUrl = await resizeImageFile(file, 1100);
-    if (regComprobanteDataUrl.length > 900000) {
+    regComprobanteDataUrl = await resizeImageFile(file, 900);
+    if (regComprobanteDataUrl.length > 350000) {
       regComprobanteDataUrl = '';
       showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error');
       return;
@@ -2403,8 +2403,8 @@ document.getElementById('pe-receipt-seguro-input').addEventListener('change', as
   if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   if (state.seguroSeleccion.length === 0) { showToast('Marcá al menos un jugador para esta tanda.', 'error'); e.target.value = ''; return; }
   try {
-    const dataUrl = await resizeImageFile(file, 1100);
-    if (dataUrl.length > 900000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
+    const dataUrl = await resizeImageFile(file, 900);
+    if (dataUrl.length > 350000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
     const transaccion = {
       id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
       dnis: state.seguroSeleccion.slice(),
@@ -2562,8 +2562,8 @@ document.getElementById('pe-receipt-input').addEventListener('change', async e =
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
   if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   try {
-    const dataUrl = await resizeImageFile(file, 1100);
-    if (dataUrl.length > 900000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
+    const dataUrl = await resizeImageFile(file, 900);
+    if (dataUrl.length > 350000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
     const fechaCarga = new Date().toISOString();
     const historialEntry = {
       id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -2602,8 +2602,8 @@ document.getElementById('pe-receipt-saldo-input').addEventListener('change', asy
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
   if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   try {
-    const dataUrl = await resizeImageFile(file, 1100);
-    if (dataUrl.length > 900000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
+    const dataUrl = await resizeImageFile(file, 900);
+    if (dataUrl.length > 350000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla en vez de una foto.', 'error'); return; }
     const fechaCarga = new Date().toISOString();
     const historialEntry = {
       id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
@@ -4030,6 +4030,40 @@ async function editarMontoDeclaradoSeguro(equipoId, txId) {
     verDetalleEquipoAdmin(equipoId);
   } catch (e) { console.error(e); showToast('No se pudo corregir el monto.', 'error'); }
 }
+// Cada equipo es UN documento de Firestore, con límite duro de 1 MB — cada imagen guardada
+// (escudo, comprobantes, cada tanda de seguro) suma a ese total. Un equipo que subió muchos
+// comprobantes sueltos puede llegar al límite y quedar sin poder subir ninguno más ("no se
+// pudo cargar el comprobante" sin más detalle). Esto deja borrar copias viejas/duplicadas
+// para liberar espacio y destrabarlo.
+async function eliminarComprobanteInscripcion(equipoId, txId) {
+  if (!confirm('¿Eliminar este comprobante del historial? No se puede deshacer. Usalo solo para liberar espacio con copias viejas o duplicadas — no borra el pago aprobado en sí, solo esta entrada del historial.')) return;
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const historial = (eq.pagoComprobantesHistorial || []).filter(t => t.id !== txId);
+    await db.collection('equipos').doc(equipoId).update({ pagoComprobantesHistorial: historial });
+    showToast('Comprobante eliminado del historial.', 'ok');
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo eliminar el comprobante.', 'error'); }
+}
+async function eliminarComprobanteSeguro(equipoId, txId) {
+  if (!confirm('¿Eliminar esta tanda de comprobante de seguro? No se puede deshacer. Si esta tanda ya estaba aprobada, los jugadores que cubría van a quedar marcados como no asegurados de nuevo.')) return;
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const tx = (eq.segurosTransacciones || []).find(t => t.id === txId);
+    const nuevasTransacciones = (eq.segurosTransacciones || []).filter(t => t.id !== txId);
+    const datos = { segurosTransacciones: nuevasTransacciones };
+    if (tx && tx.estado === 'aprobado') {
+      datos.seguroJugadoresDni = (eq.seguroJugadoresDni || []).filter(dni => !tx.dnis.includes(dni));
+    }
+    await db.collection('equipos').doc(equipoId).update(datos);
+    showToast('Comprobante eliminado.', 'ok');
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo eliminar el comprobante.', 'error'); }
+}
 function marcarUltimaEntradaHistorial(historial, etapa, estado, fechaRevision) {
   const lista = historial || [];
   let idx = -1;
@@ -4845,13 +4879,14 @@ async function verDetalleEquipoAdmin(id) {
         <div style="flex:1;min-width:0;">
           <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
           ${f.editarOnclick ? `<button class="btn btn-sm" style="padding:1px 7px;font-size:10.5px;margin-left:6px;" onclick="${f.editarOnclick}">✏️ Corregir monto</button>` : ''}
+          ${f.borrarOnclick ? `<button class="btn btn-sm btn-danger" style="padding:1px 7px;font-size:10.5px;margin-left:4px;" onclick="${f.borrarOnclick}">🗑 Borrar</button>` : ''}
           <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transfirió: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
         </div>
         ${badgeEstadoComprobante(f.estado)}
       </div>`;
     const pagoComprobantesHtml = pagoHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de inscripción.</p>`
-      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}')` })).join('');
+      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}')`, borrarOnclick: t.id ? `eliminarComprobanteInscripcion('${id}','${t.id}')` : null })).join('');
 
     // --- Seguro médico ---
     const s = estadoSeguroEquipo(eq);
@@ -4884,7 +4919,7 @@ async function verDetalleEquipoAdmin(id) {
       </div>`;
     const seguroComprobantesHtml = seguroHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de seguro.</p>`
-      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}')` })).join('');
+      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}')`, borrarOnclick: `eliminarComprobanteSeguro('${id}','${t.id}')` })).join('');
     const avisoSeguroEstimadoHtml = tieneTandaSeguroEstimada(eq)
       ? `<p style="font-size:11.5px;color:var(--warn);margin-bottom:10px;">⚠️ Alguna tanda de seguro es de antes del 31/07/2026 (sin monto declarado) — su parte del "Recaudado" de arriba es una estimación, no lo que dice el comprobante real.</p>`
       : '';
