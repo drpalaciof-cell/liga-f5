@@ -2,6 +2,12 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 13) — admin puede generar carnets + sección de carnets en el panel de equipo
+
+- **Nuevo**: `abrirVentanaCarnets` (y sus dos wrappers, individual y de todo el plantel) ahora aceptan el equipo como parámetro en vez de depender siempre de `state.equipo` (la sesión del propio equipo). Nuevas funciones `generarCarnetsPDFAdmin(eq)` / `generarCarnetIndividualAdmin(equipoId, dni)` para que el admin pueda generar el carnet de cualquier equipo sin depender de que el equipo lo resuelva solo.
+- **Nueva sección "🪪 Carnets"** en el panel de equipo (Admin → equipo): contador "X/Y con foto cargada", botón "⬇ Descargar todos los carnets", y una fila por jugador con su foto (o placeholder "4×4" si falta), DNI, edad, badge "Con foto"/"Sin foto", y botón "🖨️ Ver carnet" individual (deshabilitado si falta DNI o edad, igual que exige la generación real del carnet).
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 12) — fix: foto de carnet perdida por condición de carrera + mejores mensajes de error
 
 - **Bug real en `subirFotoJugador`**: guardaba TODO el mapa `fotosJugadores` con lee-modifica-escribe local (`fotos[dni]=...; update({fotosJugadores: fotos})`). Si un delegado subía varias fotos de jugadores seguidas (caso típico armando los carnets de todo el plantel), dos subidas que terminan en momentos distintos podían pisarse entre sí — la última en escribir ganaba con SU copia del mapa (basada en el estado de cuando arrancó, no en lo que la otra subida ya había guardado), perdiendo fotos ya subidas sin ningún error visible. Coincide con el reporte de "rotens": la foto se sube (toast de éxito) pero no aparece en el carnet descargado.

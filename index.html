@@ -3420,15 +3420,29 @@ async function guardarEdadJugador(dni, valor) {
 function generarCarnetsPDF() {
   const jugadores = (state.equipo.jugadores || []).filter(j => j.apellido || j.nombre || j.dni);
   if (jugadores.length === 0) { showToast('No hay jugadores en la lista.', 'error'); return; }
-  abrirVentanaCarnets(jugadores);
+  abrirVentanaCarnets(jugadores, state.equipo);
 }
 function generarCarnetIndividual(dni) {
   const jugador = (state.equipo.jugadores || []).find(j => j.dni === dni);
   if (!jugador) { showToast('No se encontró el jugador.', 'error'); return; }
-  abrirVentanaCarnets([jugador]);
+  abrirVentanaCarnets([jugador], state.equipo);
 }
-function abrirVentanaCarnets(jugadores) {
-  const eq = state.equipo;
+// El admin puede generar el carnet de cualquier equipo (ej. si el equipo no puede subir
+// su comprobante/foto por algún problema técnico y el admin necesita resolverlo desde acá).
+function generarCarnetsPDFAdmin(eq) {
+  const jugadores = (eq.jugadores || []).filter(j => j.apellido || j.nombre || j.dni);
+  if (jugadores.length === 0) { showToast('No hay jugadores en la lista.', 'error'); return; }
+  abrirVentanaCarnets(jugadores, eq);
+}
+function generarCarnetIndividualAdmin(equipoId, dni) {
+  const eq = pagosCacheAdmin.find(e => e.id === equipoId) || equiposCacheAdmin.find(e => e.id === equipoId);
+  if (!eq) return;
+  const jugador = (eq.jugadores || []).find(j => j.dni === dni);
+  if (!jugador) { showToast('No se encontró el jugador.', 'error'); return; }
+  abrirVentanaCarnets([jugador], eq);
+}
+function abrirVentanaCarnets(jugadores, eq) {
+  eq = eq || state.equipo;
   const fotos = eq.fotosJugadores || {};
   const edades = eq.jugadoresEdad || {};
 
@@ -4968,6 +4982,33 @@ async function verDetalleEquipoAdmin(id) {
     const seguroComprobantesHtml = seguroHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de seguro.</p>`
       : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}')`, borrarOnclick: `eliminarComprobanteSeguro('${id}','${t.id}')` })).join('');
+
+    // --- Carnets ---
+    // El admin necesita poder generar el carnet de un equipo él mismo (ej. si el equipo
+    // tiene un problema técnico para subir su foto/comprobante) y ver de un vistazo a
+    // quién le falta cargar la foto.
+    const fotosJugadores = eq.fotosJugadores || {};
+    const edadesJugadores = eq.jugadoresEdad || {};
+    const jugadoresConDatos = jugadores.filter(j => j.apellido || j.nombre || j.dni);
+    const conFoto = jugadoresConDatos.filter(j => j.dni && fotosJugadores[j.dni]).length;
+    const carnetRows = jugadoresConDatos.length === 0
+      ? `<p class="muted" style="font-size:12.5px;">No hay jugadores en la lista de buena fe.</p>`
+      : jugadoresConDatos.map(j => {
+          const foto = j.dni && fotosJugadores[j.dni];
+          const edad = j.dni && edadesJugadores[j.dni];
+          const fotoTag = foto
+            ? `<img src="${foto}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--glass-border);flex-shrink:0;cursor:pointer;" onclick="verImagenGrande('${foto}')">`
+            : `<div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.05);border:1.5px dashed rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-tertiary);flex-shrink:0;">4×4</div>`;
+          return `<div class="list-row" style="align-items:center;">
+            ${fotoTag}
+            <div style="flex:1;min-width:0;">
+              <strong>${escapeHtml(j.apellido || '')} ${escapeHtml(j.nombre || '')}</strong>
+              <div class="muted" style="font-size:12px;margin-top:2px;">DNI ${escapeHtml(j.dni) || '-'} · ${edad ? edad + ' años' : 'falta cargar edad'}</div>
+            </div>
+            ${foto ? '<span class="badge badge-ok">Con foto</span>' : '<span class="badge badge-warn">Sin foto</span>'}
+            <button class="btn btn-sm" ${(!j.dni || !edad) ? 'disabled title="Falta DNI o edad"' : ''} onclick="generarCarnetIndividualAdmin('${id}','${escapeHtml(j.dni)}')">🖨️ Ver carnet</button>
+          </div>`;
+        }).join('');
     const avisoSeguroEstimadoHtml = tieneTandaSeguroEstimada(eq)
       ? `<p style="font-size:11.5px;color:var(--warn);margin-bottom:10px;">⚠️ Alguna tanda de seguro es de antes del 31/07/2026 (sin monto declarado) — su parte del "Recaudado" de arriba es una estimación, no lo que dice el comprobante real.</p>`
       : '';
@@ -5015,6 +5056,15 @@ async function verDetalleEquipoAdmin(id) {
           <table><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Estado</th></tr></thead><tbody>${rosterRows}</tbody></table>
         </div>
         <div>${seguroComprobantesHtml}</div>
+      </div>
+
+      <div class="glass section-card">
+        <h3>🪪 Carnets</h3>
+        <p class="wizard-help" style="margin-bottom:12px;">${conFoto}/${jugadoresConDatos.length} jugador(es) con foto cargada</p>
+        <div class="section-actions" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;">
+          <button class="btn btn-primary" onclick='generarCarnetsPDFAdmin(${JSON.stringify(eq).replace(/'/g, "&#39;")})'>⬇ Descargar todos los carnets</button>
+        </div>
+        <div>${carnetRows}</div>
       </div>
     `;
     document.getElementById('torneo-division-detail').classList.add('hidden');
