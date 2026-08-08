@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 10) — mensaje de error específico para fotos formato HEIC (iPhone)
+
+- El usuario aclaró que "rotens" no tiene NINGÚN comprobante subido todavía (0 previos) e iba a subir uno solo cubriendo a todo el plantel — descarta la hipótesis del límite de 1MB de la entrada anterior para este caso puntual.
+- Causa más probable con 0 comprobantes previos: el navegador no puede decodificar la imagen elegida — típicamente una **foto sacada directo con la cámara de un iPhone**, que por default guarda en formato HEIC (Chrome no lo puede abrir vía `<img>`/canvas). Antes, esto cae en el mismo mensaje genérico "No se pudo cargar el comprobante" sin ninguna pista.
+- **Fix**: `resizeImageFile` ahora distingue el error de decodificación de imagen del resto de errores, y los 4 lugares donde se sube un comprobante (registro, pago, saldo, seguro) muestran un mensaje específico sugiriendo sacarle una captura de pantalla a la foto en vez de subir la foto original cuando ese es el problema.
+- **Sin probar en el navegador** — no hay forma de confirmar que HEIC sea la causa real sin que el equipo (o el usuario) reintente y vea el mensaje nuevo.
+
 ## ✅ Sesión 2026-08-08 (continuación 9) — equipo sin poder subir comprobante: límite de 1MB por documento
 
 - **Diagnóstico**: equipo "rotens" no podía subir comprobante de seguro, error genérico "No se pudo cargar el comprobante". Causa más probable: cada equipo es UN documento de Firestore con límite duro de **1 MB**, y ahí adentro se guardan (como base64, sin usar Storage) el escudo + comprobante de inscripción + saldo + TODO el historial de comprobantes de seguro con imagen incluida. Un equipo que mandó muchos comprobantes sueltos (uno por jugador) puede llegar al límite y quedar sin poder guardar ninguno más.

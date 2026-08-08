@@ -1527,12 +1527,20 @@ function resizeImageFile(file, maxSize = 220) {
         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL('image/jpeg', 0.82));
       };
-      img.onerror = reject;
+      img.onerror = () => reject(new Error('IMG_DECODE_FAILED'));
       img.src = e.target.result;
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+// Mensaje más útil cuando el navegador no puede abrir la imagen elegida — típicamente fotos
+// sacadas directo con la cámara de un iPhone (formato HEIC), que Chrome no puede decodificar.
+function mensajeErrorComprobante(err) {
+  if (err && err.message === 'IMG_DECODE_FAILED') {
+    return 'No pudimos abrir esa imagen. Si la sacaste con la cámara de un iPhone, probá sacarle una captura de pantalla al comprobante y subí esa captura en vez de la foto original.';
+  }
+  return 'No se pudo cargar el comprobante.';
 }
 
 /* ===================== VIEW ROUTING ===================== */
@@ -2050,7 +2058,7 @@ document.getElementById('re-receipt-input').addEventListener('change', async e =
     document.getElementById('re-receipt-img').src = regComprobanteDataUrl;
     document.getElementById('re-receipt-img').classList.remove('hidden');
     document.getElementById('re-receipt-ph').classList.add('hidden');
-  } catch (err) { console.error(err); showToast('No se pudo cargar el comprobante.', 'error'); }
+  } catch (err) { console.error(err); showToast(mensajeErrorComprobante(err), 'error'); }
 });
 function resetWizardRegistro() {
   document.getElementById('form-registro-equipo').reset();
@@ -2427,7 +2435,7 @@ document.getElementById('pe-receipt-seguro-input').addEventListener('change', as
     crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de seguro médico', `📎 ${state.equipo?.nombre||'El equipo'} subió un comprobante de seguro médico para ${cantidad} jugador(es). Transferencia a nombre de: ${nombreTransferencia}. Declaró $${montoTransferido.toLocaleString('es-AR')} de $${requeridoSeguro.toLocaleString('es-AR')} requeridos (${saldoTxtSeguro}).`, 'admin');
     crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Seguro médico', `📎 Recibimos tu comprobante de seguro médico para ${cantidad} jugador(es) por $${montoTransferido.toLocaleString('es-AR')} (requerido: $${requeridoSeguro.toLocaleString('es-AR')} · ${saldoTxtSeguro}). Va a ser revisado por la organización.`, 'equipo');
     await avisarJugadoresSinAsegurar();
-  } catch (err) { console.error(err); showToast('No se pudo cargar el comprobante.', 'error'); }
+  } catch (err) { console.error(err); showToast(mensajeErrorComprobante(err), 'error'); }
 });
 async function avisarJugadoresSinAsegurar() {
   const eq = state.equipo;
@@ -2592,7 +2600,7 @@ document.getElementById('pe-receipt-input').addEventListener('change', async e =
     const saldoTxt = requerido ? textoSaldoPendiente(montoTransferido, requerido) : '';
     crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de inscripción', `📎 ${state.equipo?.nombre||'El equipo'} subió el comprobante de inscripción. Transferencia a nombre de: ${nombreTransferencia}. Declaró $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` de $${requerido.toLocaleString('es-AR')} requeridos (${saldoTxt}).` : '.'}`, 'admin');
     crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Estado de pago', `📎 Recibimos tu comprobante de inscripción por $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` (requerido: $${requerido.toLocaleString('es-AR')} · ${saldoTxt})` : ''}. Va a ser revisado por la organización.`, 'equipo');
-  } catch (err) { console.error(err); showToast('No se pudo actualizar el comprobante.', 'error'); }
+  } catch (err) { console.error(err); showToast(mensajeErrorComprobante(err), 'error'); }
 });
 document.getElementById('pe-receipt-saldo-input').addEventListener('change', async e => {
   const file = e.target.files[0];
@@ -2632,7 +2640,7 @@ document.getElementById('pe-receipt-saldo-input').addEventListener('change', asy
     const saldoTxt = requerido ? textoSaldoPendiente(montoTransferido, requerido) : '';
     crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Comprobante de inscripción', `📎 ${state.equipo?.nombre||'El equipo'} subió el comprobante del saldo restante. Transferencia a nombre de: ${nombreTransferencia}. Declaró $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` de $${requerido.toLocaleString('es-AR')} requeridos (${saldoTxt}).` : '.'}`, 'admin');
     crearMensajeSistema(state.equipoId, state.equipo?.nombre, state.equipo?.division, 'Estado de pago', `📎 Recibimos tu comprobante del saldo por $${montoTransferido.toLocaleString('es-AR')}${requerido ? ` (requerido: $${requerido.toLocaleString('es-AR')} · ${saldoTxt})` : ''}. Va a ser revisado por la organización.`, 'equipo');
-  } catch (err) { console.error(err); showToast('No se pudo actualizar el comprobante.', 'error'); }
+  } catch (err) { console.error(err); showToast(mensajeErrorComprobante(err), 'error'); }
 });
 function descargarPDFEquipoActual() {
   if (!state.equipo) return;
