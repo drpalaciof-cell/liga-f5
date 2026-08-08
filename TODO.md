@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 8) — corregir a mano un monto declarado mal tipeado
+
+- **No era un bug**: el "$90" de ARCANGEL F.C. resultó ser un dato real — alguien declaró literalmente "90" al subir el comprobante el 6/8/2026 (probablemente le faltaron ceros). El código mostraba fielmente lo que hay guardado; no había forma de detectar esto automáticamente sin comparar contra la imagen.
+- **Nuevo**: botón "✏️ Corregir monto" en cada fila de comprobante (inscripción y seguro) del panel de equipo — abre un `prompt()` para escribir el monto correcto después de mirar la foto, y lo guarda tanto en el campo actual (`pagoMontoDeclarado`/`pagoSaldoMontoDeclarado`/`montoDeclarado` de la tanda) como en la entrada correspondiente del historial, para que quede consistente en todos lados que lean ese dato.
+- Aclaración para el usuario: los valores de Configuración (monto inscripción, objetivos, etc.) SIEMPRE se leen en vivo desde la base en cada cálculo — no hay caché ni copias que puedan quedar desactualizadas cuando se cambian ahí. El "$90" no tenía relación con eso.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 7) — fix: seguros sumaba $0 por cada tanda anterior al 31/07
 
 - **Bug**: 10 jugadores asegurados a $5.000 c/u debería dar $50.000, pero "Recaudado" mostraba $45.000. Misma causa raíz que el "$90" de inscripción: el campo `montoDeclarado` se agregó el 31/07/2026 **en el mismo commit** para inscripción Y seguro — cualquier tanda de seguro aprobada antes de esa fecha no tiene ese campo, y `calcularIngresoSeguroNormal` la sumaba como `$0` en vez de estimarla.

@@ -3989,6 +3989,47 @@ function verImagenGrande(dataUrl) {
     </div>
   `);
 }
+// Corrige un monto declarado mal tipeado por el equipo (ej. "90" en vez de "90000") después
+// de cotejarlo contra la imagen real — no hay forma de detectar esto solo, hace falta que el
+// admin mire la foto y confirme el número correcto.
+async function editarMontoDeclaradoInscripcion(equipoId, etapa) {
+  const nuevoStr = prompt(`Monto correcto para ${etapa === 'saldo' ? 'el saldo' : 'la seña/pago'} (mirá la foto y confirmá el número real):`);
+  if (nuevoStr == null) return;
+  const nuevo = Number(nuevoStr.replace(/[^\d]/g, ''));
+  if (!nuevo || nuevo <= 0) { showToast('Monto inválido.', 'error'); return; }
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const campo = etapa === 'saldo' ? 'pagoSaldoMontoDeclarado' : 'pagoMontoDeclarado';
+    const historial = marcarMontoUltimaEntradaHistorial(eq.pagoComprobantesHistorial, etapa, nuevo);
+    await db.collection('equipos').doc(equipoId).update({ [campo]: nuevo, pagoComprobantesHistorial: historial });
+    showToast('Monto corregido.', 'ok');
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo corregir el monto.', 'error'); }
+}
+function marcarMontoUltimaEntradaHistorial(historial, etapa, montoDeclarado) {
+  const lista = historial || [];
+  for (let i = lista.length - 1; i >= 0; i--) {
+    if (lista[i].etapa === etapa) return lista.map((t, j) => j === i ? { ...t, montoDeclarado } : t);
+  }
+  return lista;
+}
+async function editarMontoDeclaradoSeguro(equipoId, txId) {
+  const nuevoStr = prompt('Monto correcto para esta tanda de seguro (mirá la foto y confirmá el número real):');
+  if (nuevoStr == null) return;
+  const nuevo = Number(nuevoStr.replace(/[^\d]/g, ''));
+  if (!nuevo || nuevo <= 0) { showToast('Monto inválido.', 'error'); return; }
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const nuevasTransacciones = (eq.segurosTransacciones || []).map(t => t.id === txId ? { ...t, montoDeclarado: nuevo } : t);
+    await db.collection('equipos').doc(equipoId).update({ segurosTransacciones: nuevasTransacciones });
+    showToast('Monto corregido.', 'ok');
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo corregir el monto.', 'error'); }
+}
 function marcarUltimaEntradaHistorial(historial, etapa, estado, fechaRevision) {
   const lista = historial || [];
   let idx = -1;
@@ -4803,13 +4844,14 @@ async function verDetalleEquipoAdmin(id) {
         <img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrande('${f.comprobante}')">
         <div style="flex:1;min-width:0;">
           <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
+          ${f.editarOnclick ? `<button class="btn btn-sm" style="padding:1px 7px;font-size:10.5px;margin-left:6px;" onclick="${f.editarOnclick}">✏️ Corregir monto</button>` : ''}
           <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transfirió: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
         </div>
         ${badgeEstadoComprobante(f.estado)}
       </div>`;
     const pagoComprobantesHtml = pagoHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de inscripción.</p>`
-      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción' })).join('');
+      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}')` })).join('');
 
     // --- Seguro médico ---
     const s = estadoSeguroEquipo(eq);
@@ -4842,7 +4884,7 @@ async function verDetalleEquipoAdmin(id) {
       </div>`;
     const seguroComprobantesHtml = seguroHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de seguro.</p>`
-      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}` })).join('');
+      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}')` })).join('');
     const avisoSeguroEstimadoHtml = tieneTandaSeguroEstimada(eq)
       ? `<p style="font-size:11.5px;color:var(--warn);margin-bottom:10px;">⚠️ Alguna tanda de seguro es de antes del 31/07/2026 (sin monto declarado) — su parte del "Recaudado" de arriba es una estimación, no lo que dice el comprobante real.</p>`
       : '';
