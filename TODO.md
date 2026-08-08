@@ -2,6 +2,14 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 14) — admin puede subir/borrar foto de carnet + fix real del detector de "documento lleno"
+
+- **Bug encontrado en mi propio fix de la sesión anterior**: el chequeo de "documento de Firestore lleno" comparaba `err.code === 'resource-exhausted'`, pero ese código es para límites de cuota/velocidad — la validación de tamaño máximo (1 MB) es del lado del cliente, tira un `Error` sin ese código, con el tamaño en bytes mencionado en `.message`. Por eso, aunque "rotens" probablemente SÍ está chocando con el límite de tamaño (falla tanto la foto de carnet como el comprobante de seguro — dos subidas de imagen distintas, mismo síntoma genérico), mi mensaje específico nunca se disparaba. Ahora se detecta por contenido del mensaje ("longer than", "exceeds the maximum", etc.), no por código.
+- **Nuevo**: el admin puede subir la foto de un jugador (`adminSubirFotoJugador`, mismo fix de dot-notation atómico que ya tenía la versión del equipo) y borrar la foto de un jugador puntual (`adminBorrarFotoJugador`, con `FieldValue.delete()`) desde la sección "🪪 Carnets" del panel de equipo — para poder liberar espacio en un equipo que ya llegó al límite, sin depender de que el equipo lo resuelva desde su lado (que es justo lo que no puede hacer ahora mismo).
+- **Se descartó la hipótesis del navegador integrado de WhatsApp** — el usuario confirmó que no es eso.
+- **Pendiente**: que el usuario borre algunas fotos/comprobantes viejos de "rotens" con las herramientas nuevas para liberar espacio, y que el equipo reintente subir — el mensaje de error debería confirmar ahora si el problema era realmente el tamaño del documento.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 13) — admin puede generar carnets + sección de carnets en el panel de equipo
 
 - **Nuevo**: `abrirVentanaCarnets` (y sus dos wrappers, individual y de todo el plantel) ahora aceptan el equipo como parámetro en vez de depender siempre de `state.equipo` (la sesión del propio equipo). Nuevas funciones `generarCarnetsPDFAdmin(eq)` / `generarCarnetIndividualAdmin(equipoId, dni)` para que el admin pueda generar el carnet de cualquier equipo sin depender de que el equipo lo resuelva solo.

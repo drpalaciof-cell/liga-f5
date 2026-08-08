@@ -1541,8 +1541,14 @@ function mensajeErrorComprobante(err) {
   if (err && err.message === 'IMG_DECODE_FAILED') {
     return 'No pudimos abrir esa imagen. Si la sacaste con la cámara de un iPhone, probá sacarle una captura de pantalla al comprobante y subí esa captura en vez de la foto original.';
   }
+  // La validación de tamaño máximo de documento de Firestore (1 MB) es del lado del
+  // cliente, ANTES de tocar la red — no tiene el código 'resource-exhausted' (eso es para
+  // límites de cuota/velocidad), tira un Error con .message mencionando el tamaño en bytes.
   if (err && err.code === 'resource-exhausted') {
     return 'Este equipo ya no tiene espacio para guardar más comprobantes/fotos (se acumularon demasiados). Avisale a la organización para que libere espacio borrando alguno viejo.';
+  }
+  if (err && /longer than|exceeds the maximum|maximum.*size|too large|1048/i.test(err.message || '')) {
+    return 'Este equipo ya no tiene espacio para guardar más comprobantes/fotos (llegó al límite de tamaño). Avisale a la organización para que libere espacio borrando algún comprobante viejo desde el panel de admin.';
   }
   if (err && err.code === 'permission-denied') {
     return 'No se pudo guardar por un problema de permisos — probá cerrar sesión y volver a entrar. Si sigue fallando, avisale a la organización.';
@@ -3358,6 +3364,29 @@ async function subirFotoJugador(dni, input) {
     renderCarnetTab();
   } catch(e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
 }
+// Igual que subirFotoJugador, pero para cuando el admin la carga por un equipo que no
+// puede hacerlo solo (ej. problema con el navegador del delegado).
+async function adminSubirFotoJugador(equipoId, dni, input) {
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    showToast('Subiendo foto...', 'info');
+    const dataUrl = await resizeImageFile(file, 400, 400);
+    await db.collection('equipos').doc(equipoId).update({ [`fotosJugadores.${dni}`]: dataUrl });
+    showToast('✅ Foto guardada.', 'ok');
+    verDetalleEquipoAdmin(equipoId);
+  } catch(e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
+}
+// Para liberar espacio en un equipo que llegó al límite de 1MB del documento (ver
+// mensajeErrorComprobante) — borra la foto de UN jugador puntual, no todo el mapa.
+async function adminBorrarFotoJugador(equipoId, dni) {
+  if (!confirm('¿Borrar la foto de este jugador? Va a tener que subir una nueva para su carnet.')) return;
+  try {
+    await db.collection('equipos').doc(equipoId).update({ [`fotosJugadores.${dni}`]: firebase.firestore.FieldValue.delete() });
+    showToast('Foto eliminada.', 'ok');
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo eliminar la foto.', 'error'); }
+}
 
 async function subirComprobanteSancion(dni, input) {
   const file = input.files[0];
@@ -4996,9 +5025,12 @@ async function verDetalleEquipoAdmin(id) {
       : jugadoresConDatos.map(j => {
           const foto = j.dni && fotosJugadores[j.dni];
           const edad = j.dni && edadesJugadores[j.dni];
-          const fotoTag = foto
+          const fotoImg = foto
             ? `<img src="${foto}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--glass-border);flex-shrink:0;cursor:pointer;" onclick="verImagenGrande('${foto}')">`
             : `<div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.05);border:1.5px dashed rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-tertiary);flex-shrink:0;">4×4</div>`;
+          const fotoTag = j.dni
+            ? `<div style="position:relative;flex-shrink:0;">${fotoImg}<label class="pe-carnet-foto-btn" title="${foto ? 'Cambiar' : 'Subir'} foto">📷<input type="file" accept="image/*" class="hidden" onchange="adminSubirFotoJugador('${id}','${escapeHtml(j.dni)}',this)"></label></div>`
+            : fotoImg;
           return `<div class="list-row" style="align-items:center;">
             ${fotoTag}
             <div style="flex:1;min-width:0;">
@@ -5006,6 +5038,7 @@ async function verDetalleEquipoAdmin(id) {
               <div class="muted" style="font-size:12px;margin-top:2px;">DNI ${escapeHtml(j.dni) || '-'} · ${edad ? edad + ' años' : 'falta cargar edad'}</div>
             </div>
             ${foto ? '<span class="badge badge-ok">Con foto</span>' : '<span class="badge badge-warn">Sin foto</span>'}
+            ${foto ? `<button class="btn btn-sm btn-danger" onclick="adminBorrarFotoJugador('${id}','${escapeHtml(j.dni)}')">🗑</button>` : ''}
             <button class="btn btn-sm" ${(!j.dni || !edad) ? 'disabled title="Falta DNI o edad"' : ''} onclick="generarCarnetIndividualAdmin('${id}','${escapeHtml(j.dni)}')">🖨️ Ver carnet</button>
           </div>`;
         }).join('');
