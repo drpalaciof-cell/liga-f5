@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-08 (continuación 11) — anillos de cobertura de seguro (sin objetivo en $)
+
+- A pedido: 3 anillos más en "📊 Datos de la Temporada" (Primera/Segunda/Total) para seguros — sin objetivo en $ como pidió el usuario ("no se puede saber de antemano cuánto va a dar"). El techo de cada anillo es **% del plantel asegurado** (asegurados + habilitados manual, sobre el total de la lista de buena fe de esa división) — un techo natural que sí existe (100% = todos asegurados), a diferencia de la plata que no tiene límite conocido. Debajo del % se muestra "X/Y asegurados" y "$ recaudado" como dato informativo.
+- Se generalizó el helper `anillo` en `anilloBase` (pct + subtítulo genérico) para poder reusar el mismo componente visual en ambos casos (objetivo en $ vs. % de cobertura) sin duplicar el SVG.
+- Confirmado con el usuario que la corrección de monto declarado (sesión anterior) ya hace que estos anillos —y todo lo demás— se actualicen solos, sin pasos extra.
+- Probado visualmente con datos de ejemplo en Chrome headless antes de deployar — se ve bien.
+
 ## ✅ Sesión 2026-08-08 (continuación 10) — mensaje de error específico para fotos formato HEIC (iPhone)
 
 - El usuario aclaró que "rotens" no tiene NINGÚN comprobante subido todavía (0 previos) e iba a subir uno solo cubriendo a todo el plantel — descarta la hipótesis del límite de 1MB de la entrada anterior para este caso puntual.

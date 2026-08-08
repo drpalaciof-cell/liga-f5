@@ -3690,6 +3690,14 @@ async function calcularStatsTemporada() {
   const jugadoresPrimera = primeraEquipos.reduce((s, eq) => s + contarJugadores(eq), 0);
   const jugadoresSegunda = segundaEquipos.reduce((s, eq) => s + contarJugadores(eq), 0);
 
+  // Cobertura de seguro de toda la liga: no hay objetivo en $ (no se puede saber de
+  // antemano cuánto va a dar), pero "% del plantel asegurado" sí tiene un techo natural —
+  // 100% = todos los jugadores de la lista de buena fe. Cuenta asegurados + habilitados
+  // manual, igual criterio que el panel de cada equipo.
+  const contarCubiertos = eq => { const s = estadoSeguroEquipo(eq); return s.asegurados.length + s.habilitadosManual.length; };
+  const cubiertosPrimera = primeraEquipos.reduce((s, eq) => s + contarCubiertos(eq), 0);
+  const cubiertosSegunda = segundaEquipos.reduce((s, eq) => s + contarCubiertos(eq), 0);
+
   // Objetivo de inscripciones: monto fijo por división (no depende de cuántos equipos ya
   // se inscribieron, porque el cupo total ya está cerrado). Se carga directo en Admin →
   // Configuración; default $2.400.000 / $3.300.000 confirmados por el usuario.
@@ -3704,6 +3712,7 @@ async function calcularStatsTemporada() {
     totalIns: insPrimera + insSegunda, totalSeg: segPrimera + segSegunda,
     totalIngresos: insPrimera + insSegunda + segPrimera + segSegunda,
     objetivoInsPrimera, objetivoInsSegunda, objetivoInsTotal: objetivoInsPrimera + objetivoInsSegunda,
+    cubiertosPrimera, cubiertosSegunda, cubiertosTotal: cubiertosPrimera + cubiertosSegunda,
     equiposMontoEstimado
   };
 }
@@ -3731,16 +3740,25 @@ async function abrirModalDatosTemporada() {
       <circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"/>
     </svg>`;
   };
-  const anillo = (label, actual, objetivo, color, trackColor) => {
-    const pct = objetivo ? Math.min(100, Math.round((actual / objetivo) * 100)) : 0;
-    return `<div style="text-align:center;">
+  const anilloBase = (label, pct, subtitleHtml, color, trackColor) => `
+    <div style="text-align:center;">
       <div style="position:relative;width:84px;height:84px;margin:0 auto 8px;">
         ${anilloSvg(pct, color, trackColor)}
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;font-family:var(--font-display,inherit);color:${color};">${objetivo ? pct + '%' : '—'}</div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;font-family:var(--font-display,inherit);color:${color};">${pct}%</div>
       </div>
       <div style="font-size:12px;font-weight:700;">${label}</div>
-      <div style="font-size:10.5px;color:var(--text-dim);font-variant-numeric:tabular-nums;line-height:1.4;">${fmt(actual)}${objetivo ? `<br>de ${fmt(objetivo)}` : ''}</div>
+      <div style="font-size:10.5px;color:var(--text-dim);font-variant-numeric:tabular-nums;line-height:1.4;">${subtitleHtml}</div>
     </div>`;
+  // Objetivo en $ (inscripciones): el techo es un monto fijo configurado.
+  const anillo = (label, actual, objetivo, color, trackColor) => {
+    const pct = objetivo ? Math.min(100, Math.round((actual / objetivo) * 100)) : 0;
+    return anilloBase(label, pct, `${fmt(actual)}${objetivo ? `<br>de ${fmt(objetivo)}` : ''}`, color, trackColor);
+  };
+  // Sin objetivo en $ (seguros: no se puede saber de antemano cuánto va a dar). El techo
+  // natural es "todo el plantel asegurado" — 100% = cubiertos === totalJugadores.
+  const anilloCobertura = (label, cubiertos, totalJugadores, recaudado, color, trackColor) => {
+    const pct = totalJugadores ? Math.min(100, Math.round((cubiertos / totalJugadores) * 100)) : 0;
+    return anilloBase(label, pct, `${cubiertos}/${totalJugadores} asegurados<br>${fmt(recaudado)} recaudado`, color, trackColor);
   };
 
   const cobroCard = (persona, concepto, icono, color, colorSoft, filasHtml, subtotal) => `
@@ -3763,6 +3781,11 @@ async function abrirModalDatosTemporada() {
     ${anillo('Segunda', s.insSegunda, s.objetivoInsSegunda, 'var(--segunda)', 'var(--segunda-soft)')}
     ${anillo('Total', s.insPrimera + s.insSegunda, s.objetivoInsTotal, '#4ade80', 'rgba(74,222,128,.15)')}
   </div>`;
+  const anillosSeguroHtml = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px;">
+    ${anilloCobertura('Primera', s.cubiertosPrimera, s.jugadoresPrimera, s.segPrimera, 'var(--cyan)', 'var(--cyan-soft)')}
+    ${anilloCobertura('Segunda', s.cubiertosSegunda, s.jugadoresSegunda, s.segSegunda, 'var(--segunda)', 'var(--segunda-soft)')}
+    ${anilloCobertura('Total', s.cubiertosTotal, s.jugadoresTotal, s.segPrimera + s.segSegunda, '#4ade80', 'rgba(74,222,128,.15)')}
+  </div>`;
 
   openModal(`
     <h2 style="margin-bottom:4px;">📊 Datos de la Temporada</h2>
@@ -3784,8 +3807,11 @@ async function abrirModalDatosTemporada() {
 
     ${s.equiposMontoEstimado > 0 ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;">⚠️ <strong>${s.equiposMontoEstimado} equipo(s)</strong> quedaron aprobados antes de que existiera el campo "monto declarado" (31/07/2026) — su parte de "Inscripciones" de abajo es una <strong>estimación</strong> con el monto teórico, no lo que dice el comprobante real. Buscalos con el badge "⚠️ Monto estimado" en la pestaña Inscripciones y confirmalos a mano contra la imagen.</div>` : ''}
 
-    <div class="data-section-sep" style="margin-top:0;">Objetivo de inscripciones (cupo × monto)</div>
+    <div class="data-section-sep" style="margin-top:0;">Objetivo de inscripciones</div>
     ${anillosHtml}
+
+    <div class="data-section-sep" style="margin-top:0;">Cobertura de seguro (% del plantel asegurado)</div>
+    ${anillosSeguroHtml}
 
     <div class="data-section-sep" style="margin-top:0;">Plata que va entrando (solo comprobantes aprobados)</div>
     ${cobroCard('Mariano Gauna', 'Inscripciones', '💵', 'var(--cyan)', 'var(--cyan-soft)', inscripcionFilas, s.insPrimera + s.insSegunda)}
