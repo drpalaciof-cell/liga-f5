@@ -1163,6 +1163,63 @@ async function getCfg(){
 }
 let _abriendo=false; // BUG4: lock para evitar race condition con doble tap
 
+// Suspensiones por tarjetas (roja directa, doble amarilla, acumulación de 3 amarillas) — antes esto
+// solo se controlaba en el panel de admin, DESPUÉS del partido. La alineación no avisaba nada, así
+// que un jugador suspendido podía salir a jugar sin que nadie se diera cuenta hasta después.
+// _tarjetasCache: division -> {dni: {dni,rojas,amarillas,expulsiones}}, contando todos los partidos
+// jugados de esa división (misma cuenta que usa el admin en calcularTarjetasPorJugador de index.html).
+let _tarjetasCache={};
+async function cargarTarjetasDivision(division){
+  if(!division) return {};
+  if(_tarjetasCache[division]) return _tarjetasCache[division];
+  try{
+    const snap=await db.collection('partidos').where('division','==',division).get();
+    const map={};
+    snap.forEach(doc=>{
+      const p=doc.data();
+      if(!p.jugado) return;
+      (p.tarjetas||[]).forEach(t=>{
+        if(!t.dni) return;
+        if(!map[t.dni])map[t.dni]={dni:t.dni,rojas:0,amarillas:0,expulsiones:0};
+        const r=map[t.dni];
+        if(t.tipo==='roja'){r.rojas++;r.expulsiones++;}
+        else if(t.dobleAmarilla){r.expulsiones++;}
+        else{r.amarillas++;}
+      });
+    });
+    _tarjetasCache[division]=map;
+    return map;
+  }catch(e){return null;} // null = no se pudo verificar (sin conexión y sin caché previo de esta división)
+}
+// Mismo cálculo que getEstadoSanciones en index.html (pagos de $5.000/$7.000 y fechas cumplidas
+// levantan la suspensión) pero solo para SABER si está suspendido — el planillero no gestiona pagos
+// desde acá, eso lo resuelve el admin.
+function getSancionesActivas(counts, eq){
+  if(!counts) return [];
+  const pagadas=(eq&&eq.sancionesPagadas)||[];
+  const cumplidas=(eq&&eq.sancionesCumplidas)||[];
+  const hasPag=tipo=>pagadas.some(p=>p.dni===counts.dni&&p.tipo===tipo);
+  const hasCum=tipo=>cumplidas.some(p=>p.dni===counts.dni&&p.tipo===tipo);
+  const items=[];
+  if(counts.rojas>0 && !hasCum('roja')){
+    const pagada=hasPag('roja');
+    items.push({label:'🟥 Roja directa',desc:pagada?'Pagó $7.000 — 1 fecha restante de suspensión':'2 fechas de suspensión'});
+  }
+  const nDobles=counts.expulsiones-counts.rojas;
+  if(nDobles>0 && !hasPag('doble') && !hasCum('doble')){
+    items.push({label:'🟨🟨 Doble amarilla',desc:'1 fecha de suspensión'});
+  }
+  if(counts.amarillas>=3){
+    const ciclos=Math.floor(counts.amarillas/3);
+    const nPag=pagadas.filter(p=>p.dni===counts.dni&&p.tipo==='amarillas').length;
+    const nCum=cumplidas.filter(p=>p.dni===counts.dni&&p.tipo==='amarillas').length;
+    if(nPag+nCum<ciclos){
+      items.push({label:'🟨 Acumulación de amarillas',desc:'1 fecha de suspensión'});
+    }
+  }
+  return items;
+}
+
 async function cargarLista(){
   sessionStorage.setItem('ligaf5_screen','lista');sessionStorage.removeItem('ligaf5_pid');
   document.getElementById('lista-title').textContent='Cancha '+st.cancha;
@@ -1193,6 +1250,7 @@ async function cargarLista(){
     partidos.sort((a,b)=>(a.horario||'').localeCompare(b.horario||''));
     // Banner de división
     const divisionCancha=partidos.length?(partidos[0].division||''):'';
+    if(divisionCancha) cargarTarjetasDivision(divisionCancha); // dispara en paralelo, no bloquea el render de la lista — para cuando se abra una alineación ya está (o quedó cacheado offline)
     const esPrimera=divisionCancha.toLowerCase().includes('primera');
     const esSegunda=divisionCancha.toLowerCase().includes('segunda');
     const colorDiv=esSegunda?'var(--orange)':'var(--cyan)';
@@ -1299,7 +1357,18 @@ async function mostrarAlineacion(equipo){
   const venciSeguro=!!(cfg.fechaLimiteSeguro && new Date()>new Date(cfg.fechaLimiteSeguro+'T23:00:00'));
   const eqData=_eCache[equipoId]||{};
   const habilitadosSeguro=new Set([...(eqData.seguroJugadoresDni||[]), ...((eqData.seguroHabilitadoManual||[]).map(h=>h.dni))]);
-  renderAlineacion(jugadores,seleccionados,equipo,venciSeguro,habilitadosSeguro);
+  const tarjetasDiv=await cargarTarjetasDivision(p.division);
+  const suspendidos=new Map();
+  if(tarjetasDiv){
+    jugadores.forEach(j=>{
+      if(!j.dni) return;
+      const items=getSancionesActivas(tarjetasDiv[j.dni], eqData);
+      if(items.length) suspendidos.set(j.dni, items);
+    });
+  } else {
+    toast('⚠️ No se pudo verificar sanciones por tarjetas (sin conexión) — revisar manualmente antes de confirmar.', 4500);
+  }
+  renderAlineacion(jugadores,seleccionados,equipo,venciSeguro,habilitadosSeguro,suspendidos);
   // Árbitros — solo en local
   const arbSec=document.getElementById('arbitros-section');
   if(esLocal){
@@ -1313,15 +1382,19 @@ async function mostrarAlineacion(equipo){
   fixIosScroll(document.querySelector('#screen-alineacion .scroll'));
 }
 
-function renderAlineacion(jugadores,seleccionados,equipo,venciSeguro,habilitadosSeguro){
+function renderAlineacion(jugadores,seleccionados,equipo,venciSeguro,habilitadosSeguro,suspendidos){
   jugadores=jugadores.slice().sort((a,b)=>{const ap=(a.apellido||'').localeCompare(b.apellido||'','es');return ap!==0?ap:(a.nombre||'').localeCompare(b.nombre||'','es');});
   const lista=document.getElementById('ali-lista');lista.innerHTML='';
   jugadores.forEach(j=>{
     const dni=j.dni||'';const isSel=seleccionados.has(dni);const num=seleccionados.get(dni)||'';
     const noHabilitado=!!(venciSeguro && dni && habilitadosSeguro && !habilitadosSeguro.has(dni));
-    lista.innerHTML+=`<div class="player-row${isSel?' selected':''}${noHabilitado?' no-habilitado':''}" id="prow-${dni}" onclick="toggleJugador('${dni}','${equipo}')">
+    const sancion=suspendidos&&dni?suspendidos.get(dni):null;
+    const bloqueadoSancion=!!(sancion&&sancion.length);
+    const motivoBloqueo=bloqueadoSancion?sancion.map(s=>s.label+' — '+s.desc).join(' · '):(noHabilitado?'Seguro médico pendiente':'');
+    const avisoHtml=bloqueadoSancion?`<div class="player-warn">🚫 Suspendido: ${esc(sancion.map(s=>s.label).join(', '))}</div>`:noHabilitado?'<div class="player-warn">No habilitado por pago de seguro pendiente</div>':'';
+    lista.innerHTML+=`<div class="player-row${isSel?' selected':''}${(noHabilitado||bloqueadoSancion)?' no-habilitado':''}" id="prow-${dni}" data-bloqueo="${esc(motivoBloqueo)}" onclick="toggleJugador('${dni}','${equipo}')">
 <div class="player-check">${isSel?'✓':''}</div>
-<div style="flex:1;"><div class="player-name">${esc((j.apellido||'').toUpperCase()+(j.apellido&&j.nombre?', ':'')+( j.nombre||''))}</div><div class="player-dni">DNI ${esc(dni)}</div>${noHabilitado?'<div class="player-warn">No habilitado por pago de seguro pendiente</div>':''}</div>
+<div style="flex:1;"><div class="player-name">${esc((j.apellido||'').toUpperCase()+(j.apellido&&j.nombre?', ':'')+( j.nombre||''))}</div><div class="player-dni">DNI ${esc(dni)}</div>${avisoHtml}</div>
 <div class="player-num" onclick="event.stopPropagation()">
   <input class="num-input" id="num-${dni}" type="tel" inputmode="numeric" maxlength="2" placeholder="N°" value="${isSel?numCamiseta(num):''}" ${isSel?'':'style="display:none"'} oninput="validarNumero(this)" onfocus="this.select()">
 </div></div>`;
@@ -1338,7 +1411,7 @@ function toggleJugador(dni,equipo){
   const totalSel=document.querySelectorAll('#ali-lista .player-row.selected').length;
   if(isSel){row.classList.remove('selected');row.querySelector('.player-check').textContent='';numInp.style.display='none';numInp.value='';}
   else{
-    if(row.classList.contains('no-habilitado')){toast('Este jugador no está habilitado: seguro médico pendiente.');return;}
+    if(row.classList.contains('no-habilitado')){const motivo=row.getAttribute('data-bloqueo')||'no está habilitado';toast('🚫 '+motivo,4000);return;}
     if(totalSel>=15){toast('Máximo 15 jugadores.');return;}
     if(row.classList.contains('blocked'))return;
     row.classList.add('selected');row.querySelector('.player-check').textContent='✓';numInp.style.display='';numInp.focus();

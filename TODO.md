@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-09 (continuación 1) — auditoría de Planillero + fix: alineación no avisaba jugadores suspendidos
+
+- **A pedido del usuario**, con la temporada por arrancar en pocos días: auditoría completa de `planilla.html` (archivo separado de `index.html`, es su propia PWA) — cómo se accede, el flujo de un partido en vivo, y comparación contra `firestore.rules`. Quedó un ranking de hallazgos por severidad en el chat (no en este archivo, para no duplicar) — el más grave se resuelve acá, los siguientes quedan para continuar esta misma sesión.
+- **Bug corregido (severidad alta) — un jugador suspendido por tarjetas podía salir a jugar sin ningún aviso.** La pantalla de armar la alineación (`renderAlineacion` en `planilla.html`) solo bloqueaba por seguro médico pendiente — nunca chequeaba roja directa, doble amarilla o acumulación de 3 amarillas, ese control solo existía en el panel de admin y siempre DESPUÉS del partido.
+- **Fix**: nuevas funciones `cargarTarjetasDivision(division)` (cuenta tarjetas de todos los partidos jugados de la división, mismo cálculo que `calcularTarjetasPorJugador` de `index.html`) y `getSancionesActivas(counts, eq)` (mismo cálculo que `getEstadoSanciones` de `index.html` — respeta pagos de $5.000/$7.000 y fechas ya cumplidas cargadas por el admin). Se precarga por división al entrar a una cancha (`cargarLista`) para que quede disponible offline; si no se pudo verificar (sin conexión y sin caché previo), se avisa explícitamente al planillero en vez de asumir que está todo bien. Un jugador suspendido ahora bloquea su selección igual que el seguro médico vencido, mostrando el motivo exacto (roja/doble amarilla/acumulación).
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-08 (continuación 20) — fix: el PDF de carnets del propio equipo salía sin las fotos recién subidas por el admin
 
 - **Reportado**: rotens (ya destrabado en continuaciones anteriores) quiso imprimir sus carnets y las fotos que el admin borró y volvió a subir por él no le aparecían al delegado — pero al usuario (admin) recién entrar a la cuenta de rotens sí le aparecía el PDF completo.
