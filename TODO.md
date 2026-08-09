@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-09 (continuación 3) — último ítem de la auditoría de Planillero: guard contra doble-tap en fin de tiempo/partido
+
+- **Severidad baja, último ítem del ranking de la auditoría.** `finPrimerTiempo()`/`finPartido()` dependían solo del `confirm()` nativo — un doble-tap físico encola un segundo click que se procesa recién al cerrar el primer diálogo, reabriendo otro. En el peor caso (confirmado dos veces por reflejo), `finPrimerTiempo()` podía resetear las faltas del 2° tiempo aunque ya se hubiera cargado alguna en el medio.
+- **Fix**: guard `_cambiandoTiempo`, mismo patrón que ya usaba `confirmarAlineacion()` (comentario BUG3) y `abrirPartido()` (BUG4).
+- **Con esto se cierran los 6 hallazgos de la auditoría de Planillero de esta sesión** (jugador suspendido sin aviso, sync entre dispositivos, partidos `_sim` bloqueando cancha, reglas de Firestore de `partidos` demasiado abiertas, y este). **Quedan dos cosas que no son código, a cargo del usuario antes de que arranque la temporada**: (1) revisar a mano el panel de admin/Firestore por equipos o partidos de prueba de sesiones anteriores en una "Cancha 9" — no tengo forma de consultar la base en producción sin credenciales de admin, que correctamente no están en el repo; (2) avisarles a los planilleros que no borren/reinstalen la app hasta confirmar que hubo señal después de cerrar una planilla offline, porque "Cerrar planilla" puede confirmar éxito localmente antes de sincronizar con el servidor (comportamiento intencional del modo offline, no un bug).
+- **Sin probar en el navegador.** Recomendado antes de que arranque la temporada: correr un partido de prueba real desde `planilla.html`, dos dispositivos si es posible.
+
 ## ✅ Sesión 2026-08-09 (continuación 2) — fix: dos celulares en el mismo partido se pisaban en silencio, partidos de prueba podían bloquear una cancha, reglas de partidos endurecidas
 
 - **Bug corregido (severidad alta, siguiente de la auditoría) — sin sincronización entre dispositivos.** `guardarPartido()` en `planilla.html` pisaba TODO el documento del partido (goles, tarjetas, faltas, alineación) con lo que hubiera en memoria local, en cada toque (gol, tarjeta, falta, minuto) — sin fusión ni bloqueo. Si el celular titular se quedaba sin batería y otro retomaba el mismo partido, el que guardaba último borraba en silencio lo que había cargado el otro. La variable `st.unsub` ya existía declarada pero nunca se usaba — quedó a medio construir en algún momento.

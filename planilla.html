@@ -1624,17 +1624,29 @@ function actualizarBotonestiempo(){
   document.getElementById('btn-fin').style.display=st.tiempoActual===2?'':'none';
 }
 
+// confirm() bloquea el hilo mientras está abierto, pero un doble-tap en la pantalla encola un
+// segundo click que se procesa recién cuando se cierra el primer diálogo — reabriendo otro
+// igual. Si el planillero lo confirma dos veces por reflejo, finPrimerTiempo() volvería a
+// resetear las faltas del 2° tiempo aunque ya se hubiera cargado alguna en el medio. Este
+// guard evita esa segunda ejecución, igual que ya se hace en confirmarAlineacion (BUG3).
+let _cambiandoTiempo=false;
 function finPrimerTiempo(){
-  if(!confirm('¿Confirmar fin del 1° tiempo?'))return;
+  if(_cambiandoTiempo)return;
+  _cambiandoTiempo=true;
+  if(!confirm('¿Confirmar fin del 1° tiempo?')){_cambiandoTiempo=false;return;}
   st.tiempoActual=2;st.faltas.local.t2=0;st.faltas.visitante.t2=0;
   st.partido.estado='segundo_tiempo'; // BUG1: actualizar estado local para que actualizarBotonesAgregarJugador lo detecte
   actualizarMarcador();actualizarFaltas();actualizarBotonestiempo();actualizarBotonesMinuto();actualizarBotonesAgregarJugador();
   db.collection('partidos').doc(st.partidoId).update({estado:'segundo_tiempo',tiempoActual:2});
   toast('Inicio del 2° tiempo');
+  _cambiandoTiempo=false;
 }
 
 function finPartido(){
-  if(!confirm('¿Confirmar fin del partido?'))return;
+  if(_cambiandoTiempo)return;
+  _cambiandoTiempo=true;
+  if(!confirm('¿Confirmar fin del partido?')){_cambiandoTiempo=false;return;}
+  _cambiandoTiempo=false;
   const p=st.partido;
   document.getElementById('cierre-local-nombre').textContent=p.equipoLocalNombre;
   document.getElementById('cierre-visitante-nombre').textContent=p.equipoVisitanteNombre;
