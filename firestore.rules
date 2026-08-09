@@ -61,13 +61,28 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // El planillero entra con sesión anónima (sin custom claim), así que a nivel de reglas
+    // no hay forma de distinguir "el planillero de ESTE partido" de cualquier otra sesión
+    // anónima — eso requeriría rehacer el login del planillero con claims propios, cambio
+    // grande para tocar días antes de que arranque la temporada. Lo que sí se puede acotar
+    // sin ese rediseño: ninguna sesión anónima puede tocar los campos de identidad del
+    // fixture (contra qué equipo juega, en qué cancha, qué fecha) — solo el admin genera o
+    // corrige eso. Antes cualquier autenticado (anónimo incluido) podía reescribir cualquier
+    // campo de cualquier partido no cerrado, incluyendo estos.
+    function soloCamposPlanilla() {
+      let tocados = request.resource.data.diff(resource.data).affectedKeys();
+      return !tocados.hasAny([
+        'equipoLocalId', 'equipoVisitanteId', 'equipoLocalNombre', 'equipoVisitanteNombre',
+        'division', 'zona', 'numeroFecha', 'cancha', 'horario'
+      ]);
+    }
     match /partidos/{id} {
       allow read: if autenticado();
       allow create: if autenticado();
       // Una vez cerrado el partido, la planilla queda tal cual — ni el
       // planillero ni un equipo pueden modificarla. Solo el admin puede
       // corregir un error después, desde "Editar resultado".
-      allow update: if autenticado() && (resource.data.estado != 'cerrado' || isAdmin());
+      allow update: if isAdmin() || (autenticado() && resource.data.estado != 'cerrado' && soloCamposPlanilla());
       allow delete: if isAdmin();
     }
     match /avisos/{id} {

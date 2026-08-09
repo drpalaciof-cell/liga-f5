@@ -1221,6 +1221,7 @@ function getSancionesActivas(counts, eq){
 }
 
 async function cargarLista(){
+  if(st.unsub){st.unsub();st.unsub=null;}
   sessionStorage.setItem('ligaf5_screen','lista');sessionStorage.removeItem('ligaf5_pid');
   document.getElementById('lista-title').textContent='Cancha '+st.cancha;
   const body=document.getElementById('lista-body');
@@ -1230,7 +1231,9 @@ async function cargarLista(){
   try{
     const snap=await db.collection('partidos').where('cancha','==',st.cancha).get();
     let todos=[];
-    snap.forEach(doc=>{const d={id:doc.id,...doc.data()};_pCache[doc.id]=d;todos.push(d);});
+    // Los partidos de prueba (_sim, creados con "Crear partido de prueba" para testear la app)
+    // nunca deben aparecer ni bloquear una cancha real — solo se abren a mano desde ese botón.
+    snap.forEach(doc=>{const d={id:doc.id,...doc.data()};if(d._sim)return;_pCache[doc.id]=d;todos.push(d);});
     body.innerHTML='';
     if(!todos.length){
       body.innerHTML='<div class="empty-msg">Esta cancha no tiene partidos asignados.<br><small style="color:rgba(255,255,255,0.3)">El administrador debe asignar los partidos a las canchas.</small></div>';
@@ -1293,6 +1296,7 @@ async function confirmarAbrirPartido(id,cardEl){
 async function abrirPartido(id,cardEl){
   if(_abriendo)return; // BUG4: evitar race condition con doble tap
   _abriendo=true;
+  if(st.unsub){st.unsub();st.unsub=null;} // por si quedó una escucha viva de un partido anterior
   if(cardEl){cardEl.style.opacity='0.5';cardEl.style.pointerEvents='none';}
   try{
     // Usar caché si existe, sino fetch
@@ -1547,6 +1551,7 @@ function actualizarEscudos(){
   });
 }
 function irAPartido(){
+  iniciarSyncPartido();
   const p=st.partido;
   document.getElementById('ph-local-nombre').textContent=p.equipoLocalNombre;
   document.getElementById('ph-visitante-nombre').textContent=p.equipoVisitanteNombre;
@@ -1830,6 +1835,96 @@ function actualizarBotonesUndo(){
   });
 }
 
+// Fusiona lo que llegó del servidor (potencialmente escrito por OTRO dispositivo en el mismo
+// partido) con el estado local, en vez de que el próximo guardarPartido() lo pise sin darse
+// cuenta. Cada campo tiene su propia regla de fusión porque no todos se combinan igual:
+// - eventos: unión por id (cada gol/tarjeta/minuto ya tiene un id propio) — nunca se pierde uno
+// - faltas: el máximo de cada celda — un dispositivo atrasado no puede bajar el conteo del otro
+// - minutos/firmas: una vez true, se queda true — no se puede "des-usar" un minuto ni "desfirmar"
+// - alineaciones: unión por dni — una sustitución cargada en otro celular no debe desaparecer
+// - tiempoActual: el más avanzado gana — el período de juego nunca retrocede
+// Devuelve true si algo cambió (para saber si hay que re-renderizar y volver a guardar).
+function fusionarRemoto(remote){
+  const eventosMap=new Map(st.eventos.map(e=>[e.id,e]));
+  let eventosCambio=false;
+  (remote.eventos||[]).forEach(e=>{if(e&&e.id!=null&&!eventosMap.has(e.id)){eventosMap.set(e.id,e);eventosCambio=true;}});
+  const eventosMerged=eventosCambio?[...eventosMap.values()].sort((a,b)=>a.id-b.id):st.eventos;
+
+  const faltasMerged={local:{},visitante:{}};
+  let faltasCambio=false;
+  ['local','visitante'].forEach(eq=>['t1','t2'].forEach(t=>{
+    const loc=(st.faltas[eq]&&st.faltas[eq][t])||0;
+    const rem=(remote.faltas&&remote.faltas[eq]&&remote.faltas[eq][t])||0;
+    const v=Math.max(loc,rem);
+    faltasMerged[eq][t]=v;
+    if(v!==loc)faltasCambio=true;
+  }));
+
+  const minutosMerged={local:{},visitante:{}};
+  let minutosCambio=false;
+  ['local','visitante'].forEach(eq=>['t1','t2'].forEach(t=>{
+    const loc=!!(st.minutos[eq]&&st.minutos[eq][t]);
+    const rem=!!(remote.minutos&&remote.minutos[eq]&&remote.minutos[eq][t]);
+    const v=loc||rem;
+    minutosMerged[eq][t]=v;
+    if(v!==loc)minutosCambio=true;
+  }));
+
+  const fusionarAlin=(local,remoto)=>{
+    const map=new Map((local||[]).map(j=>[j.dni,j]));
+    let cambio=false;
+    (remoto||[]).forEach(j=>{if(j&&j.dni&&!map.has(j.dni)){map.set(j.dni,j);cambio=true;}});
+    return{lista:cambio?[...map.values()]:local,cambio};
+  };
+  const aliL=fusionarAlin(st.alineacionLocal,remote.alineacionLocal);
+  const aliV=fusionarAlin(st.alineacionVisitante,remote.alineacionVisitante);
+
+  const firmasMerged={
+    local: st.firmas.local||!!(remote.firmas&&remote.firmas.local),
+    visitante: st.firmas.visitante||!!(remote.firmas&&remote.firmas.visitante)
+  };
+  const firmasCambio=firmasMerged.local!==st.firmas.local||firmasMerged.visitante!==st.firmas.visitante;
+
+  const tiempoMerged=Math.max(st.tiempoActual||1,remote.tiempoActual||1);
+  const tiempoCambio=tiempoMerged!==st.tiempoActual;
+
+  if(!(eventosCambio||faltasCambio||minutosCambio||aliL.cambio||aliV.cambio||firmasCambio||tiempoCambio))return false;
+
+  st.eventos=eventosMerged;
+  st.faltas=faltasMerged;
+  st.minutos=minutosMerged;
+  st.alineacionLocal=aliL.lista;
+  st.alineacionVisitante=aliV.lista;
+  st.firmas=firmasMerged;
+  st.tiempoActual=tiempoMerged;
+  return true;
+}
+
+// Escucha en vivo el partido mientras se está jugando — antes cada guardarPartido() pisaba TODO
+// el documento con lo que hubiera en memoria local, así que si dos celulares tenían abierto el
+// mismo partido (ej. el titular se quedó sin batería y otro retoma), el que guardaba último
+// borraba en silencio lo que había cargado el otro. Ahora, cuando llega un cambio real del
+// servidor (no el eco de nuestra propia escritura), se fusiona en vez de descartarse.
+function iniciarSyncPartido(){
+  if(st.unsub){st.unsub();st.unsub=null;}
+  if(!st.partidoId)return;
+  st.unsub=db.collection('partidos').doc(st.partidoId).onSnapshot(snap=>{
+    if(!snap.exists)return;
+    if(snap.metadata.hasPendingWrites)return; // eco de nuestra propia escritura, todavía no confirmada por el servidor
+    if(snap.metadata.fromCache)return; // no es un dato fresco del servidor (ej. venimos offline) — nada nuevo que fusionar
+    const remote=snap.data();
+    if(remote.estado==='cerrado'&&st.partido&&st.partido.estado!=='cerrado'){
+      toast('⚠️ Este partido se cerró desde otro dispositivo.',5000);
+      st.partido.estado='cerrado';
+      return;
+    }
+    if(!fusionarRemoto(remote))return;
+    actualizarMarcador();actualizarFaltas();renderEventos();actualizarBotonesMinuto();actualizarBotonesUndo();actualizarBotonesAgregarJugador();
+    toast('🔄 Sincronizado con otro dispositivo',2500);
+    guardarPartido(); // persiste el resultado fusionado para que el otro dispositivo también converja
+  },err=>{console.error('sync partido:',err);});
+}
+
 async function guardarPartido(){
   const p=st.partido;
   const gL=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoLocalId).length;
@@ -1869,6 +1964,7 @@ async function cerrarPlanilla(){
   try{
     await guardarPartido();
     await db.collection('partidos').doc(st.partidoId).update({estado:'cerrado',jugado:true,observaciones:obs,golesLocal:gL,golesVisitante:gV});
+    if(st.unsub){st.unsub();st.unsub=null;}
     toast('Planilla cerrada ✓',3000);setTimeout(()=>goScreen('screen-lista'),1500);
   }catch(e){toast('Error. Se sincronizará con conexión.');}
 }
