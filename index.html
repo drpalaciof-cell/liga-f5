@@ -1230,6 +1230,12 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           <span class="datos-temporada-arrow">›</span>
         </div>
 
+        <div class="glass section-card" style="margin-top:16px;" id="admin-auditoria-card">
+          <h3>🧾 Auditoría de pagos y seguros <span class="muted" id="admin-auditoria-badge" style="font-size:12px;font-weight:500;"></span></h3>
+          <p class="wizard-help" style="margin-bottom:10px;">Barre TODOS los equipos buscando montos aprobados sospechosamente bajos (típico del bug de los puntos como separador de miles, ya corregido en la carga pero no en lo que ya estaba guardado) y comprobantes que ya habían sido aprobados y ahora tienen uno nuevo esperando revisión — la plata de esos ya se había contado antes.</p>
+          <div id="admin-auditoria-resultados"></div>
+        </div>
+
         <div class="glass section-card" style="margin-top:16px;" id="admin-duplicados-card">
           <h3>⚠️ Jugadores duplicados <span class="muted" id="admin-duplicados-badge" style="font-size:12px;font-weight:500;"></span></h3>
           <p class="wizard-help" style="margin-bottom:10px;">Mismo DNI cargado en la lista de buena fe de más de un equipo — un jugador no puede estar anotado en dos equipos a la vez.</p>
@@ -4057,6 +4063,68 @@ function actualizarPickMeta() {
   document.getElementById('pick-segunda-meta').textContent = `${segunda} equipo(s)`;
   buscarJugadorGlobalAdmin();
   renderJugadoresDuplicadosAdmin();
+  renderAuditoriaPagosAdmin();
+}
+// Barre TODOS los equipos de las dos divisiones buscando dos clases de problema real
+// encontrado en producción:
+// 1) Montos APROBADOS sospechosamente bajos — el bug de los puntos como separador de miles
+//    (ya corregido en la carga, pero no retroactivamente en lo que ya quedó guardado en la
+//    base) truncaba "200.000" a "200" — así que cualquier monto aprobado absurdamente chico
+//    para lo que se está cobrando probablemente sea uno de esos casos, no un pago real.
+// 2) Una etapa/tanda que YA había sido aprobada y ahora tiene un comprobante nuevo pendiente
+//    sin revisar (el caso "Valencia": subieron el comprobante equivocado, lo reemplazaron
+//    después, y quedó pendiente de nuevo aunque la plata ya se había contado una vez).
+function auditarPagosYSeguros() {
+  const hallazgos = [];
+  const MONTO_INS_SOSPECHOSO = 5000; // ninguna seña/saldo/pago real de esta liga es tan bajo
+  equiposCacheAdmin.forEach(eq => {
+    if (eq.pagoEstado === 'aprobado' && eq.pagoMontoDeclarado != null && eq.pagoMontoDeclarado < MONTO_INS_SOSPECHOSO) {
+      hallazgos.push({ eq, tipo: 'Inscripción', mensaje: `Monto aprobado de la seña/pago: $${eq.pagoMontoDeclarado.toLocaleString('es-AR')} — sospechosamente bajo, revisar contra el comprobante real (posible bug viejo de los puntos).` });
+    }
+    if (eq.pagoSaldoEstado === 'aprobado' && eq.pagoSaldoMontoDeclarado != null && eq.pagoSaldoMontoDeclarado < MONTO_INS_SOSPECHOSO) {
+      hallazgos.push({ eq, tipo: 'Inscripción', mensaje: `Monto aprobado del saldo: $${eq.pagoSaldoMontoDeclarado.toLocaleString('es-AR')} — sospechosamente bajo, revisar contra el comprobante real (posible bug viejo de los puntos).` });
+    }
+    if (eq.pagoEstado !== 'aprobado' && tuvoAprobacionPreviaEtapa(eq, 'principal')) {
+      hallazgos.push({ eq, tipo: 'Inscripción', mensaje: `La seña/pago ya había sido APROBADA antes y ahora hay un comprobante nuevo sin revisar — la plata ya se había contado, revisar con prioridad.` });
+    }
+    if ((eq.pagoTipo || 'total') === 'sena' && eq.pagoSaldoEstado !== 'aprobado' && tuvoAprobacionPreviaEtapa(eq, 'saldo')) {
+      hallazgos.push({ eq, tipo: 'Inscripción', mensaje: `El saldo ya había sido APROBADO antes y ahora hay un comprobante nuevo sin revisar — la plata ya se había contado, revisar con prioridad.` });
+    }
+    (eq.segurosTransacciones || []).forEach(tx => {
+      if (tx.estado === 'aprobado' && tx.montoDeclarado != null && tx.dnis && tx.dnis.length > 0 && tx.montoDeclarado < tx.dnis.length * 1000) {
+        hallazgos.push({ eq, tipo: 'Seguro', mensaje: `Tanda de ${tx.dnis.length} jugador(es) aprobada por $${tx.montoDeclarado.toLocaleString('es-AR')} — muy por debajo de lo esperado (~$${(tx.dnis.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')}), revisar contra el comprobante real.` });
+      }
+      if (tx.estado !== 'aprobado' && tx.dnis && tx.dnis.some(dni => (eq.segurosTransacciones || []).some(t => t.id !== tx.id && t.estado === 'aprobado' && (t.dnis || []).includes(dni)))) {
+        hallazgos.push({ eq, tipo: 'Seguro', mensaje: `Hay una tanda pendiente con jugador(es) que ya estaban asegurados por OTRA tanda aprobada — probable reemplazo/corrección, revisar con prioridad.` });
+      }
+    });
+  });
+  return hallazgos;
+}
+function renderAuditoriaPagosAdmin() {
+  const badge = document.getElementById('admin-auditoria-badge');
+  const wrap = document.getElementById('admin-auditoria-resultados');
+  if (!badge || !wrap) return;
+  const hallazgos = auditarPagosYSeguros();
+  if (hallazgos.length === 0) {
+    badge.textContent = '';
+    wrap.innerHTML = `<div class="glass notice notice-ok" style="margin:0;">✅ No se encontraron montos sospechosos ni comprobantes pendientes de re-revisión.</div>`;
+    return;
+  }
+  badge.textContent = `(${hallazgos.length})`;
+  badge.style.color = 'var(--danger)';
+  wrap.innerHTML = hallazgos.map(h => {
+    const isSegunda = h.eq.division === 'Segunda';
+    const accent = isSegunda ? 'var(--segunda)' : 'var(--cyan)';
+    const accentSoft = isSegunda ? 'var(--segunda-soft)' : 'var(--cyan-soft)';
+    return `<div class="glass notice notice-warn" style="margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="badge" style="background:${accentSoft};color:${accent};border:1px solid ${accent};">${escapeHtml(h.eq.division || '-')}</span>
+      <strong>${escapeHtml(h.eq.nombre)}</strong>
+      <span class="badge badge-cyan">${escapeHtml(h.tipo)}</span>
+      <span style="flex:1;min-width:200px;font-size:12.5px;">${escapeHtml(h.mensaje)}</span>
+      <button class="btn btn-sm" onclick="elegirDivisionAdmin('${h.eq.division}');verDetalleEquipoAdmin('${h.eq.id}')">🗂 Ver equipo</button>
+    </div>`;
+  }).join('');
 }
 // Un jugador (mismo DNI) no puede estar en la lista de buena fe de dos equipos a la vez —
 // esto se puede colar fácil si alguien se cambia de equipo y el anterior no lo borra de su
@@ -4450,6 +4518,15 @@ function filtrarPagosAdmin(filtro) {
   document.querySelectorAll('[data-pago-filter]').forEach(b => b.classList.toggle('btn-primary', b.dataset.pagoFilter === filtro));
   renderPagosAdminList();
 }
+// Detecta el caso "Valencia": una etapa (seña o saldo) que YA había sido aprobada en algún
+// momento, y ahora volvió a quedar pendiente porque se subió/reemplazó el comprobante — la
+// plata de esa etapa ya se había contado en la recaudación antes, así que esto necesita
+// prioridad, no una revisión más entre las demás. Sin esta señal, en la cola de revisión se
+// ve exactamente igual que un comprobante subido por primera vez.
+function tuvoAprobacionPreviaEtapa(eq, etapa) {
+  if (!etapa) return false;
+  return (eq.pagoComprobantesHistorial || []).some(t => t.etapa === etapa && t.estado === 'aprobado');
+}
 function infoEtapaPago(eq) {
   const tipo = eq.pagoTipo || 'total';
   const estado = eq.pagoEstado || 'pendiente';
@@ -4522,6 +4599,9 @@ async function renderPagosAdminList() {
       : saldoPend === 0 ? `<span class="badge badge-ok">Sin saldo pendiente</span>`
       : `<span class="badge badge-warn">Falta cancelar $${saldoPend.toLocaleString('es-AR')}</span>`;
     const estimadoBadge = tieneMontoInscripcionEstimado(eq) ? `<span class="badge badge-warn" title="Aprobado antes de que existiera el campo de monto declarado (31/07) — el monto es una estimación, no lo declarado en el comprobante.">⚠️ Monto estimado</span>` : '';
+    const recargaBadge = (info.estado !== 'aprobado' && tuvoAprobacionPreviaEtapa(eq, info.etapa))
+      ? `<span class="badge badge-danger" title="Esta etapa ya había sido APROBADA antes — la plata ya se había contado en la recaudación. Ahora hay un comprobante nuevo esperando revisión: revisalo con prioridad, no como una carga de primera vez.">🔁 Reemplazo de un comprobante ya aprobado</span>`
+      : '';
     return `<div class="team-row" style="--row-accent:${accent};animation-delay:${idx * 35}ms">
       <div class="team-row-main">
         ${receiptHtml}
@@ -4532,6 +4612,7 @@ async function renderPagosAdminList() {
             ${badgesPago(info)}
             ${saldoBadge}
             ${estimadoBadge}
+            ${recargaBadge}
             <span class="team-row-sub">${tipoTexto} · Transfirió: ${escapeHtml(info.nombreTransferencia) || 'sin dato'}</span>
           </div>
           ${htmlResumenMonto(info.montoDeclarado, requerido, 'Declarado')}
@@ -4865,6 +4946,15 @@ function renderSegurosAdminList() {
     const monto = tx.dnis.length * MONTO_SEGURO_POR_JUGADOR;
     const receiptHtml = `<img src="${tx.comprobante}" class="receipt-thumb" onclick="verComprobanteSeguroAdmin('${eq.id}','${tx.id}')" style="cursor:pointer;">`;
     const sinDeclararBadge = tx.montoDeclarado == null ? `<span class="badge badge-warn" title="Todavía nadie miró el comprobante y confirmó el monto real transferido — este $${monto.toLocaleString('es-AR')} es solo la cuenta teórica (jugadores × $${MONTO_SEGURO_POR_JUGADOR.toLocaleString('es-AR')}).">⚠️ Sin monto confirmado</span>` : '';
+    // Mismo caso "Valencia" que en inscripción: alguno de estos jugadores ya estaba
+    // asegurado (aprobado en OTRA tanda) y esta tanda nueva es, probablemente, una
+    // corrección/reemplazo — no una carga de primera vez. Prioridad al revisar.
+    const yaAseguradosAntes = tx.estado !== 'aprobado'
+      ? tx.dnis.filter(dni => (eq.segurosTransacciones || []).some(t => t.id !== tx.id && t.estado === 'aprobado' && (t.dnis || []).includes(dni)))
+      : [];
+    const recargaBadge = yaAseguradosAntes.length > 0
+      ? `<span class="badge badge-danger" title="${yaAseguradosAntes.length} de estos jugadores ya estaban asegurados por OTRA tanda aprobada — esta parece ser un reemplazo/corrección, no una carga nueva. Revisar con prioridad.">🔁 Reemplazo de una tanda ya aprobada</span>`
+      : '';
     return `<div class="team-row" style="--row-accent:${accent};animation-delay:${idx * 35}ms">
       <div class="team-row-main">
         ${receiptHtml}
@@ -4874,6 +4964,7 @@ function renderSegurosAdminList() {
             <span class="badge" style="background:${accentSoft};color:${accent};border:1px solid ${accent};">${escapeHtml(eq.division || '-')}</span>
             ${badge}
             ${sinDeclararBadge}
+            ${recargaBadge}
             <span class="team-row-sub">${tx.dnis.length} jugador(es) · $${monto.toLocaleString('es-AR')} · ${fmtFechaSeguroTx(tx.fechaCarga)} · Transfirió: ${escapeHtml(tx.nombreTransferencia) || 'sin dato'}</span>
           </div>
           ${htmlResumenMonto(tx.montoDeclarado, monto, 'Declarado')}
@@ -5469,11 +5560,35 @@ async function crearEquipo(e) {
 // jugador + comprobantes) juntos en un solo lugar — antes estaban repartidos entre este
 // modal, "🗂 Historial" y "Ver jugadores", que era justo lo que generaba la queja de
 // "está todo disperso".
+//
+// Este panel se armaba con UN solo `.get()` — si el equipo corregía o volvía a subir un
+// comprobante mientras el admin lo tenía abierto (ej. arreglando un error), el admin seguía
+// viendo el estado viejo (ej. "Aprobado") hasta que cerraba y volvía a entrar. Eso generó
+// justamente la queja de "a mí me aparece completo, al equipo le figura pendiente" — no eran
+// dos cálculos distintos, era el mismo estado visto en dos momentos distintos. Ahora queda
+// escuchando en vivo mientras el panel está abierto.
+let _detalleEquipoUnsub = null;
+let _detalleEquipoSyncId = null;
+function iniciarSyncDetalleEquipoAdmin(id) {
+  if (_detalleEquipoSyncId === id && _detalleEquipoUnsub) return; // ya sincronizado con este mismo equipo
+  if (_detalleEquipoUnsub) { _detalleEquipoUnsub(); _detalleEquipoUnsub = null; }
+  _detalleEquipoSyncId = id;
+  _detalleEquipoUnsub = db.collection('equipos').doc(id).onSnapshot(snap => {
+    if (!snap.exists) return;
+    if (snap.metadata.hasPendingWrites || snap.metadata.fromCache) return; // eco de una escritura propia, o sin datos frescos del servidor
+    verDetalleEquipoAdmin(id, true);
+  }, e => console.error(e));
+}
+function detenerSyncDetalleEquipoAdmin() {
+  if (_detalleEquipoUnsub) { _detalleEquipoUnsub(); _detalleEquipoUnsub = null; }
+  _detalleEquipoSyncId = null;
+}
 function volverAEquiposAdmin() {
+  detenerSyncDetalleEquipoAdmin();
   document.getElementById('equipo-detalle-admin').classList.add('hidden');
   document.getElementById('torneo-division-detail').classList.remove('hidden');
 }
-async function verDetalleEquipoAdmin(id) {
+async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
   try {
     const doc = await db.collection('equipos').doc(id).get();
     if (!doc.exists) return;
@@ -5703,7 +5818,8 @@ async function verDetalleEquipoAdmin(id) {
     `;
     document.getElementById('torneo-division-detail').classList.add('hidden');
     document.getElementById('equipo-detalle-admin').classList.remove('hidden');
-    window.scrollTo(0, 0);
+    if (!esActualizacionEnVivo) window.scrollTo(0, 0);
+    iniciarSyncDetalleEquipoAdmin(id);
   } catch (e) { console.error(e); showToast('No se pudo cargar el equipo.', 'error'); }
 }
 async function verListaEquipo(id) { return verDetalleEquipoAdmin(id); }
