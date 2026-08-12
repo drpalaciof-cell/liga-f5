@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-12 (continuación 4) — pestaña "Lista de buena fe" separada, para equipo y admin
+
+- **A pedido del usuario**: reportó no encontrar la opción de destildar un jugador de seguro — esa función ya se había agregado y desplegado en la continuación 2 de esta misma sesión (checkbox editable en filas "Pendiente", función `quitarJugadorSeguroPendiente`). No se tocó de nuevo porque revisado el código está correcto; si seguía sin verse, lo más probable es caché vieja del navegador/PWA — pendiente de confirmar con el usuario después de recargar fuerte.
+- **Nuevo — pestaña "📋 Lista de buena fe" separada de "Mi equipo" (equipo)**: vista de solo lectura de la propia lista (apellido, nombre, DNI) con buscador arriba — para no tener que buscar en medio del pago/seguro mezclados. `renderListaBFPanel()`.
+- **Nuevo — pestaña "📋 Lista de buena fe" a nivel división (admin)**: junto a Equipos/Inscripciones/Seguro/etc. Combina en una sola tabla TODOS los jugadores de TODOS los equipos de la división activa (apellido, nombre, DNI, equipo), con buscador — para poder escanear a simple vista coincidencias que la detección automática de duplicados (agregada en la continuación 3) no resalta primero, como un DNI tipeado con un dígito de más o de menos pero mismo nombre. `renderListaBFAdmin()`.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-12 (continuación 3) — semáforo por equipo, fix de montos con puntos, seguro a $8.000 + cierre de inscripción a las 23hs, reset de contraseña más accesible, detección de jugadores duplicados
 
 - **A pedido del usuario**, tanda 3 de "varias funciones":

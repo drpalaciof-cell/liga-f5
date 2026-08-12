@@ -937,6 +937,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 
     <div class="tabs-equipo">
       <button class="tab-btn active" data-petab="panel" onclick="switchPanelEquipoTab('panel')">Mi equipo</button>
+      <button class="tab-btn" data-petab="listabf" onclick="switchPanelEquipoTab('listabf')">📋 Lista de buena fe</button>
       <button class="tab-btn" data-petab="mensajes" onclick="switchPanelEquipoTab('mensajes')">✉️ Mensajes<span class="msg-tab-badge" id="msg-equipo-tab-badge"></span></button>
       <button class="tab-btn" data-petab="partidos" onclick="switchPanelEquipoTab('partidos')">⚽ Partidos</button>
       <button class="tab-btn" data-petab="sanciones" onclick="switchPanelEquipoTab('sanciones')">🟥 Sanciones</button>
@@ -1089,6 +1090,19 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       </div>
     </div>
 
+    <div id="pe-tab-listabf" class="hidden">
+      <div class="glass section-card">
+        <h3>📋 Lista de buena fe <span class="muted" id="pe-listabf-count" style="font-size:12px;font-weight:500;"></span></h3>
+        <input type="text" id="pe-listabf-buscar" placeholder="🔎 Buscar jugador por nombre o apellido..." style="width:100%;margin-bottom:10px;" oninput="buscarJugadorListaBFEquipo()">
+        <div class="tbl-wrap">
+          <table class="jugadores-table">
+            <thead><tr><th>#</th><th>Apellido</th><th>Nombre</th><th>DNI</th></tr></thead>
+            <tbody id="pe-listabf-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div id="pe-tab-comprobantes" class="hidden">
       <div class="glass section-card">
         <h3>💳 Comprobantes de inscripción</h3>
@@ -1224,6 +1238,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         </div>
         <div class="tabs-admin-sub" id="division-subtabs">
           <button class="tab-btn active" data-divtab="equipos" onclick="switchDivisionAdminTab('equipos')">Equipos</button>
+          <button class="tab-btn" data-divtab="listabf" onclick="switchDivisionAdminTab('listabf')">📋 Lista de buena fe</button>
           <button class="tab-btn" data-divtab="inscripciones" onclick="switchDivisionAdminTab('inscripciones')">Inscripciones</button>
           <button class="tab-btn" data-divtab="seguro" onclick="switchDivisionAdminTab('seguro')">Seguro</button>
           <button class="tab-btn" data-divtab="fixture" onclick="switchDivisionAdminTab('fixture')">Fixture</button>
@@ -1239,6 +1254,21 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
               <button class="btn btn-primary" onclick="abrirModalNuevoEquipo()">+ Nuevo equipo</button>
             </div>
             <div id="pa-equipos-list"></div>
+          </div>
+        </div>
+
+        <!-- Lista de buena fe (todos los equipos de la división juntos) -->
+        <div id="divisiontab-listabf" class="divisiontab hidden">
+          <div class="glass section-card">
+            <h3>📋 Lista de buena fe — todos los equipos <span class="muted" id="pa-listabf-count" style="font-size:12px;font-weight:500;"></span></h3>
+            <p class="wizard-help" style="margin-bottom:10px;">Todos los jugadores de esta división en una sola tabla — útil para escanear a simple vista coincidencias de nombre o DNI entre equipos (además de la detección automática en "Jugadores duplicados", en la pantalla de elegir división).</p>
+            <input type="text" id="pa-listabf-buscar" placeholder="🔎 Buscar jugador por nombre o apellido..." style="width:100%;margin-bottom:10px;" oninput="buscarJugadorListaBFAdmin()">
+            <div class="tbl-wrap" style="overflow-x:auto;">
+              <table class="jugadores-table">
+                <thead><tr><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Equipo</th></tr></thead>
+                <tbody id="pa-listabf-body"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -1559,8 +1589,58 @@ function buscarJugadorListaEquipo() {
 function buscarJugadorSeguroEquipo() {
   filtrarPorNombre(document.getElementById('pe-seguro-buscar'), '#pe-seguro-body > tr', tr => tr.textContent);
 }
+// Vista de solo lectura de la lista de buena fe propia, en su propia pestaña — separada de
+// "Mi equipo" (que tiene edición, pago, seguro y demás mezclado) para que sea más simple
+// buscar un jugador puntual sin todo lo demás alrededor.
+function renderListaBFPanel() {
+  const eq = state.equipo;
+  const jugadores = (eq.jugadores && eq.jugadores.length > 0 ? eq.jugadores : []).filter(j => j.apellido || j.nombre || j.dni)
+    .slice().sort((a, b) => (a.apellido || '').localeCompare(b.apellido || '', 'es'));
+  document.getElementById('pe-listabf-count').textContent = `(${jugadores.length}/${NUM_JUGADORES})`;
+  const body = document.getElementById('pe-listabf-body');
+  body.innerHTML = jugadores.length === 0
+    ? `<tr><td colspan="4" class="empty-state">Todavía no cargaste jugadores — hacelo desde la pestaña "Mi equipo".</td></tr>`
+    : jugadores.map((j, i) => `<tr>
+        <td class="idx-cell"><span class="jersey-num">${i + 1}</span></td>
+        <td class="uppercase-bold">${escapeHtml(j.apellido) || '-'}</td>
+        <td>${escapeHtml(j.nombre) || '-'}</td>
+        <td style="font-variant-numeric:tabular-nums;">${escapeHtml(j.dni) || 'sin DNI'}</td>
+      </tr>`).join('');
+  buscarJugadorListaBFEquipo();
+}
+function buscarJugadorListaBFEquipo() {
+  filtrarPorNombre(document.getElementById('pe-listabf-buscar'), '#pe-listabf-body > tr', tr => tr.textContent);
+}
 function buscarJugadorSeguroAdmin() {
   filtrarPorNombre(document.getElementById('admin-seguro-roster-buscar'), '#admin-seguro-roster-body > tr', tr => tr.textContent);
+}
+// Todos los jugadores de TODOS los equipos de la división activa, en una sola tabla — a
+// diferencia del buscador global (que solo muestra resultados al escribir), acá se ve la
+// lista completa de entrada, para poder escanearla a simple vista y notar coincidencias de
+// nombre o DNI entre equipos que la detección automática de duplicados no necesariamente
+// resalta primero (ej. DNI tipeado con un dígito de más/menos, mismo nombre).
+function renderListaBFAdmin() {
+  const equipos = pagosCacheAdmin.filter(eq => eq.division === state.adminDivisionActiva)
+    .slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  const filas = [];
+  equipos.forEach(eq => {
+    (eq.jugadores || []).filter(j => j.apellido || j.nombre || j.dni).forEach(j => filas.push({ j, eq }));
+  });
+  filas.sort((a, b) => (a.j.apellido || '').localeCompare(b.j.apellido || '', 'es'));
+  document.getElementById('pa-listabf-count').textContent = `(${filas.length})`;
+  const body = document.getElementById('pa-listabf-body');
+  body.innerHTML = filas.length === 0
+    ? `<tr><td colspan="4" class="empty-state">No hay jugadores cargados en esta división.</td></tr>`
+    : filas.map(({ j, eq }) => `<tr>
+        <td class="uppercase-bold">${escapeHtml(j.apellido) || '-'}</td>
+        <td>${escapeHtml(j.nombre) || '-'}</td>
+        <td style="font-variant-numeric:tabular-nums;">${escapeHtml(j.dni) || 'sin DNI'}</td>
+        <td>${escapeHtml(eq.nombre)}</td>
+      </tr>`).join('');
+  buscarJugadorListaBFAdmin();
+}
+function buscarJugadorListaBFAdmin() {
+  filtrarPorNombre(document.getElementById('pa-listabf-buscar'), '#pa-listabf-body > tr', tr => tr.textContent);
 }
 function buscarJugadorCarnetAdmin() {
   filtrarPorNombre(document.getElementById('admin-carnet-buscar'), '#admin-carnet-rows-wrap > div', div => div.textContent);
@@ -2313,11 +2393,13 @@ function switchPanelEquipoTab(tab, renderSanc = true) {
   document.getElementById('pe-tab-sanciones').classList.toggle('hidden', tab !== 'sanciones');
   document.getElementById('pe-tab-carnet').classList.toggle('hidden', tab !== 'carnet');
   document.getElementById('pe-tab-partidos').classList.toggle('hidden', tab !== 'partidos');
+  document.getElementById('pe-tab-listabf').classList.toggle('hidden', tab !== 'listabf');
   document.getElementById('pe-tab-comprobantes').classList.toggle('hidden', tab !== 'comprobantes');
   document.getElementById('pe-tab-mensajes').classList.toggle('hidden', tab !== 'mensajes');
   if (tab === 'sanciones' && renderSanc) renderSancionesEquipo();
   if (tab === 'carnet') renderCarnetTab();
   if (tab === 'partidos') renderPartidosEquipo();
+  if (tab === 'listabf') renderListaBFPanel();
   if (tab === 'comprobantes') renderComprobantesPanel();
   if (tab === 'mensajes') iniciarMensajesEquipo();
   else detenerMensajesEquipo();
@@ -3003,6 +3085,7 @@ function switchDivisionAdminTab(tab) {
   document.getElementById('divisiontab-' + tab).classList.remove('hidden');
   if (tab === 'sanciones') renderSancionesAdmin();
   if (tab === 'planillas') cargarPlanillasAdmin(state.adminDivisionActiva);
+  if (tab === 'listabf') renderListaBFAdmin();
 }
 function calcularTarjetasPorJugador(partidos) {
   const map = {};
