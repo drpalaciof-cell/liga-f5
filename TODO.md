@@ -2,6 +2,15 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-12 (continuación 2) — deseleccionar seguro pendiente, pestaña Comprobantes del equipo, buscadores en 4 lugares más, buscador global de jugadores
+
+- **A pedido del usuario**, "varias funciones" — tanda 2:
+- **1) Destildar un jugador de una tanda de seguro pendiente**: antes, apenas el equipo subía el comprobante, el checkbox quedaba bloqueado hasta que el admin aprobara o rechazara — si se habían marcado jugadores de más por error, no había forma de sacarlos sin esperar al admin. Ahora el checkbox de un jugador "Pendiente" se puede destildar: `quitarJugadorSeguroPendiente(dni, checkboxEl)` lo saca de esa tanda en `segurosTransacciones` (o borra la tanda entera si era el único jugador). Aprobado/Pago tardío/vencido siguen bloqueados, como antes.
+- **2) Nueva pestaña "📎 Comprobantes" en el panel del equipo**: antes ningún equipo podía ver ni tocar los comprobantes que había subido — si se equivocaban de imagen, tenían que pedirle al admin que lo arreglara. Ahora tienen su propia lista (inscripción + seguro, con "Ver" y "🗑 Borrar") — el borrado está bloqueado para comprobantes ya **aprobados** (esos quedan fijos, es la prueba de un pago real), pero libre para pendientes/rechazados, así pueden corregir un error y volver a subir el correcto desde "Mi equipo". Sección de arancel como placeholder ("Próximamente"), a la espera de esa función futura. Nuevas funciones: `renderComprobantesPanel()`, `eliminarComprobantePropio(tipo, txId)`, `comprobanteRowEquipo()`. Al borrar el comprobante ACTIVO de una etapa, se limpia también el campo suelto (`pagoComprobante`/`pagoSaldoComprobante`) para que "Mi equipo" muestre el cargador vacío — `pagoEstado`/`pagoSaldoEstado` solo pueden volver a `'pendiente'` del lado del equipo (la regla de Firestore no deja otro valor), que además es el mismo estado con el que arranca cualquier equipo nuevo.
+- **3) Buscador por nombre en 4 lugares más** (ya existía uno en la pestaña Seguro del admin, sesión anterior): arriba de "Lista de buena fe" del equipo, arriba de "Seguro médico" del equipo, arriba de la tabla de seguro del panel de cada equipo (admin), y arriba de la sección "Carnets" del panel de cada equipo (admin, es la lista de buena fe con foto). Nuevo helper genérico `filtrarPorNombre(inputEl, filaSelector, textoDeFila)` — OCULTA filas en vez de re-renderizar, para no perder texto que el equipo esté tipeando en la lista editable.
+- **4) Buscador global de jugadores para el admin**: nueva caja en la pantalla de elegir división ("🔎 Buscar jugador (toda la liga)") — busca en TODOS los equipos de las DOS divisiones a la vez, sin necesidad de saber de antemano a qué equipo pertenece. División y equipo se muestran directo en el resultado (no hace falta entrar a "Ver equipo" para saberlo, a pedido explícito del usuario). `buscarJugadorGlobalAdmin()`.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-12 (continuación 1) — buscador de jugador por nombre en la pestaña Seguro (admin)
 
 - **A pedido del usuario**, primera de "varias funciones" a agregar esta sesión.

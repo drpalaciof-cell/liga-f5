@@ -941,6 +941,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       <button class="tab-btn" data-petab="partidos" onclick="switchPanelEquipoTab('partidos')">⚽ Partidos</button>
       <button class="tab-btn" data-petab="sanciones" onclick="switchPanelEquipoTab('sanciones')">🟥 Sanciones</button>
       <button class="tab-btn" data-petab="carnet" onclick="switchPanelEquipoTab('carnet')">🪪 Carnet</button>
+      <button class="tab-btn" data-petab="comprobantes" onclick="switchPanelEquipoTab('comprobantes')">📎 Comprobantes</button>
     </div>
 
     <div id="pe-tab-panel">
@@ -1017,6 +1018,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     <div class="glass section-card">
       <h3>⚽ Lista de buena fe <span class="muted" style="font-size:12px;font-weight:500;">(hasta 25 jugadores)</span></h3>
       <p class="rules-text">Los jugadores incluidos en la lista de buena fe no pueden ser menores de edad. Si tu equipo tiene jugadores menores de edad, comunicate con la organización para gestionar la inscripción bajo los requisitos correspondientes: <strong>ligaf5.2026@gmail.com</strong></p>
+      <input type="text" id="pe-jugadores-buscar" placeholder="🔎 Buscar jugador por nombre o apellido..." style="margin-bottom:10px;width:100%;" oninput="buscarJugadorListaEquipo()">
       <div class="tbl-wrap">
         <table class="jugadores-table">
           <thead><tr><th>#</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th class="col-del"></th></tr></thead>
@@ -1032,6 +1034,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     <div class="glass section-card">
       <h3>🩺 Seguro médico <span class="muted" style="font-size:12px;font-weight:500;">($5.000 por jugador asegurado)</span></h3>
       <p class="wizard-help">Marcá qué jugadores de tu lista de buena fe vas a asegurar. No es obligatorio asegurar a los 25: podés cubrir solo a una parte del plantel. Los jugadores no asegurados no van a estar habilitados para disputar partidos.</p>
+      <input type="text" id="pe-seguro-buscar" placeholder="🔎 Buscar jugador por nombre o apellido..." style="margin-bottom:10px;width:100%;" oninput="buscarJugadorSeguroEquipo()">
       <div class="tbl-wrap">
         <table class="jugadores-table">
           <thead><tr><th>#</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Asegurado</th></tr></thead>
@@ -1083,6 +1086,23 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     <div id="pe-tab-partidos" class="hidden">
       <div id="pe-partidos-content">
         <p class="muted" style="text-align:center;padding:30px 0;">Cargando partidos...</p>
+      </div>
+    </div>
+
+    <div id="pe-tab-comprobantes" class="hidden">
+      <div class="glass section-card">
+        <h3>💳 Comprobantes de inscripción</h3>
+        <p class="wizard-help" style="margin-bottom:0;">Si cargaste un comprobante equivocado, borralo acá (solo mientras esté pendiente o rechazado) y subí el correcto desde la pestaña "Mi equipo". Un comprobante ya aprobado no se puede borrar.</p>
+        <div id="pe-comp-inscripcion-list" style="margin-top:12px;"></div>
+      </div>
+      <div class="glass section-card">
+        <h3>🩺 Comprobantes de seguro médico</h3>
+        <p class="wizard-help" style="margin-bottom:0;">Cada tanda es un comprobante independiente. Podés borrar una tanda mientras esté pendiente o rechazada; una vez aprobada queda fija.</p>
+        <div id="pe-comp-seguro-list" style="margin-top:12px;"></div>
+      </div>
+      <div class="glass section-card">
+        <h3>🎟️ Comprobantes de arancel</h3>
+        <p class="wizard-help" style="margin-bottom:0;">Próximamente — todavía no está habilitada la carga de arancel.</p>
       </div>
     </div>
 
@@ -1180,6 +1200,13 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
             <p>Equipos, pagos y seguros — por división y en total</p>
           </div>
           <span class="datos-temporada-arrow">›</span>
+        </div>
+
+        <div class="glass section-card" style="margin-top:16px;">
+          <h3>🔎 Buscar jugador (toda la liga)</h3>
+          <p class="wizard-help" style="margin-bottom:10px;">Escribí un apellido o nombre para encontrar a un jugador sin importar en qué equipo o división está.</p>
+          <input type="text" id="admin-global-buscar-jugador" placeholder="🔎 Buscar por apellido o nombre..." style="width:100%;" oninput="buscarJugadorGlobalAdmin()">
+          <div id="admin-global-buscar-resultados" style="margin-top:10px;"></div>
         </div>
       </div>
 
@@ -1473,6 +1500,35 @@ function escapeHtml(str) {
 // Para buscadores por nombre: minúsculas y sin tildes, así "jose" encuentra "José".
 function normalizarBusqueda(str) {
   return String(str ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+// Buscador genérico por nombre para listas/tablas: OCULTA (no borra ni re-renderiza) las
+// filas que no coinciden — así nunca se pierde texto que el usuario esté escribiendo en un
+// campo editable (ej. la lista de buena fe del equipo, que tiene inputs, no texto plano).
+// `textoDeFila(fila)` le dice a la función de dónde sacar el texto de cada fila.
+function filtrarPorNombre(inputEl, filaSelector, textoDeFila) {
+  if (!inputEl) return;
+  const term = normalizarBusqueda(inputEl.value);
+  document.querySelectorAll(filaSelector).forEach(fila => {
+    if (!term) { fila.style.display = ''; return; }
+    const texto = normalizarBusqueda(textoDeFila(fila));
+    fila.style.display = texto.includes(term) ? '' : 'none';
+  });
+}
+const textoFilaConInputs = tr => {
+  const inputs = tr.querySelectorAll('input[data-f="apellido"], input[data-f="nombre"]');
+  return inputs.length ? [...inputs].map(i => i.value).join(' ') : tr.textContent;
+};
+function buscarJugadorListaEquipo() {
+  filtrarPorNombre(document.getElementById('pe-jugadores-buscar'), '#pe-jugadores-body > tr', textoFilaConInputs);
+}
+function buscarJugadorSeguroEquipo() {
+  filtrarPorNombre(document.getElementById('pe-seguro-buscar'), '#pe-seguro-body > tr', tr => tr.textContent);
+}
+function buscarJugadorSeguroAdmin() {
+  filtrarPorNombre(document.getElementById('admin-seguro-roster-buscar'), '#admin-seguro-roster-body > tr', tr => tr.textContent);
+}
+function buscarJugadorCarnetAdmin() {
+  filtrarPorNombre(document.getElementById('admin-carnet-buscar'), '#admin-carnet-rows-wrap > div', div => div.textContent);
 }
 function showToast(msg, type = 'info') {
   const wrap = document.getElementById('toast-wrap');
@@ -2197,6 +2253,7 @@ function renderPanelEquipo() {
   else { shieldImg.classList.add('hidden'); shieldPh.classList.remove('hidden'); shieldPh.textContent = (eq.nombre || '??').slice(0, 2).toUpperCase(); }
 
   renderTablaJugadores('pe-jugadores-body', jugadores, false);
+  buscarJugadorListaEquipo();
   state.seguroSeleccion = [];
   renderPagoPanel();
   renderSegurosPanel();
@@ -2211,10 +2268,12 @@ function switchPanelEquipoTab(tab, renderSanc = true) {
   document.getElementById('pe-tab-sanciones').classList.toggle('hidden', tab !== 'sanciones');
   document.getElementById('pe-tab-carnet').classList.toggle('hidden', tab !== 'carnet');
   document.getElementById('pe-tab-partidos').classList.toggle('hidden', tab !== 'partidos');
+  document.getElementById('pe-tab-comprobantes').classList.toggle('hidden', tab !== 'comprobantes');
   document.getElementById('pe-tab-mensajes').classList.toggle('hidden', tab !== 'mensajes');
   if (tab === 'sanciones' && renderSanc) renderSancionesEquipo();
   if (tab === 'carnet') renderCarnetTab();
   if (tab === 'partidos') renderPartidosEquipo();
+  if (tab === 'comprobantes') renderComprobantesPanel();
   if (tab === 'mensajes') iniciarMensajesEquipo();
   else detenerMensajesEquipo();
 }
@@ -2322,6 +2381,34 @@ function toggleSeguroJugador(dni, checked) {
     ? `Nueva selección: ${state.seguroSeleccion.length} jugador(es) · Total a transferir: $${(state.seguroSeleccion.length * MONTO_SEGURO_POR_JUGADOR).toLocaleString('es-AR')}`
     : '';
 }
+// Saca a un jugador de la tanda de seguro que está pendiente de revisión — para corregir el
+// error de haber marcado a alguien de más ANTES de que el admin llegue a revisarla, sin tener
+// que esperar a que rechace todo el comprobante. Si era el único jugador de esa tanda, se borra
+// la tanda entera (ya no tiene sentido un comprobante de seguro sin ningún jugador adentro).
+async function quitarJugadorSeguroPendiente(dni, checkboxEl) {
+  if (checkboxEl.checked) return; // esta función solo actúa al DESTILDAR
+  if (!confirm('¿Sacar a este jugador de la tanda de seguro pendiente de revisión?\n\nSi era el único jugador de esa tanda, se borra el comprobante entero.')) {
+    checkboxEl.checked = true;
+    return;
+  }
+  checkboxEl.disabled = true;
+  try {
+    const doc = await db.collection('equipos').doc(state.equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const transacciones = eq.segurosTransacciones || [];
+    const tx = transacciones.find(t => t.estado === 'pendiente' && (t.dnis || []).includes(dni));
+    if (!tx) { showToast('No se encontró la tanda pendiente.', 'error'); await renderSegurosPanel(); return; }
+    const nuevosDnis = tx.dnis.filter(d => d !== dni);
+    const nuevasTransacciones = nuevosDnis.length === 0
+      ? transacciones.filter(t => t.id !== tx.id)
+      : transacciones.map(t => t.id === tx.id ? { ...t, dnis: nuevosDnis } : t);
+    await db.collection('equipos').doc(state.equipoId).update({ segurosTransacciones: nuevasTransacciones });
+    state.equipo.segurosTransacciones = nuevasTransacciones;
+    showToast(nuevosDnis.length === 0 ? 'Comprobante eliminado.' : 'Jugador sacado de la tanda.', 'ok');
+    await renderSegurosPanel();
+  } catch (e) { console.error(e); showToast('No se pudo actualizar.', 'error'); await renderSegurosPanel(); }
+}
 function fmtFechaSeguroTx(iso) { if (!iso) return ''; return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
 async function renderSegurosPanel() {
   const eq = state.equipo;
@@ -2350,20 +2437,26 @@ async function renderSegurosPanel() {
         const esManual = !sinDni && !esAprobado && habilitadosManual.has(j.dni);
         const esPendiente = !sinDni && !esAprobado && !esManual && pendientes.has(j.dni);
         const esNoHabilitado = !sinDni && !esAprobado && !esManual && !esPendiente && venciSeguro;
-        const noEditable = sinDni || esAprobado || esManual || esPendiente || venciSeguro;
+        // esPendiente NO bloquea el checkbox — un jugador marcado por error en una tanda ya
+        // subida (pero todavía sin revisar por el admin) se puede sacar destildándolo, sin
+        // tener que esperar a que el admin rechace todo el comprobante.
+        const noEditable = sinDni || esAprobado || esManual || venciSeguro;
         const checked = esAprobado || esManual || esPendiente || (!sinDni && seleccion.has(j.dni));
         let estadoTag = '';
         if (esAprobado) estadoTag = '<span class="badge badge-ok" style="margin-left:6px;">Asegurado</span>';
         else if (esManual) estadoTag = '<span class="badge badge-cyan" style="margin-left:6px;">Habilitado (pago tardío)</span>';
         else if (esPendiente) estadoTag = '<span class="badge badge-warn" style="margin-left:6px;">Pendiente</span>';
         else if (esNoHabilitado) estadoTag = '<span class="badge badge-danger" style="margin-left:6px;">No habilitado</span>';
+        const onchangeAttr = esPendiente
+          ? `quitarJugadorSeguroPendiente('${escapeHtml(j.dni)}', this)`
+          : `toggleSeguroJugador('${escapeHtml(j.dni)}', this.checked)`;
         return `<tr>
           <td class="idx-cell"><span class="jersey-num">${i + 1}</span></td>
           <td class="uppercase-bold">${escapeHtml(j.apellido) || '-'}</td>
           <td>${escapeHtml(j.nombre) || '-'}</td>
           <td style="font-variant-numeric:tabular-nums;">${escapeHtml(j.dni) || 'sin DNI'}</td>
           <td style="text-align:center;">
-            <input type="checkbox" class="seguro-checkbox" ${checked ? 'checked' : ''} ${noEditable ? 'disabled' : ''} title="${sinDni ? 'Completá el DNI en la lista de buena fe para poder asegurar a este jugador' : ''}" onchange="toggleSeguroJugador('${escapeHtml(j.dni)}', this.checked)">${estadoTag}
+            <input type="checkbox" class="seguro-checkbox" ${checked ? 'checked' : ''} ${noEditable ? 'disabled' : ''} title="${sinDni ? 'Completá el DNI en la lista de buena fe para poder asegurar a este jugador' : esPendiente ? 'Destildar para sacarlo de la tanda pendiente de revisión' : ''}" onchange="${onchangeAttr}">${estadoTag}
           </td>
         </tr>`;
       }).join('');
@@ -2394,6 +2487,7 @@ async function renderSegurosPanel() {
   }
 
   renderHistorialSeguro(transacciones);
+  buscarJugadorSeguroEquipo();
 }
 function renderHistorialSeguro(transacciones) {
   const wrap = document.getElementById('pe-seguro-historial');
@@ -2423,6 +2517,90 @@ function verComprobanteSeguroPropio(txId) {
   openModal(`<h2 style="margin-bottom:14px;">Comprobante del seguro</h2>
     <img src="${t.comprobante}" style="width:100%;border-radius:10px;">
     <button class="btn btn-block" style="margin-top:14px;" onclick="closeModal()">Cerrar</button>`);
+}
+
+/* ===================== COMPROBANTES (equipo) — ver/borrar lo que subió ===================== */
+const comprobanteRowEquipo = (f) => `
+  <div class="list-row" style="align-items:center;">
+    <img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrande('${f.comprobante}')">
+    <div style="flex:1;min-width:0;">
+      <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
+      ${f.borrarOnclick && f.estado !== 'aprobado' ? `<button class="btn btn-sm btn-danger" style="padding:1px 7px;font-size:10.5px;margin-left:6px;" onclick="${f.borrarOnclick}">🗑 Borrar</button>` : ''}
+      <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transferiste: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
+    </div>
+    ${badgeEstadoComprobante(f.estado)}
+  </div>`;
+// Antes ningún equipo podía ver ni tocar los comprobantes que ya había subido — si se
+// equivocaban de imagen o de monto, tenían que escribirle al admin para que lo arreglara.
+// Esta pestaña les deja ver todo lo que subieron y borrar lo que todavía no fue aprobado
+// (un comprobante aprobado queda fijo, no se puede borrar — es la prueba de un pago real).
+async function renderComprobantesPanel() {
+  const eq = state.equipo;
+  const etapaLabelPago = { principal: 'Inscripción', saldo: 'Saldo (50%)' };
+  // Mismo criterio de fusión que usa el admin: los comprobantes de antes de que existiera
+  // el historial solo viven en los campos sueltos pagoComprobante/pagoSaldoComprobante.
+  const pagoHistorial = (eq.pagoComprobantesHistorial || []).slice();
+  const etapasEnHistorial = new Set(pagoHistorial.map(t => t.etapa));
+  if (!etapasEnHistorial.has('principal') && eq.pagoComprobante) {
+    pagoHistorial.push({ etapa: 'principal', comprobante: eq.pagoComprobante, montoDeclarado: eq.pagoMontoDeclarado, nombreTransferencia: eq.pagoNombreTransferencia, estado: eq.pagoEstado, fechaCarga: eq.pagoFechaCarga });
+  }
+  if (!etapasEnHistorial.has('saldo') && eq.pagoSaldoComprobante) {
+    pagoHistorial.push({ etapa: 'saldo', comprobante: eq.pagoSaldoComprobante, montoDeclarado: eq.pagoSaldoMontoDeclarado, nombreTransferencia: eq.pagoSaldoNombreTransferencia, estado: eq.pagoSaldoEstado, fechaCarga: eq.pagoSaldoFechaCarga });
+  }
+  pagoHistorial.sort((a, b) => new Date(b.fechaCarga) - new Date(a.fechaCarga));
+  const insWrap = document.getElementById('pe-comp-inscripcion-list');
+  if (insWrap) {
+    insWrap.innerHTML = pagoHistorial.length === 0
+      ? `<p class="muted" style="font-size:12.5px;">Todavía no subiste ningún comprobante de inscripción.</p>`
+      : pagoHistorial.map(t => comprobanteRowEquipo({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabelPago[t.etapa] || 'Inscripción', borrarOnclick: t.id ? `eliminarComprobantePropio('inscripcion','${t.id}')` : null })).join('');
+  }
+
+  const seguroHistorial = (eq.segurosTransacciones || []).slice().sort((a, b) => new Date(b.fechaCarga) - new Date(a.fechaCarga));
+  const segWrap = document.getElementById('pe-comp-seguro-list');
+  if (segWrap) {
+    segWrap.innerHTML = seguroHistorial.length === 0
+      ? `<p class="muted" style="font-size:12.5px;">Todavía no subiste ningún comprobante de seguro.</p>`
+      : seguroHistorial.map(t => comprobanteRowEquipo({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, borrarOnclick: t.id ? `eliminarComprobantePropio('seguro','${t.id}')` : null })).join('');
+  }
+}
+async function eliminarComprobantePropio(tipo, txId) {
+  if (!confirm('¿Eliminar este comprobante? No se puede deshacer.\n\nDespués podés subir el correcto desde la pestaña "Mi equipo".')) return;
+  try {
+    const doc = await db.collection('equipos').doc(state.equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    if (tipo === 'inscripcion') {
+      const t = (eq.pagoComprobantesHistorial || []).find(x => x.id === txId);
+      if (!t) { showToast('No se encontró ese comprobante.', 'error'); return; }
+      if (t.estado === 'aprobado') { showToast('Un comprobante ya aprobado no se puede borrar.', 'error'); return; }
+      const historial = (eq.pagoComprobantesHistorial || []).filter(x => x.id !== txId);
+      const datos = { pagoComprobantesHistorial: historial };
+      // Si era el comprobante activo de esa etapa, se limpia también el campo suelto para
+      // que "Mi equipo" vuelva a mostrar el cargador vacío — sin esto, el 🗑 de acá no
+      // liberaría nada visible, la imagen vieja seguiría mostrándose en la otra pestaña.
+      // pagoEstado/pagoSaldoEstado solo pueden quedar en 'pendiente' del lado del equipo
+      // (regla de Firestore) — 'pendiente' además es el mismo valor con el que arranca
+      // cualquier equipo nuevo, así que el cargador de comprobante queda visible igual.
+      if (t.etapa === 'principal' && eq.pagoComprobante === t.comprobante) {
+        Object.assign(datos, { pagoComprobante: '', pagoEstado: 'pendiente', pagoMontoDeclarado: firebase.firestore.FieldValue.delete(), pagoNombreTransferencia: '' });
+      } else if (t.etapa === 'saldo' && eq.pagoSaldoComprobante === t.comprobante) {
+        Object.assign(datos, { pagoSaldoComprobante: '', pagoSaldoEstado: 'pendiente', pagoSaldoMontoDeclarado: firebase.firestore.FieldValue.delete(), pagoSaldoNombreTransferencia: '' });
+      }
+      await db.collection('equipos').doc(state.equipoId).update(datos);
+    } else {
+      const t = (eq.segurosTransacciones || []).find(x => x.id === txId);
+      if (!t) { showToast('No se encontró ese comprobante.', 'error'); return; }
+      if (t.estado === 'aprobado') { showToast('Un comprobante ya aprobado no se puede borrar.', 'error'); return; }
+      const nuevasTransacciones = (eq.segurosTransacciones || []).filter(x => x.id !== txId);
+      await db.collection('equipos').doc(state.equipoId).update({ segurosTransacciones: nuevasTransacciones });
+    }
+    showToast('Comprobante eliminado.', 'ok');
+    const fresh = await db.collection('equipos').doc(state.equipoId).get();
+    state.equipo = fresh.data();
+    renderComprobantesPanel();
+    renderPagoPanel();
+    renderSegurosPanel();
+  } catch (e) { console.error(e); showToast('No se pudo eliminar el comprobante.', 'error'); }
 }
 document.getElementById('pe-receipt-seguro-input').addEventListener('change', async e => {
   const file = e.target.files[0];
@@ -3704,6 +3882,39 @@ function actualizarPickMeta() {
   const segunda = equiposCacheAdmin.filter(eq => eq.division === 'Segunda').length;
   document.getElementById('pick-primera-meta').textContent = `${primera} equipo(s)`;
   document.getElementById('pick-segunda-meta').textContent = `${segunda} equipo(s)`;
+  buscarJugadorGlobalAdmin();
+}
+// Busca un jugador en TODOS los equipos, de las dos divisiones a la vez — para cuando el
+// admin no sabe (o no se acuerda) de qué equipo es. División y equipo se ven directo en el
+// resultado, sin tener que entrar a "Ver equipo" para saber dónde está.
+function buscarJugadorGlobalAdmin() {
+  const inputEl = document.getElementById('admin-global-buscar-jugador');
+  const wrap = document.getElementById('admin-global-buscar-resultados');
+  if (!inputEl || !wrap) return;
+  const term = normalizarBusqueda(inputEl.value);
+  if (!term) { wrap.innerHTML = ''; return; }
+  const resultados = [];
+  equiposCacheAdmin.forEach(eq => {
+    (eq.jugadores || []).filter(j => j.dni && (j.apellido || j.nombre))
+      .filter(j => normalizarBusqueda(`${j.apellido || ''} ${j.nombre || ''}`).includes(term))
+      .forEach(j => resultados.push({ j, eq }));
+  });
+  resultados.sort((a, b) => (a.j.apellido || '').localeCompare(b.j.apellido || ''));
+  if (resultados.length === 0) { wrap.innerHTML = `<div class="empty-state">Ningún jugador coincide con "${escapeHtml(inputEl.value)}".</div>`; return; }
+  const visibles = resultados.slice(0, 50);
+  wrap.innerHTML = visibles.map(r => {
+    const isSegunda = r.eq.division === 'Segunda';
+    const accent = isSegunda ? 'var(--segunda)' : 'var(--cyan)';
+    const accentSoft = isSegunda ? 'var(--segunda-soft)' : 'var(--cyan-soft)';
+    return `<div class="list-row" style="align-items:center;">
+      <div style="flex:1;min-width:0;">
+        <strong>${escapeHtml((r.j.apellido || '').toUpperCase())}${r.j.apellido && r.j.nombre ? ', ' : ''}${escapeHtml(r.j.nombre || '')}</strong>
+        <div class="muted" style="font-size:12px;margin-top:3px;">DNI ${escapeHtml(r.j.dni) || 'sin DNI'} · <strong>${escapeHtml(r.eq.nombre)}</strong></div>
+      </div>
+      <span class="badge" style="background:${accentSoft};color:${accent};border:1px solid ${accent};">${escapeHtml(r.eq.division || '-')}</span>
+      <button class="btn btn-sm" onclick="elegirDivisionAdmin('${r.eq.division}');verDetalleEquipoAdmin('${r.eq.id}')">🗂 Ver equipo</button>
+    </div>`;
+  }).join('') + (resultados.length > 50 ? `<p class="muted" style="font-size:11.5px;margin-top:6px;">Mostrando 50 de ${resultados.length} resultados — afiná la búsqueda.</p>` : '');
 }
 // Ingresos reales: suma lo que cada equipo DECLARÓ en el comprobante que quedó
 // aprobado, no el monto teórico que debería haber pagado según la configuración.
@@ -5218,8 +5429,9 @@ async function verDetalleEquipoAdmin(id) {
         <p class="wizard-help" style="margin-bottom:12px;">${seguroHistorial.length} comprobante(s) subido(s)</p>
         ${resumenSeguroHtml}
         ${avisoSeguroEstimadoHtml}
+        <input type="text" id="admin-seguro-roster-buscar" placeholder="🔎 Buscar jugador asegurado por nombre o apellido..." style="margin-bottom:10px;width:100%;" oninput="buscarJugadorSeguroAdmin()">
         <div class="tbl-wrap" style="overflow-x:auto;margin-bottom:14px;">
-          <table><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Estado</th></tr></thead><tbody>${rosterRows}</tbody></table>
+          <table><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Estado</th></tr></thead><tbody id="admin-seguro-roster-body">${rosterRows}</tbody></table>
         </div>
         <div>${seguroComprobantesHtml}</div>
       </div>
@@ -5230,7 +5442,8 @@ async function verDetalleEquipoAdmin(id) {
         <div class="section-actions" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;">
           <button class="btn btn-primary" onclick='generarCarnetsPDFAdmin(${JSON.stringify(eq).replace(/'/g, "&#39;")})'>⬇ Descargar todos los carnets</button>
         </div>
-        <div>${carnetRows}</div>
+        <input type="text" id="admin-carnet-buscar" placeholder="🔎 Buscar jugador de la lista de buena fe por nombre o apellido..." style="margin-bottom:10px;width:100%;" oninput="buscarJugadorCarnetAdmin()">
+        <div id="admin-carnet-rows-wrap">${carnetRows}</div>
       </div>
     `;
     document.getElementById('torneo-division-detail').classList.add('hidden');
