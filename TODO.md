@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-12 (continuación 5) — aviso de duplicado al guardar la lista, y fix de scroll horizontal en el celular
+
+- **A pedido del usuario**:
+- **1) Detección de duplicados AL GUARDAR (no solo el reporte del admin)**: `guardarJugadores()` ahora chequea, justo antes de guardar, si algún DNI de la lista que se está por guardar ya está anotado en OTRO equipo (`detectarDuplicadosContraOtrosEquipos`, consulta a todos los `equipos` una sola vez al guardar, no por cada tecla). Si encuentra coincidencias, muestra un aviso con nombre + equipo de cada caso y pide confirmar si guardar igual — es un aviso, no un bloqueo duro (para no dejar a un equipo trabado si el duplicado es un error de tipeo que se termina resolviendo por otro lado). Complementa al detector del admin (ese barre TODA la base cada vez que se refresca la pantalla; este avisa en el momento exacto en que se está por guardar el dato que genera el problema).
+- **2) Fix: en el celular, las tablas (lista de buena fe, seguro, etc.) no entran en el ancho de pantalla y hay que deslizar de costado para llegar a la última columna — pero nadie se daba cuenta de que se podía deslizar, así que parecía que faltaba el casillero de "Asegurado".** Se agregó un aviso fijo y visible arriba de cada una de estas tablas (solo en pantallas chicas, `@media max-width:600px`) explicando que hay que deslizar, y se ocultó la columna "#" en el celular (la menos útil ahí, ya el orden de fila alcanza) para ganar espacio y que haga falta deslizar menos. Aplicado a: lista de buena fe y seguro médico del equipo, la nueva pestaña "Lista de buena fe" (equipo y admin), el registro inicial, y la tabla de seguro del panel de cada equipo (admin).
+- **Sin probar en el navegador — en particular el fix de scroll en celular no se pudo ver en un dispositivo real esta sesión.** Recomendado confirmarlo con algún delegado que tenga el problema, antes de asumir que quedó resuelto del todo.
+
 ## ✅ Sesión 2026-08-12 (continuación 4) — pestaña "Lista de buena fe" separada, para equipo y admin
 
 - **A pedido del usuario**: reportó no encontrar la opción de destildar un jugador de seguro — esa función ya se había agregado y desplegado en la continuación 2 de esta misma sesión (checkbox editable en filas "Pendiente", función `quitarJugadorSeguroPendiente`). No se tocó de nuevo porque revisado el código está correcto; si seguía sin verse, lo más probable es caché vieja del navegador/PWA — pendiente de confirmar con el usuario después de recargar fuerte.
