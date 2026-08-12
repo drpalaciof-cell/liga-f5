@@ -1228,7 +1228,8 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         <div id="divisiontab-seguro" class="divisiontab hidden">
           <div class="glass section-card">
             <h3>Estado de aseguramiento por equipo</h3>
-            <p class="wizard-help" style="margin-bottom:14px;">Contra la lista de buena fe de cada equipo — se actualiza sola a medida que los equipos editan su lista o pagan seguros (pueden seguir editando hasta el 12/08).</p>
+            <p class="wizard-help" style="margin-bottom:10px;">Contra la lista de buena fe de cada equipo — se actualiza sola a medida que los equipos editan su lista o pagan seguros (pueden seguir editando hasta el 12/08).</p>
+            <input type="text" id="pa-seguros-buscar-jugador" placeholder="🔎 Buscar jugador por nombre o apellido (en toda la división)..." style="margin-bottom:14px;width:100%;" oninput="renderSegurosPorEquipoAdmin()">
             <div id="pa-seguros-equipo-list"></div>
           </div>
           <div class="glass section-card">
@@ -1468,6 +1469,10 @@ async function sha256Hex(text) {
 }
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// Para buscadores por nombre: minúsculas y sin tildes, así "jose" encuentra "José".
+function normalizarBusqueda(str) {
+  return String(str ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
 function showToast(msg, type = 'info') {
   const wrap = document.getElementById('toast-wrap');
@@ -4317,12 +4322,46 @@ function estadoSeguroEquipo(eq) {
   const faltantes = lista.filter(j => !aseguradosSet.has(j.dni) && !manualSet.has(j.dni));
   return { totalLista: lista.length, asegurados, habilitadosManual, faltantes, dineroFalta: faltantes.length * MONTO_SEGURO_POR_JUGADOR };
 }
+// Estado puntual de UN jugador (para el buscador) — mismo criterio que la tabla de
+// roster del panel de equipo (verDetalleEquipoAdmin), incluida la distinción de
+// "comprobante pendiente" que estadoSeguroEquipo no separa de "falta asegurar".
+function estadoJugadorSeguro(dni, eq, s) {
+  if (s.asegurados.some(j => j.dni === dni)) return { label: 'Asegurado', clase: 'badge-ok' };
+  if (s.habilitadosManual.some(j => j.dni === dni)) return { label: 'Pago tardío', clase: 'badge-cyan' };
+  const pendiente = (eq.segurosTransacciones || []).some(t => t.estado === 'pendiente' && (t.dnis || []).includes(dni));
+  if (pendiente) return { label: 'Comprobante pendiente', clase: 'badge-warn' };
+  return { label: 'Falta asegurar', clase: 'badge-danger' };
+}
 function renderSegurosPorEquipoAdmin() {
   const wrap = document.getElementById('pa-seguros-equipo-list');
   if (!wrap) return;
   const equipos = pagosCacheAdmin.filter(eq => eq.division === state.adminDivisionActiva)
     .slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
   if (equipos.length === 0) { wrap.innerHTML = `<div class="empty-state">No hay equipos en esta división.</div>`; return; }
+  const buscarEl = document.getElementById('pa-seguros-buscar-jugador');
+  const busqueda = normalizarBusqueda(buscarEl ? buscarEl.value : '');
+  if (busqueda) {
+    // Modo búsqueda: un resultado por JUGADOR (de cualquier equipo de la división), no por equipo.
+    const resultados = [];
+    equipos.forEach(eq => {
+      const s = estadoSeguroEquipo(eq);
+      (eq.jugadores || []).filter(j => j.dni && (j.apellido || j.nombre))
+        .filter(j => normalizarBusqueda(`${j.apellido || ''} ${j.nombre || ''}`).includes(busqueda))
+        .forEach(j => resultados.push({ j, eq, estado: estadoJugadorSeguro(j.dni, eq, s) }));
+    });
+    resultados.sort((a, b) => (a.j.apellido || '').localeCompare(b.j.apellido || ''));
+    wrap.innerHTML = resultados.length === 0
+      ? `<div class="empty-state">Ningún jugador de esta división coincide con "${escapeHtml(buscarEl.value)}".</div>`
+      : resultados.map((r, idx) => `<div class="list-row" style="animation-delay:${idx * 30}ms">
+          <div style="flex:1;min-width:0;">
+            <strong>${escapeHtml((r.j.apellido || '').toUpperCase())}${r.j.apellido && r.j.nombre ? ', ' : ''}${escapeHtml(r.j.nombre || '')}</strong>
+            <div class="muted" style="font-size:12px;margin-top:3px;">DNI ${escapeHtml(r.j.dni)} · ${escapeHtml(r.eq.nombre)}</div>
+          </div>
+          <span class="badge ${r.estado.clase}">${r.estado.label}</span>
+          <button class="btn btn-sm" onclick="verDetalleEquipoAdmin('${r.eq.id}')">🗂 Ver equipo</button>
+        </div>`).join('');
+    return;
+  }
   wrap.innerHTML = equipos.map((eq, idx) => {
     const s = estadoSeguroEquipo(eq);
     const cubiertos = s.asegurados.length + s.habilitadosManual.length;

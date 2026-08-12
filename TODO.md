@@ -2,6 +2,13 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-12 (continuación 1) — buscador de jugador por nombre en la pestaña Seguro (admin)
+
+- **A pedido del usuario**, primera de "varias funciones" a agregar esta sesión.
+- **Nuevo**: caja de búsqueda arriba de "Estado de aseguramiento por equipo" (pestaña Seguro del admin). Al escribir un nombre o apellido, la lista deja de mostrar un resultado por EQUIPO y pasa a mostrar un resultado por JUGADOR de toda la división (sin importar de qué equipo es), con su DNI, equipo, y estado de seguro (Asegurado / Pago tardío / Comprobante pendiente / Falta asegurar) — mismo criterio que ya usa la tabla de roster del panel de cada equipo. Cada resultado tiene un botón "🗂 Ver equipo" directo al panel completo de ese equipo. Sin texto en la búsqueda, se ve la lista por equipo de siempre.
+- Nuevo helper reutilizable `normalizarBusqueda()` (minúsculas + sin tildes) para que "jose" encuentre "José" — pensado para reusarse en los próximos buscadores que pidió el usuario.
+- **Sin probar en el navegador.**
+
 ## ✅ Sesión 2026-08-09 (continuación 3) — último ítem de la auditoría de Planillero: guard contra doble-tap en fin de tiempo/partido
 
 - **Severidad baja, último ítem del ranking de la auditoría.** `finPrimerTiempo()`/`finPartido()` dependían solo del `confirm()` nativo — un doble-tap físico encola un segundo click que se procesa recién al cerrar el primer diálogo, reabriendo otro. En el peor caso (confirmado dos veces por reflejo), `finPrimerTiempo()` podía resetear las faltas del 2° tiempo aunque ya se hubiera cargado alguna en el medio.
