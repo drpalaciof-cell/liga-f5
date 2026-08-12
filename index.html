@@ -872,7 +872,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           </div>
           <div class="field">
             <label>Monto transferido ($)</label>
-            <input type="number" id="re-monto-transferencia" required min="1" step="1" placeholder="Ej: 15000">
+            <input type="text" inputmode="numeric" id="re-monto-transferencia" required placeholder="Ej: 15000 o 15.000">
             <p class="wizard-help" style="margin-top:6px;margin-bottom:0;">Así calculamos si queda algún saldo pendiente.</p>
           </div>
 
@@ -965,7 +965,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         </div>
         <div class="field" style="max-width:320px;margin:0 auto 14px;text-align:left;">
           <label>Monto transferido ($)</label>
-          <input type="number" id="pe-monto-transferencia" min="1" step="1" placeholder="Ej: 15000">
+          <input type="text" inputmode="numeric" id="pe-monto-transferencia" placeholder="Ej: 15000 o 15.000">
         </div>
         <div class="receipt-upload">
           <img id="pe-receipt-img" class="hidden">
@@ -985,7 +985,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         </div>
         <div class="field" style="max-width:320px;margin:0 auto 14px;text-align:left;">
           <label>Monto transferido del saldo ($)</label>
-          <input type="number" id="pe-monto-transferencia-saldo" min="1" step="1" placeholder="Ej: 15000">
+          <input type="text" inputmode="numeric" id="pe-monto-transferencia-saldo" placeholder="Ej: 15000 o 15.000">
         </div>
         <div class="receipt-upload">
           <img id="pe-receipt-saldo-img" class="hidden">
@@ -1050,7 +1050,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         </div>
         <div class="field" style="max-width:320px;margin:0 auto 14px;text-align:left;">
           <label>Monto transferido ($)</label>
-          <input type="number" id="pe-monto-transferencia-seguro" min="1" step="1" placeholder="Ej: 15000">
+          <input type="text" inputmode="numeric" id="pe-monto-transferencia-seguro" placeholder="Ej: 15000 o 15.000">
         </div>
         <div class="receipt-upload">
           <img id="pe-receipt-seguro-img" class="hidden">
@@ -1200,6 +1200,12 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
             <p>Equipos, pagos y seguros — por división y en total</p>
           </div>
           <span class="datos-temporada-arrow">›</span>
+        </div>
+
+        <div class="glass section-card" style="margin-top:16px;" id="admin-duplicados-card">
+          <h3>⚠️ Jugadores duplicados <span class="muted" id="admin-duplicados-badge" style="font-size:12px;font-weight:500;"></span></h3>
+          <p class="wizard-help" style="margin-bottom:10px;">Mismo DNI cargado en la lista de buena fe de más de un equipo — un jugador no puede estar anotado en dos equipos a la vez.</p>
+          <div id="admin-duplicados-resultados"></div>
         </div>
 
         <div class="glass section-card" style="margin-top:16px;">
@@ -1485,7 +1491,28 @@ fetch('assets/logo-clausura.png').then(r=>r.blob()).then(blob=>{
 
 /* ===================== STATE ===================== */
 const NUM_JUGADORES = 25;
-const MONTO_SEGURO_POR_JUGADOR = 5000;
+// A partir de las 23:00 (Argentina) del día configurado como "Fecha límite seguro", el costo
+// del seguro sube de $5.000 a $8.000 — automático, sin que nadie tenga que tocar nada. Es un
+// `let` (no `const`) recalculado en vivo: se vuelve a mirar el reloj cada 30 segundos contra
+// la fecha límite cacheada, y esa fecha se re-sincroniza contra la config cada 5 minutos por
+// si el admin la cambia — así el cambio se aplica solo aunque alguien tenga la app abierta
+// desde antes de las 23hs, sin que tenga que recargar la página.
+let MONTO_SEGURO_POR_JUGADOR = 5000;
+let _fechaLimiteSeguroCache = null;
+function _recalcularMontoSeguro() {
+  const vencio = !!(_fechaLimiteSeguroCache && new Date() > new Date(_fechaLimiteSeguroCache + 'T23:00:00'));
+  MONTO_SEGURO_POR_JUGADOR = vencio ? 8000 : 5000;
+}
+async function _sincronizarFechaLimiteSeguro() {
+  try {
+    const cfgDoc = await db.collection('config').doc('general').get();
+    _fechaLimiteSeguroCache = cfgDoc.exists ? (cfgDoc.data().fechaLimiteSeguro || null) : null;
+  } catch (e) {}
+  _recalcularMontoSeguro();
+}
+_sincronizarFechaLimiteSeguro();
+setInterval(_sincronizarFechaLimiteSeguro, 5 * 60 * 1000);
+setInterval(_recalcularMontoSeguro, 30 * 1000);
 const state = { equipo: null, equipoId: null, admin: null, divisionActiva: 'Primera', equiposCache: [], pagoFiltroActivo: 'pendiente', seguroFiltroActivo: 'pendiente', seguroSeleccion: [], adminDivisionActiva: null, partidosCache: [], contentTabActivo: 'equipos', fechaPublicaActiva: null };
 
 /* ===================== UTILS ===================== */
@@ -1496,6 +1523,14 @@ async function sha256Hex(text) {
 }
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+// Los montos que se declaran acá son siempre pesos enteros, sin decimales — así que un "."
+// jamás es un separador decimal, siempre es de miles (como "200.000"). Number("200.000") da
+// 200 (lo interpreta como decimal), truncando el monto real a la centena — este helper saca
+// cualquier caracter que no sea dígito antes de convertir, así "200.000", "200000" y "$200.000"
+// dan siempre 200000.
+function parsearMonto(str) {
+  return Number(String(str ?? '').replace(/[^\d]/g, ''));
 }
 // Para buscadores por nombre: minúsculas y sin tildes, así "jose" encuentra "José".
 function normalizarBusqueda(str) {
@@ -2167,7 +2202,7 @@ document.getElementById('form-registro-equipo').addEventListener('submit', async
   if (!regEscudoDataUrl) { showToast('Subí el escudo de tu equipo antes de inscribirte.', 'error'); actualizarStepsRegistro(2); return; }
   const tipoPago = document.getElementById('re-tipo-pago').value;
   const nombreTransferencia = document.getElementById('re-nombre-transferencia').value.trim();
-  const montoTransferido = Number(document.getElementById('re-monto-transferencia').value);
+  const montoTransferido = parsearMonto(document.getElementById('re-monto-transferencia').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); actualizarStepsRegistro(5); return; }
   if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); actualizarStepsRegistro(5); return; }
   if (!regComprobanteDataUrl) { showToast('Subí el comprobante de pago antes de inscribirte.', 'error'); actualizarStepsRegistro(5); return; }
@@ -2180,6 +2215,16 @@ document.getElementById('form-registro-equipo').addEventListener('submit', async
       const limite = new Date(cfg.fechaLimiteInscripcion + 'T23:59:59');
       if (new Date() > limite) {
         showToast(`La inscripción cerró el ${formatFechaDMY(cfg.fechaLimiteInscripcion)}. Contactá al administrador de la liga.`, 'error');
+        btn.disabled = false;
+        return;
+      }
+    }
+    // El alta de equipos nuevos también se cierra a las 23:00 del mismo día configurado como
+    // "Fecha límite seguro" — mismo momento en el que el costo del seguro sube a $8.000.
+    if (cfg.fechaLimiteSeguro) {
+      const limiteSeguro = new Date(cfg.fechaLimiteSeguro + 'T23:00:00');
+      if (new Date() > limiteSeguro) {
+        showToast(`La inscripción de equipos nuevos cerró el ${formatFechaDMY(cfg.fechaLimiteSeguro)} a las 23hs. Contactá al administrador de la liga.`, 'error');
         btn.disabled = false;
         return;
       }
@@ -2607,7 +2652,7 @@ document.getElementById('pe-receipt-seguro-input').addEventListener('change', as
   if (!file || !state.equipoId) return;
   if (state.lockSeguro) { showToast('El plazo para pagar el seguro ya finalizó.', 'error'); e.target.value = ''; return; }
   const nombreTransferencia = document.getElementById('pe-nombre-transferencia-seguro').value.trim();
-  const montoTransferido = Number(document.getElementById('pe-monto-transferencia-seguro').value);
+  const montoTransferido = parsearMonto(document.getElementById('pe-monto-transferencia-seguro').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
   if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   if (state.seguroSeleccion.length === 0) { showToast('Marcá al menos un jugador para esta tanda.', 'error'); e.target.value = ''; return; }
@@ -2767,7 +2812,7 @@ document.getElementById('pe-receipt-input').addEventListener('change', async e =
   const file = e.target.files[0];
   if (!file || !state.equipoId) return;
   const nombreTransferencia = document.getElementById('pe-nombre-transferencia').value.trim();
-  const montoTransferido = Number(document.getElementById('pe-monto-transferencia').value);
+  const montoTransferido = parsearMonto(document.getElementById('pe-monto-transferencia').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
   if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   try {
@@ -2807,7 +2852,7 @@ document.getElementById('pe-receipt-saldo-input').addEventListener('change', asy
   const file = e.target.files[0];
   if (!file || !state.equipoId) return;
   const nombreTransferencia = document.getElementById('pe-nombre-transferencia-saldo').value.trim();
-  const montoTransferido = Number(document.getElementById('pe-monto-transferencia-saldo').value);
+  const montoTransferido = parsearMonto(document.getElementById('pe-monto-transferencia-saldo').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
   if (!montoTransferido || montoTransferido <= 0) { showToast('Ingresá el monto que transferiste.', 'error'); e.target.value = ''; return; }
   try {
@@ -3883,6 +3928,55 @@ function actualizarPickMeta() {
   document.getElementById('pick-primera-meta').textContent = `${primera} equipo(s)`;
   document.getElementById('pick-segunda-meta').textContent = `${segunda} equipo(s)`;
   buscarJugadorGlobalAdmin();
+  renderJugadoresDuplicadosAdmin();
+}
+// Un jugador (mismo DNI) no puede estar en la lista de buena fe de dos equipos a la vez —
+// esto se puede colar fácil si alguien se cambia de equipo y el anterior no lo borra de su
+// lista, o directamente por error de tipeo del DNI de otro jugador. Se recalcula cada vez que
+// se refresca equiposCacheAdmin (mismo gancho que el resto de la pantalla de elegir división).
+function detectarJugadoresDuplicadosAdmin() {
+  const porDni = {};
+  equiposCacheAdmin.forEach(eq => {
+    (eq.jugadores || []).filter(j => j.dni && (j.apellido || j.nombre)).forEach(j => {
+      if (!porDni[j.dni]) porDni[j.dni] = [];
+      porDni[j.dni].push({ j, eq });
+    });
+  });
+  return Object.entries(porDni)
+    .filter(([, entries]) => entries.length > 1)
+    .map(([dni, entries]) => ({ dni, entries }))
+    .sort((a, b) => a.dni.localeCompare(b.dni));
+}
+function renderJugadoresDuplicadosAdmin() {
+  const badge = document.getElementById('admin-duplicados-badge');
+  const wrap = document.getElementById('admin-duplicados-resultados');
+  if (!badge || !wrap) return;
+  const duplicados = detectarJugadoresDuplicadosAdmin();
+  if (duplicados.length === 0) {
+    badge.textContent = '';
+    wrap.innerHTML = `<div class="glass notice notice-ok" style="margin:0;">✅ No se encontró ningún DNI repetido entre equipos.</div>`;
+    return;
+  }
+  badge.textContent = `(${duplicados.length})`;
+  badge.style.color = 'var(--danger)';
+  wrap.innerHTML = duplicados.map(({ dni, entries }) => {
+    const nombreRef = entries[0].j;
+    const equiposHtml = entries.map(({ j, eq }) => {
+      const isSegunda = eq.division === 'Segunda';
+      const accent = isSegunda ? 'var(--segunda)' : 'var(--cyan)';
+      const accentSoft = isSegunda ? 'var(--segunda-soft)' : 'var(--cyan-soft)';
+      return `<div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <span class="badge" style="background:${accentSoft};color:${accent};border:1px solid ${accent};">${escapeHtml(eq.division || '-')}</span>
+        <strong>${escapeHtml(eq.nombre)}</strong>
+        <span class="muted" style="font-size:11.5px;">(cargado como "${escapeHtml((j.apellido||''))} ${escapeHtml((j.nombre||''))}")</span>
+        <button class="btn btn-sm" onclick="elegirDivisionAdmin('${eq.division}');verDetalleEquipoAdmin('${eq.id}')">🗂 Ver equipo</button>
+      </div>`;
+    }).join('');
+    return `<div class="glass notice notice-warn" style="margin-bottom:8px;">
+      <strong>DNI ${escapeHtml(dni)}</strong> — ${escapeHtml((nombreRef.apellido||''))}, ${escapeHtml((nombreRef.nombre||''))} — aparece en ${entries.length} equipos:
+      ${equiposHtml}
+    </div>`;
+  }).join('');
 }
 // Busca un jugador en TODOS los equipos, de las dos divisiones a la vez — para cuando el
 // admin no sabe (o no se acuerda) de qué equipo es. División y equipo se ven directo en el
@@ -4121,6 +4215,38 @@ async function abrirModalDatosTemporada() {
     </div>
   `);
 }
+// Inscripción y seguro, cada uno puntuado 0 (nada resuelto) / 0.5 (en curso — comprobante
+// pendiente/rechazado, o solo una parte del plantel asegurada) / 1 (completo). Se suman para
+// el semáforo de la lista de equipos: los dos en 1 → verde, los dos en 0 → rojo (a pedido
+// del usuario: "si falta alguno rojo, si está completo parcialmente amarillo"), cualquier otra
+// combinación → amarillo.
+function scoreInscripcionEquipo(eq) {
+  const tipo = eq.pagoTipo || 'total';
+  if (tipo === 'sena') {
+    if (eq.pagoEstado === 'aprobado' && eq.pagoSaldoEstado === 'aprobado') return 1;
+    if (eq.pagoEstado === 'aprobado' || eq.pagoSaldoEstado === 'aprobado' || eq.pagoEstado === 'pendiente' || eq.pagoEstado === 'rechazado' || eq.pagoSaldoEstado === 'pendiente' || eq.pagoSaldoEstado === 'rechazado') return 0.5;
+    return 0;
+  }
+  if (eq.pagoEstado === 'aprobado') return 1;
+  if (eq.pagoEstado === 'pendiente' || eq.pagoEstado === 'rechazado') return 0.5;
+  return 0;
+}
+function scoreSeguroEquipo(eq) {
+  const s = estadoSeguroEquipo(eq);
+  const cubiertos = s.asegurados.length + s.habilitadosManual.length;
+  if (s.totalLista > 0 && cubiertos === s.totalLista) return 1;
+  if (cubiertos > 0) return 0.5;
+  return 0;
+}
+function semaforoEquipoHtml(eq) {
+  const si = scoreInscripcionEquipo(eq);
+  const ss = scoreSeguroEquipo(eq);
+  const total = si + ss;
+  const color = total >= 2 ? 'var(--ok)' : total <= 0 ? 'var(--danger)' : 'var(--warn)';
+  const txtScore = s => s === 1 ? 'completa' : s === 0.5 ? 'en curso' : 'sin resolver';
+  const title = `Inscripción: ${txtScore(si)} · Seguro: ${txtScore(ss)}`;
+  return `<span title="${escapeHtml(title)}" style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;border:1px solid rgba(0,0,0,.25);"></span>`;
+}
 function renderEquiposAdminList() {
   try {
     const list = equiposCacheAdmin.filter(eq => eq.division === state.adminDivisionActiva);
@@ -4135,8 +4261,7 @@ function renderEquiposAdminList() {
       const shield = eq.escudo
         ? `<img class="admin-eq-shield-sm" src="${eq.escudo}">`
         : `<div class="admin-eq-shield-ph">${escapeHtml((eq.nombre || '?').slice(0,2).toUpperCase())}</div>`;
-      const pagoOk = eq.pagoEstado === 'aprobado';
-      const pagoDot = `<span title="${pagoOk?'Pago aprobado':'Pago pendiente'}" style="width:8px;height:8px;border-radius:50%;background:${pagoOk?'var(--ok)':'rgba(255,255,255,.15)'};display:inline-block;flex-shrink:0;"></span>`;
+      const pagoDot = semaforoEquipoHtml(eq);
       // Aproximación del tamaño del documento — para detectar equipos cerca del límite de
       // 1MB de Firestore ANTES de que se traben, en vez de enterarse cuando ya fallaron.
       const pctLimite = Math.min(100, Math.round((new Blob([JSON.stringify(eq)]).size / 1048576) * 100));
@@ -4150,6 +4275,7 @@ function renderEquiposAdminList() {
         <span style="font-size:11px;color:var(--text-dim);flex-shrink:0;">${count}/${NUM_JUGADORES}</span>
         ${pagoDot}
         ${sizeDot}
+        <button class="btn btn-sm" style="flex-shrink:0;" title="Restablecer contraseña de este equipo" onclick="event.stopPropagation();resetPasswordEquipo('${eq.id}','${escapeHtml(eq.nombre)}')">🔑</button>
         <span class="admin-eq-arrow">›</span>
       </div>`;
     }).join('')}</div>`;
