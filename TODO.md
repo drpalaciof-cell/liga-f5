@@ -2,6 +2,14 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-14 — reconciliación repo/producción (trabajo hecho en otra compu, nunca había pasado por git)
+
+- **Contexto**: entre el 12/08 y el 14/08 el usuario trabajó desde otra computadora, directo por PowerShell/Claude Code, y deployeó a Firebase Hosting varias veces (último deploy: 14/08 19:46) — **sin nunca commitear ni pushear a git**. Esta compu (FACUNDO-PALACIO) tenía además cambios propios sin commitear del 13/08 que quedaron superados por lo de producción.
+- **Se descargó el HTML/JS realmente en vivo** (`liga-f5-3d80c.web.app`) y se comparó contra el repo local — 1126 líneas de diferencia en `index.html`, 168 en `planilla.html`. Producción tenía funcionalidad que el repo no tenía (no al revés): pestaña "Aranceles" completa (donut de estado, aprobar/rechazar por fecha, config de vencimiento), checklist de equipos, revertir aprobación de inscripción/seguro, edición de plantel desde admin, generador de fixture round-robin con byes, borrado de fixture en lotes, partidos interzonales, fila de Cuerpo Técnico en la planilla impresa, jugadores bloqueados con motivo, y `sw.js` v14 (cachea index.html/planilla.html desde la instalación + agrega `firebase-auth-compat.js`/`html2canvas.min.js` al cache offline).
+- **Resuelto**: se reemplazaron `index.html`/`planilla.html`/`sw.js` locales por la versión real de producción, se commiteó (`dfb9404`) y se pusheó — junto con 43 commits previos (12/07→12/08) que tampoco habían llegado nunca a GitHub. `origin/main` estaba parado en el 31/07 hasta ahora.
+- **`functions/` y `firestore.rules` no se tocaron** en la otra compu (sin cambios recientes en disco) — solo hosting se deployeó directo sin pasar por git.
+- **Pendiente / a tener en cuenta**: si volvés a trabajar desde la otra computadora, evitar deployear directo sin commitear+pushear antes — así no se repite esta reconciliación manual. Confirmar con el usuario si esa compu sigue con su propio checkout desactualizado (podría volver a divergir).
+
 ## ✅ Sesión 2026-08-12 (continuación 6) — investigación del caso "Valencia" (admin ve completo, equipo ve pendiente): causa encontrada + auditoría de pagos y seguros
 
 - **Reportado por el usuario**: inconsistencia entre lo que ve el admin ("completo") y lo que ve el equipo ("pendiente") en saldos de inscripción, con el caso concreto de "Valencia" (subió el mismo comprobante dos veces por error, lo reemplazó, y quedó "pendiente $100.000" aunque en realidad pagó todo). Pedido explícito: garantizar que la plata cuadre siempre — cantidad de jugadores/seguros vs. montos, comprobantes vs. saldos pendientes.
