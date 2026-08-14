@@ -85,6 +85,15 @@ service cloud.firestore {
       allow update: if isAdmin() || (autenticado() && resource.data.estado != 'cerrado' && soloCamposPlanilla());
       allow delete: if isAdmin();
     }
+    // Pagos semanales de arancel. Un equipo carga el suyo (estado 'pagado' al
+    // crear, nunca puede ponerse 'aprobado' a sí mismo) y solo puede leer los
+    // propios (filtrados por equipoId); el admin ve y gestiona todos, incluido
+    // rechazar un comprobante mal cargado.
+    match /aranceles/{id} {
+      allow read: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && resource.data.equipoId == request.auth.token.equipoId);
+      allow create: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && request.resource.data.equipoId == request.auth.token.equipoId && request.resource.data.estado == 'pagado');
+      allow update, delete: if isAdmin();
+    }
     match /avisos/{id} {
       allow read, write: if autenticado();
     }
