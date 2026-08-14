@@ -1,5 +1,12 @@
-const CACHE = 'ligaf5-v13';
+// v14: agrega planilla.html/index.html (antes solo se cacheaban recién la primera vez que
+// cargaban bien online — un tablet que nunca completó esa primera carga se quedaba sin nada) y
+// los 2 scripts de CDN que planilla.html realmente usa y faltaban acá: firebase-auth-compat.js
+// (sin él no hay login anónimo, y sin login anónimo ninguna escritura a Firestore funciona) y
+// html2canvas.min.js (necesario para generar el PDF de la planilla).
+const CACHE = 'ligaf5-v14';
 const ASSETS = [
+  './index.html',
+  './planilla.html',
   './manifest.json',
   './manifest-planilla.json',
   './assets/logo-liga-f5.png',
@@ -19,7 +26,9 @@ const ASSETS = [
   './assets/planilla-icon-maskable-512.png',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
 ];
 
 self.addEventListener('install', event => {

@@ -602,6 +602,26 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 .admin-eq-shield-ph{width:36px;height:36px;border-radius:8px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--text-dim);flex-shrink:0;}
 .admin-eq-nombre{font-size:13px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .admin-eq-arrow{color:var(--text-muted);font-size:18px;flex-shrink:0;line-height:1;}
+/* ── Fixture público: dos columnas (Zona A | Zona B) en desktop, solapas en celular ── */
+.fx-zona-tabs{display:none;gap:8px;margin-bottom:14px;}
+.fx-zona-tabs .tab-btn{flex:1;}
+.fx-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+.fx-col-title{font-size:15px;font-weight:800;color:var(--division-color);text-align:center;margin-bottom:12px;letter-spacing:.5px;text-transform:uppercase;}
+.fx-match{padding:14px 20px;border:1px solid var(--glass-border);border-radius:14px;margin-bottom:10px;background:var(--glass);}
+.fx-match.fx-inter{background:rgba(167,139,250,.10);border-color:rgba(167,139,250,.45);border-left:4px solid #a78bfa;}
+.fx-meta{font-size:13.5px;color:var(--text-dim);text-align:center;margin-bottom:11px;font-weight:600;}
+.fx-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;}
+.fx-team{font-size:18px;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.2px;}
+.fx-team.local{text-align:right;}
+.fx-team.visit{text-align:left;}
+.fx-vs{font-size:15px;font-weight:800;color:var(--division-color);white-space:nowrap;}
+@media(max-width:760px){
+  .fx-cols{grid-template-columns:1fr;}
+  .fx-zona-tabs{display:flex;}
+  .fx-col.oculta{display:none;}
+  .fx-team{font-size:15px;}
+  .fx-teams{gap:10px;}
+}
 </style>
 </head>
 <body>
@@ -632,8 +652,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       </div>
     </div>
     <div class="nav-actions" id="nav-actions-guest">
-      <button class="btn" onclick="showView('login-equipo')">Ingresar</button>
-      <button class="btn btn-primary" onclick="showView('registro-equipo')">Registrarse</button>
+      <button class="btn btn-primary" onclick="showView('login-equipo')">Ingresar</button>
     </div>
     <div class="nav-actions hidden" id="nav-actions-auth">
       <button class="btn btn-primary" onclick="irAMiPanel()">Mi panel</button>
@@ -646,12 +665,8 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
   <div class="container">
     <div class="hero">
       <img src="assets/logo-clausura.png" alt="Torneo Clausura" class="hero-logo">
-      <h2 class="hero-headline">¿Querés formar parte de nuestra comunidad?</h2>
-      <p class="hero-sub">Registrate e inscribí a tu equipo en la LIGA F5.</p>
-      <div class="hero-actions">
-        <button class="btn btn-primary" onclick="showView('registro-equipo')">Inscribir a mi equipo</button>
-      </div>
-      <div class="deadlines" id="deadlines-wrap"></div>
+      <h2 class="hero-headline">Torneo Clausura 2026</h2>
+      <p class="hero-sub">Seguí las posiciones, goleadores y el fixture de todas las fechas.</p>
     </div>
 
     <div class="avisos-wrap" id="avisos-wrap"></div>
@@ -738,7 +753,6 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         <button type="submit" class="btn btn-primary btn-block">Ingresar</button>
       </form>
       <div class="auth-switch">
-        ¿Todavía no tenés cuenta? <a href="javascript:void(0)" onclick="showView('registro-equipo')">Registrá tu equipo</a><br>
         <a href="javascript:void(0)" onclick="showView('landing')">Volver al inicio</a>
       </div>
     </div>
@@ -949,6 +963,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     <div class="tabs-equipo">
       <button class="tab-btn active" data-petab="panel" onclick="switchPanelEquipoTab('panel')">Mi equipo</button>
       <button class="tab-btn" data-petab="listabf" onclick="switchPanelEquipoTab('listabf')">📋 Lista de buena fe</button>
+      <button class="tab-btn" data-petab="pagos" onclick="switchPanelEquipoTab('pagos')">💵 Pagos</button>
       <button class="tab-btn" data-petab="mensajes" onclick="switchPanelEquipoTab('mensajes')">✉️ Mensajes<span class="msg-tab-badge" id="msg-equipo-tab-badge"></span></button>
       <button class="tab-btn" data-petab="partidos" onclick="switchPanelEquipoTab('partidos')">⚽ Partidos</button>
       <button class="tab-btn" data-petab="sanciones" onclick="switchPanelEquipoTab('sanciones')">🟥 Sanciones</button>
@@ -1134,6 +1149,8 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       </div>
     </div>
 
+    <div id="pe-tab-pagos" class="hidden"></div>
+
     <div id="pe-tab-mensajes" class="hidden">
       <!-- BANDEJA -->
       <div id="msg-equipo-bandeja">
@@ -1183,6 +1200,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       <button class="tab-btn" data-tab="mensajes" onclick="switchAdminTab('mensajes')">✉️ Mensajes<span class="msg-tab-badge" id="msg-admin-tab-badge"></span></button>
       <button class="tab-btn" data-tab="avisos" onclick="switchAdminTab('avisos')">Avisos</button>
       <button class="tab-btn" data-tab="config" onclick="switchAdminTab('config')">Configuración</button>
+      <button class="tab-btn" data-tab="aranceles" onclick="switchAdminTab('aranceles')">💵 Aranceles</button>
       <button class="tab-btn" data-tab="admins" onclick="switchAdminTab('admins')">Administradores</button>
     </div>
 
@@ -1221,13 +1239,24 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           </div>
         </div>
 
-        <div class="glass datos-temporada-card" onclick="abrirModalDatosTemporada()">
+        <div class="glass datos-temporada-card" onclick="abrirDatosTemporada()">
           <span class="datos-temporada-icon">📊</span>
           <div>
             <h3>Datos de la Temporada</h3>
             <p>Equipos, pagos y seguros — por división y en total</p>
           </div>
           <span class="datos-temporada-arrow">›</span>
+        </div>
+
+        <div class="glass section-card" style="margin-top:16px;" id="admin-fixture-general">
+          <h3>📅 Fixture del Torneo</h3>
+          <p class="wizard-help" style="margin-bottom:10px;">Generá el fixture de las <strong>dos categorías a la vez</strong> — así las canchas y los horarios no se cruzan entre Primera y Segunda. Primero asigná las zonas de Segunda (en su división). Después podés editar cada partido (cancha, horario y resultado).</p>
+          <div class="section-actions" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;">
+            <button class="btn btn-primary" onclick="generarFixtureTotal()">⚙ Generar fixture TOTAL (Primera + Segunda)</button>
+            <button class="btn btn-danger" onclick="borrarFixtureTotal()">🗑 Borrar todo</button>
+          </div>
+          <div id="fixture-total-tabs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
+          <div id="fixture-total-cont"></div>
         </div>
 
         <div class="glass section-card" style="margin-top:16px;" id="admin-auditoria-card">
@@ -1248,6 +1277,15 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           <input type="text" id="admin-global-buscar-jugador" placeholder="🔎 Buscar por apellido o nombre..." style="width:100%;" oninput="buscarJugadorGlobalAdmin()">
           <div id="admin-global-buscar-resultados" style="margin-top:10px;"></div>
         </div>
+      </div>
+
+      <!-- Pantalla 1b: Datos de la Temporada — pantalla completa, no modal -->
+      <div id="torneo-datos-temporada" class="hidden">
+        <div class="divisiontabs-actions">
+          <button class="btn" onclick="cerrarDatosTemporada()">← Volver a Torneo Clausura</button>
+          <h3 style="margin:0;">📊 Datos de la Temporada</h3>
+        </div>
+        <div id="datos-temporada-content"></div>
       </div>
 
       <!-- Pantalla 2: dentro de una división -->
@@ -1342,10 +1380,8 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           <div class="glass section-card">
             <h3>Fixture</h3>
             <div class="section-actions" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;" id="pa-fixture-btns-zonas">
-              <button class="btn" onclick="generarFixtureZona(state.adminDivisionActiva,'A')">⚙ Generar fixture Zona A</button>
-              <button class="btn" onclick="generarFixtureZona(state.adminDivisionActiva,'B')">⚙ Generar fixture Zona B</button>
-              <button class="btn btn-danger" onclick="borrarPartidosZona(state.adminDivisionActiva,'A')">🗑 Borrar partidos Zona A</button>
-              <button class="btn btn-danger" onclick="borrarPartidosZona(state.adminDivisionActiva,'B')">🗑 Borrar partidos Zona B</button>
+              <button class="btn" onclick="generarFixtureSegundaCompleto(state.adminDivisionActiva)">⚙ Generar fixture completo (con interzonal)</button>
+              <button class="btn btn-danger" onclick="borrarPartidosDivisionCompleta(state.adminDivisionActiva)">🗑 Borrar todo el fixture</button>
             </div>
             <div class="section-actions hidden" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;" id="pa-fixture-btns-primera">
               <button class="btn" onclick="generarFixtureDivisionCompleta(state.adminDivisionActiva)">⚙ Generar fixture</button>
@@ -1399,6 +1435,31 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     </div>
 
     <!-- Avisos tab -->
+    <div id="admintab-aranceles" class="admintab hidden">
+      <div class="glass section-card">
+        <h3>💵 Aranceles por fecha</h3>
+        <p class="wizard-help" style="margin-bottom:12px;">Definí qué fecha (sábado) está abierta para cobrar y su vencimiento (12:00 del mediodía). Los equipos pagan <strong>$50.000</strong>; pasado el vencimiento, <strong>$55.000</strong> (queda marcado "fuera de hora"). Controlá quién pagó, cuánto falta y quién pagó tarde.</p>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;">
+          <div class="field" style="margin:0;"><label>Fecha actual</label>
+            <select id="cfg-arancel-fecha" style="padding:7px;border-radius:8px;">
+              <option value="">— sin abrir —</option>
+              <option value="1">Fecha 1</option><option value="2">Fecha 2</option><option value="3">Fecha 3</option><option value="4">Fecha 4</option><option value="5">Fecha 5</option><option value="6">Fecha 6</option><option value="7">Fecha 7</option><option value="8">Fecha 8</option><option value="9">Fecha 9</option><option value="10">Fecha 10</option><option value="11">Fecha 11</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0;"><label>Vence (sábado 12:00)</label><input type="datetime-local" id="cfg-arancel-vence" style="padding:6px;border-radius:8px;"></div>
+          <button class="btn btn-primary" onclick="guardarCfgArancel()">Guardar</button>
+        </div>
+        <div class="division-tabs" id="aranceles-subtabs" style="margin-bottom:12px;"></div>
+        <div id="aranceles-fecha-sel" style="margin-bottom:14px;font-size:13px;color:var(--text-dim);"></div>
+        <div id="aranceles-cont"></div>
+      </div>
+      <div class="glass section-card">
+        <h3>🧹 Mantenimiento — liberar memoria</h3>
+        <p class="wizard-help" style="margin-bottom:10px;">Borra las imágenes de los comprobantes de <strong>inscripción</strong> y <strong>seguros</strong> (que ya revisaste) de todos los equipos, para no llenar la base. Los montos y estados aprobados se conservan. Es irreversible.</p>
+        <button class="btn btn-danger" onclick="limpiarComprobantesViejos()">🧹 Borrar comprobantes viejos</button>
+      </div>
+    </div>
+
     <div id="admintab-avisos" class="admintab hidden">
       <div class="glass section-card">
         <h3>Publicar aviso</h3>
@@ -1452,6 +1513,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm" onclick="abrirRedactarAdmin()">✏️ Redactar</button>
             <button class="btn btn-sm" onclick="abrirEnviarATodos()">📢 Enviar a todos</button>
+            <button class="btn btn-sm" onclick="marcarTodosLeidosAdmin()">✓ Marcar todos como leídos</button>
           </div>
         </div>
         <div class="msg-div-tabs">
@@ -1823,7 +1885,7 @@ async function aplicarSesionDesdeAuth(user) {
 function logout() {
   detenerBadgeAdmin(); detenerBadgeEquipo();
   detenerMensajesAdmin(); detenerMensajesEquipo();
-  detenerSyncEquiposAdmin(); detenerPartidosAdmin();
+  detenerSyncEquiposAdmin(); detenerPartidosAdmin(); detenerPartidosTotal(); detenerAranceles();
   state.equipo = null; state.equipoId = null; state.admin = null;
   auth.signOut().catch(() => {});
   showView('landing');
@@ -1865,14 +1927,9 @@ async function loadLanding() {
   try {
     const cfgDoc = await db.collection('config').doc('general').get();
     const cfg = cfgDoc.exists ? cfgDoc.data() : {};
+    // Inscripciones cerradas: ya no se muestran las fechas límite en la landing pública.
     const dl = document.getElementById('deadlines-wrap');
-    dl.innerHTML = '';
-    if (cfg.fechaLimiteInscripcion) {
-      dl.innerHTML += `<div class="glass deadline-pill"><span class="badge badge-cyan">Inscripción</span> hasta ${formatFechaDMY(cfg.fechaLimiteInscripcion)}</div>`;
-    }
-    if (cfg.fechaLimiteBuenaFe) {
-      dl.innerHTML += `<div class="glass deadline-pill"><span class="badge badge-warn">Lista de buena fe</span> hasta ${formatFechaDMY(cfg.fechaLimiteBuenaFe)}</div>`;
-    }
+    if (dl) dl.innerHTML = '';
   } catch (e) { console.error(e); }
 
   try {
@@ -1960,6 +2017,9 @@ function renderContentTabActivo() {
   else if (state.contentTabActivo === 'fixture') renderFixturePublico();
   else if (state.contentTabActivo === 'partidos') renderPartidosPublico();
 }
+// Acredita cada lado por separado: si un partido tiene solo uno de los dos
+// equipos en la tabla (caso interzonal), suma únicamente a ese. Para partidos
+// normales (ambos en la tabla) el comportamiento es el de siempre.
 function calcularTablaPosiciones(equipos, partidos) {
   const tabla = equipos.map(eq => ({ id: eq.id, nombre: eq.nombre, escudo: eq.escudo, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 }));
   const byId = {};
@@ -1967,13 +2027,16 @@ function calcularTablaPosiciones(equipos, partidos) {
   partidos.filter(p => p.jugado).forEach(p => {
     const local = byId[p.equipoLocalId];
     const visitante = byId[p.equipoVisitanteId];
-    if (!local || !visitante) return;
-    local.pj++; visitante.pj++;
-    local.gf += p.golesLocal??0; local.gc += p.golesVisitante??0;
-    visitante.gf += p.golesVisitante??0; visitante.gc += p.golesLocal??0;
-    if (p.golesLocal > p.golesVisitante) { local.pg++; local.pts += 3; visitante.pp++; }
-    else if (p.golesLocal < p.golesVisitante) { visitante.pg++; visitante.pts += 3; local.pp++; }
-    else { local.pe++; visitante.pe++; local.pts++; visitante.pts++; }
+    if (!local && !visitante) return;
+    const gl = p.golesLocal ?? 0, gv = p.golesVisitante ?? 0;
+    if (local) {
+      local.pj++; local.gf += gl; local.gc += gv;
+      if (gl > gv) { local.pg++; local.pts += 3; } else if (gl < gv) { local.pp++; } else { local.pe++; local.pts++; }
+    }
+    if (visitante) {
+      visitante.pj++; visitante.gf += gv; visitante.gc += gl;
+      if (gv > gl) { visitante.pg++; visitante.pts += 3; } else if (gv < gl) { visitante.pp++; } else { visitante.pe++; visitante.pts++; }
+    }
   });
   tabla.forEach(t => t.dg = t.gf - t.gc);
   tabla.sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf);
@@ -1981,7 +2044,13 @@ function calcularTablaPosiciones(equipos, partidos) {
 }
 function calcularPosiciones(zona) {
   const equipos = state.equiposCache.filter(eq => eq.zona === zona);
-  return calcularTablaPosiciones(equipos, state.partidosCache.filter(p => p.zona === zona));
+  const ids = new Set(equipos.map(e => e.id));
+  // Partidos de la zona + interzonales donde participa un equipo de esta zona
+  // (el interzonal suma a la tabla de la zona de cada equipo).
+  const partidos = state.partidosCache.filter(p =>
+    p.zona === zona || (p.interzonal && (ids.has(p.equipoLocalId) || ids.has(p.equipoVisitanteId)))
+  );
+  return calcularTablaPosiciones(equipos, partidos);
 }
 function calcularPosicionesDivision() {
   // Primera no usa zonas: los equipos de la división activa (ya vienen
@@ -2004,10 +2073,10 @@ function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZo
       <td><strong>${t.pts}</strong></td>
     </tr>`;
   }).join('');
-  const leyenda = `<div class="pos-leyenda">
-    <span class="pos-leyenda-item pos-leyenda-playoff">Clasifica a playoffs (top ${playoffSlots})</span>
+  const leyenda = (playoffSlots > 0 || descensoSlots > 0) ? `<div class="pos-leyenda">
+    ${playoffSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-playoff">Clasifica a playoffs (top ${playoffSlots})</span>` : ''}
     ${descensoSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-descenso">Desciende</span>` : ''}
-  </div>`;
+  </div>` : '';
   const tabla_html = `<div class="glass section-card">
       <div class="tbl-wrap">
         <table class="posiciones-table">
@@ -2034,8 +2103,15 @@ function renderPosicionesPublico() {
   }
   const playoffSlots = 8, descensoSlots = 0;
   const zonas = ['A', 'B'].filter(z => state.equiposCache.some(eq => eq.zona === z));
-  if (zonas.length === 0) { wrap.innerHTML = `<div class="empty-state">Todavía no hay zonas armadas en esta división.</div>`; return; }
-  wrap.innerHTML = zonas.map(zona => renderTablaPosicionesBlock(calcularPosiciones(zona), playoffSlots, descensoSlots, `Zona ${zona}`)).join('');
+  let html = zonas.map(zona => renderTablaPosicionesBlock(calcularPosiciones(zona), playoffSlots, descensoSlots, `Zona ${zona}`)).join('');
+  // Equipos todavía sin zona: se muestran igual (bug: antes desaparecían).
+  const sinZona = state.equiposCache.filter(eq => eq.zona !== 'A' && eq.zona !== 'B');
+  if (sinZona.length) {
+    const tablaSin = calcularTablaPosiciones(sinZona, state.partidosCache.filter(p => !p.zona || (p.zona !== 'A' && p.zona !== 'B' && !p.interzonal)));
+    html += renderTablaPosicionesBlock(tablaSin, 0, 0, 'Sin zona asignada');
+  }
+  if (!html) { wrap.innerHTML = `<div class="empty-state">Todavía no hay equipos en esta división.</div>`; return; }
+  wrap.innerHTML = html;
 }
 function calcularGoleadores() {
   const map = {};
@@ -2060,34 +2136,74 @@ function renderGoleadoresPublico() {
     </div>`;
   }).join('')}</div>`;
 }
+// Convierte "HH:MM" a minutos para ordenar por horario (los sin horario van al final).
+function horarioAMin(h) { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? (+m[1]) * 60 + (+m[2]) : 99999; }
+// Ordena los cruces de una fecha por horario (menor a mayor) y, a igual hora, por cancha.
+function ordenarPorHorario(partidos) {
+  return partidos.slice().sort((a, b) => horarioAMin(a.horario) - horarioAMin(b.horario) || (a.cancha || 0) - (b.cancha || 0));
+}
+// Escudo PNG flotante de un equipo. mix-blend-mode:screen funde el fondo negro
+// del PNG con el fondo oscuro de la app, así el escudo se ve sin recuadro. Si no
+// hay escudo, iniciales en texto.
+function escudoEquipoHtml(id, nombre, size) {
+  const eq = state.equiposCache.find(e => e.id === id);
+  if (eq && eq.escudo) return `<img src="${eq.escudo}" alt="${escapeHtml(nombre || '')}" style="height:${size}px;width:${size}px;object-fit:contain;flex-shrink:0;mix-blend-mode:screen;">`;
+  const ini = (nombre || '').split(/\s+/).map(w => w[0] || '').slice(0, 2).join('').toUpperCase();
+  return `<div style="height:${size}px;width:${size}px;display:flex;align-items:center;justify-content:center;font-size:${Math.round(size * 0.36)}px;font-weight:900;color:var(--text-dim);flex-shrink:0;">${escapeHtml(ini)}</div>`;
+}
 function renderFechasFixture(partidosGrupo, equiposGrupo) {
   const teamIds = equiposGrupo.map(eq => eq.id);
   const fechas = [...new Set(partidosGrupo.map(p => p.numeroFecha))].sort((a, b) => a - b);
   return fechas.map(nf => {
-    const partidos = partidosGrupo.filter(p => p.numeroFecha === nf);
-    const playing = new Set([...partidos.map(p => p.equipoLocalId), ...partidos.map(p => p.equipoVisitanteId)]);
+    const partidos = ordenarPorHorario(partidosGrupo.filter(p => p.numeroFecha === nf));
+    // "Libre" mirando TODOS los partidos de la fecha (incluye el interzonal).
+    const todosFecha = state.partidosCache.filter(p => p.numeroFecha === nf);
+    const playing = new Set([...todosFecha.map(p => p.equipoLocalId), ...todosFecha.map(p => p.equipoVisitanteId)]);
     const byeId = teamIds.find(id => !playing.has(id));
     const byeEq = byeId ? equiposGrupo.find(eq => eq.id === byeId) : null;
-    const byeHtml = byeEq ? `<div class="partido-row partido-libre"><span class="partido-libre-label">📋 Libre esta fecha: <strong>${escapeHtml(byeEq.nombre)}</strong></span></div>` : '';
-    return `<div class="fecha-group"><div class="fecha-group-title">Fecha ${nf}</div>${partidos.map(p => `
-      <div class="partido-row">
-        <span class="partido-equipos">${escapeHtml(p.equipoLocalNombre)} ${p.jugado ? `<strong>${p.golesLocal} - ${p.golesVisitante}</strong>` : '<span class="muted">vs</span>'} ${escapeHtml(p.equipoVisitanteNombre)}</span>
-      </div>`).join('')}${byeHtml}</div>`;
+    const byeHtml = byeEq ? `<div class="fx-match" style="text-align:center;color:var(--text-dim);font-size:12px;">📋 Libre: <strong>${escapeHtml(byeEq.nombre)}</strong></div>` : '';
+    const rows = partidos.map(p => {
+      const meta = `🕐 ${p.horario || '--:--'} · Cancha ${p.cancha || '—'}${p.interzonal ? ` · <span style="color:#c4b5fd;font-weight:800;">⚔ Interzonal</span>` : ''}`;
+      const marcador = p.jugado ? `${p.golesLocal}-${p.golesVisitante}` : 'vs';
+      return `<div class="fx-match${p.interzonal ? ' fx-inter' : ''}">
+        <div class="fx-meta">${meta}</div>
+        <div class="fx-teams">
+          <span class="fx-team local">${escapeHtml(p.equipoLocalNombre)}</span>
+          <span class="fx-vs">${marcador}</span>
+          <span class="fx-team visit">${escapeHtml(p.equipoVisitanteNombre)}</span>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="fecha-group"><div class="fecha-group-title">Fecha ${nf}</div>${rows}${byeHtml}</div>`;
   }).join('');
 }
 function renderFixturePublico() {
   const wrap = document.getElementById('fixture-publico-wrap');
   if (state.partidosCache.length === 0) { wrap.innerHTML = `<div class="empty-state">Todavía no se publicó el fixture de esta división.</div>`; return; }
   if (state.divisionActiva === 'Primera') {
-    // Primera no usa zonas: un solo fixture con las 11 fechas de los 12 equipos.
-    wrap.innerHTML = renderFechasFixture(state.partidosCache, state.equiposCache);
+    // Primera no usa zonas: una sola columna con todas las fechas.
+    wrap.innerHTML = `<div class="fx-col">${renderFechasFixture(state.partidosCache, state.equiposCache)}</div>`;
     return;
   }
-  const zonas = [...new Set(state.partidosCache.map(p => p.zona))].sort();
-  wrap.innerHTML = zonas.map(zona => {
-    const fechasHtml = renderFechasFixture(state.partidosCache.filter(p => p.zona === zona), state.equiposCache.filter(eq => eq.zona === zona));
-    return `<div class="zona-block"><div class="zona-block-title">Zona ${zona}</div>${fechasHtml}</div>`;
-  }).join('');
+  const zonas = ['A', 'B'].filter(z => state.partidosCache.some(p => p.zona === z));
+  if (!zonas.length) { wrap.innerHTML = `<div class="empty-state">Todavía no se armaron las zonas de esta división.</div>`; return; }
+  if (!state.fixtureZonaActiva || !zonas.includes(state.fixtureZonaActiva)) state.fixtureZonaActiva = zonas[0];
+  // Solapas (solo se ven en celular); en pantalla grande van las dos columnas lado a lado.
+  const tabs = `<div class="fx-zona-tabs">${zonas.map(z => `<button class="tab-btn ${z === state.fixtureZonaActiva ? 'active' : ''}" onclick="seleccionarZonaFixture('${z}')">Zona ${z}</button>`).join('')}</div>`;
+  const cols = `<div class="fx-cols">${zonas.map(zona => {
+    const canchaKey = zona === 'A' ? 'zonaA' : 'zonaB';
+    const grupo = state.partidosCache.filter(p =>
+      p.zona === zona || (p.interzonal && Number(p.cancha) === canchasFecha(p.numeroFecha)[canchaKey])
+    );
+    const oculta = zona !== state.fixtureZonaActiva ? ' oculta' : '';
+    return `<div class="fx-col${oculta}" data-zona="${zona}"><div class="fx-col-title">Zona ${zona}</div>${renderFechasFixture(grupo, state.equiposCache.filter(eq => eq.zona === zona))}</div>`;
+  }).join('')}</div>`;
+  wrap.innerHTML = tabs + cols;
+}
+function seleccionarZonaFixture(z) {
+  state.fixtureZonaActiva = z;
+  document.querySelectorAll('#fixture-publico-wrap .fx-col').forEach(c => c.classList.toggle('oculta', c.dataset.zona !== z));
+  document.querySelectorAll('#fixture-publico-wrap .fx-zona-tabs .tab-btn').forEach(b => b.classList.toggle('active', b.textContent.trim() === 'Zona ' + z));
 }
 function renderPartidosPublico() {
   const pills = document.getElementById('partidos-fecha-pills');
@@ -2096,7 +2212,7 @@ function renderPartidosPublico() {
   if (fechas.length === 0) { pills.innerHTML = ''; wrap.innerHTML = `<div class="empty-state">Todavía no hay partidos cargados en esta división.</div>`; return; }
   if (!state.fechaPublicaActiva || !fechas.includes(state.fechaPublicaActiva)) state.fechaPublicaActiva = fechas[fechas.length - 1];
   pills.innerHTML = fechas.map(nf => `<button class="tab-btn ${nf === state.fechaPublicaActiva ? 'active' : ''}" onclick="seleccionarFechaPublica(${nf})">Fecha ${nf}</button>`).join('');
-  const partidos = state.partidosCache.filter(p => p.numeroFecha === state.fechaPublicaActiva);
+  const partidos = ordenarPorHorario(state.partidosCache.filter(p => p.numeroFecha === state.fechaPublicaActiva));
   wrap.innerHTML = partidos.map(p => {
     const eventosEquipo = (equipoId) => {
       const goles = (p.goleadores || []).filter(g => g.equipoId === equipoId);
@@ -2110,12 +2226,14 @@ function renderPartidosPublico() {
       });
       return html || `<div class="evento-linea muted">Sin novedades</div>`;
     };
+    const zonaLabel = p.interzonal ? '⚔ Interzonal' : (p.zona && p.zona !== 'INT') ? `Zona ${p.zona}` : '';
     return `<div class="glass partido-card-public">
-      ${p.zona ? `<p class="muted" style="text-align:center;margin-bottom:10px;font-size:12px;">Zona ${p.zona}</p>` : ''}
-      <div class="marcador">
-        <span class="equipo-nombre">${escapeHtml(p.equipoLocalNombre)}</span>
-        <span class="goles">${p.jugado ? `${p.golesLocal} - ${p.golesVisitante}` : 'vs'}</span>
-        <span class="equipo-nombre visitante">${escapeHtml(p.equipoVisitanteNombre)}</span>
+      ${zonaLabel ? `<p class="muted" style="text-align:center;margin-bottom:4px;font-size:13px;">${zonaLabel}</p>` : ''}
+      <p style="text-align:center;margin-bottom:16px;font-size:14px;font-weight:600;color:var(--text-dim);">🕐 ${p.horario || '--:--'} &nbsp;·&nbsp; 🏟️ Cancha ${p.cancha || '—'}</p>
+      <div class="marcador" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;">
+        <span class="equipo-nombre" style="text-align:right;font-size:19px;">${escapeHtml(p.equipoLocalNombre)}</span>
+        <span class="goles" style="font-size:18px;">${p.jugado ? `${p.golesLocal} - ${p.golesVisitante}` : 'vs'}</span>
+        <span class="equipo-nombre visitante" style="text-align:left;font-size:19px;">${escapeHtml(p.equipoVisitanteNombre)}</span>
       </div>
       ${p.jugado ? `<div class="detalle-equipos">
         <div><div class="detalle-titulo">${escapeHtml(p.equipoLocalNombre)}</div>${eventosEquipo(p.equipoLocalId)}</div>
@@ -2408,6 +2526,194 @@ function renderPanelEquipo() {
   switchPanelEquipoTab('panel', false);
 }
 
+// ═══════════════════ PAGOS: aranceles semanales ═══════════════════
+const ARANCEL_ALIAS = 'LIGA.F526';
+const ARANCEL_ALIAS_TITULAR = 'Mariano Gauna · billetera ASTRO PAY';
+const ARANCEL_MONTO = 50000, ARANCEL_MONTO_TARDE = 55000;
+const fmtPesos = (n) => '$ ' + (Number(n) || 0).toLocaleString('es-AR');
+let _cfgArancel = { fecha: null, vence: null };
+async function _cargarCfgArancel() {
+  try { const d = await db.collection('config').doc('general').get(); const c = d.exists ? d.data() : {}; _cfgArancel = { fecha: c.arancelFechaActual || null, vence: c.arancelVence || null }; } catch (e) {}
+  return _cfgArancel;
+}
+function verImagenGrandeEquipo(src) { openModal(`<img src="${src}" style="max-width:100%;border-radius:8px;">`); }
+
+// ---- Equipo: pestaña Pagos ----
+async function renderPagosEquipo() {
+  const cont = document.getElementById('pe-tab-pagos');
+  if (!cont) return;
+  cont.innerHTML = `<div class="glass" style="padding:12px 14px;border-radius:10px;color:var(--text-dim);">Cargando…</div>`;
+  await _cargarCfgArancel();
+  const fecha = _cfgArancel.fecha, vence = _cfgArancel.vence;
+  const vencido = vence ? (new Date() > new Date(vence)) : false;
+  const monto = vencido ? ARANCEL_MONTO_TARDE : ARANCEL_MONTO;
+  const venceTxt = vence ? new Date(vence).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  let pagos = [];
+  try { const snap = await db.collection('aranceles').where('equipoId', '==', state.equipoId).get(); snap.forEach(d => pagos.push({ id: d.id, ...d.data() })); } catch (e) {}
+  pagos.sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+  const yaPago = fecha != null && pagos.some(p => p.fecha === fecha && p.estado !== 'rechazado');
+  const aliasBox = `<div class="glass" style="border:1px solid var(--division-color);border-radius:14px;padding:16px;text-align:center;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text-dim);letter-spacing:.5px;">TRANSFERÍ AL ALIAS</div>
+      <div style="font-size:30px;font-weight:900;color:var(--division-color);letter-spacing:1px;margin:4px 0;word-break:break-all;">${ARANCEL_ALIAS}</div>
+      <div style="font-size:12.5px;color:var(--text-dim);">${ARANCEL_ALIAS_TITULAR}</div>
+      <div style="font-size:11.5px;color:var(--text-dim);margin-top:4px;">Es el mismo alias que el de las inscripciones.</div>
+    </div>`;
+  let arancelCard;
+  if (fecha == null) {
+    arancelCard = `<div class="glass section-card"><h3>💵 Arancel semanal</h3><p class="muted">Todavía no hay una fecha de arancel abierta. La organización la habilita cada semana.</p></div>`;
+  } else {
+    arancelCard = `<div class="glass section-card">
+      <h3>💵 Arancel — Fecha ${fecha}</h3>
+      <p style="font-size:13.5px;margin-bottom:6px;">Vence: <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencido</span>' : ''}</p>
+      <p style="font-size:15px;margin-bottom:12px;">Monto a pagar: <strong style="color:var(--division-color);font-size:19px;">${fmtPesos(monto)}</strong> ${vencido ? `<span style="font-size:12px;color:var(--danger);">(fuera de hora)</span>` : `<span style="font-size:12px;color:var(--text-dim);">(pasado el vencimiento sube a ${fmtPesos(ARANCEL_MONTO_TARDE)})</span>`}</p>
+      ${yaPago ? `<div class="glass" style="padding:12px 14px;border-radius:10px;color:var(--ok);border:1px solid var(--ok);">✅ Ya cargaste el pago de la Fecha ${fecha}.</div>` : `
+      <div class="field"><label>Comprobante (obligatorio)</label><input type="file" accept="image/*" id="ar-comprobante"></div>
+      <div class="field"><label>Monto transferido (obligatorio)</label><input type="text" id="ar-monto" inputmode="numeric" placeholder="Ej: 50000 o 50.000"></div>
+      <div class="field"><label>Nombre de quien transfirió (obligatorio)</label><input type="text" id="ar-nombre" placeholder="Nombre y apellido"></div>
+      <button class="btn btn-primary" onclick="pagarArancel()">Cargar pago del arancel</button>`}
+    </div>`;
+  }
+  const historial = pagos.length ? `<div class="glass section-card"><h3>Mis pagos de arancel</h3>${pagos.map(p => `
+    <div class="list-row" style="align-items:center;">
+      ${p.comprobante ? `<img src="${p.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrandeEquipo('${p.comprobante}')">` : ''}
+      <div style="flex:1;min-width:0;"><strong>Fecha ${p.fecha}</strong> · ${fmtPesos(p.montoDeclarado)} ${p.fueraDeHora ? '<span class="badge badge-warn">Fuera de hora</span>' : ''}
+        <div class="muted" style="font-size:12px;">${escapeHtml(p.nombreTransferencia || '')} · ${p.creadoEn ? new Date(p.creadoEn).toLocaleDateString('es-AR') : ''}</div></div>
+      ${p.estado === 'rechazado' ? '<span class="badge badge-danger">Rechazado</span>' : '<span class="badge badge-ok">Pagado</span>'}
+    </div>`).join('')}</div>` : '';
+  const sancionesCard = `<div class="glass section-card"><h3>🟥 Sanciones</h3><p class="muted" style="margin-bottom:8px;">Tarjetas acumuladas, rojas y doble amarilla de tu equipo.</p><button class="btn btn-sm" onclick="switchPanelEquipoTab('sanciones')">Ver mis sanciones →</button></div>`;
+  const pasesCard = `<div class="glass section-card" style="opacity:.6;"><h3>🔄 Pases de jugadores</h3><p class="muted">🔒 Se habilita en playoffs.</p></div>`;
+  cont.innerHTML = aliasBox + arancelCard + historial + sancionesCard + pasesCard;
+}
+async function pagarArancel() {
+  const fileInput = document.getElementById('ar-comprobante');
+  const file = fileInput && fileInput.files[0];
+  const monto = parsearMonto((document.getElementById('ar-monto') || {}).value);
+  const nombre = ((document.getElementById('ar-nombre') || {}).value || '').trim();
+  if (!file) { showToast('Subí el comprobante.', 'error'); return; }
+  if (!monto || monto <= 0) { showToast('Ingresá el monto transferido.', 'error'); return; }
+  if (!nombre) { showToast('Ingresá el nombre de quien transfirió.', 'error'); return; }
+  try {
+    const dataUrl = await resizeImageFile(file, 900);
+    if (dataUrl.length > 350000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla.', 'error'); return; }
+    await _cargarCfgArancel();
+    const fecha = _cfgArancel.fecha;
+    if (fecha == null) { showToast('No hay una fecha de arancel abierta.', 'error'); return; }
+    const fueraDeHora = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
+    const eq = state.equipo || {};
+    await db.collection('aranceles').add({
+      equipoId: state.equipoId, equipoNombre: eq.nombre || '', division: eq.division || '', zona: eq.zona || '',
+      fecha, montoDeclarado: monto, nombreTransferencia: nombre, comprobante: dataUrl,
+      estado: 'pagado', fueraDeHora, creadoEn: new Date().toISOString()
+    });
+    showToast('Pago del arancel cargado. ✅', 'ok');
+    renderPagosEquipo();
+  } catch (e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
+}
+
+// ---- Admin: panel de aranceles ----
+let arancelesCache = [], arancelesUnsub = null;
+function cargarAranceles() {
+  if (arancelesUnsub) return;
+  arancelesUnsub = db.collection('aranceles').onSnapshot(snap => {
+    arancelesCache = []; snap.forEach(d => arancelesCache.push({ id: d.id, ...d.data() }));
+    renderArancelesAdmin();
+  }, e => console.error(e));
+}
+function detenerAranceles() { if (arancelesUnsub) { arancelesUnsub(); arancelesUnsub = null; } }
+function seleccionarArancelTab(t) { state.arancelTab = t; renderArancelesAdmin(); }
+function seleccionarArancelFecha(f) { state.arancelFechaVista = +f; renderArancelesAdmin(); }
+async function guardarCfgArancel() {
+  const fecha = +(document.getElementById('cfg-arancel-fecha').value || 0) || null;
+  const venceLocal = document.getElementById('cfg-arancel-vence').value;
+  const vence = venceLocal ? new Date(venceLocal).toISOString() : null;
+  try {
+    await db.collection('config').doc('general').set({ arancelFechaActual: fecha, arancelVence: vence }, { merge: true });
+    _cfgArancel = { fecha, vence };
+    state.arancelFechaVista = fecha;
+    showToast('Arancel actual actualizado.', 'ok');
+    renderArancelesAdmin();
+  } catch (e) { console.error(e); showToast('No se pudo guardar.', 'error'); }
+}
+function donutArancelHtml(pagados, total) {
+  const pct = total ? pagados / total : 0, r = 52, c = 2 * Math.PI * r, off = c * (1 - pct);
+  const col = pct >= 1 ? 'var(--ok)' : 'var(--division-color)';
+  return `<svg width="130" height="130" viewBox="0 0 130 130" style="flex-shrink:0;">
+    <circle cx="65" cy="65" r="${r}" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="12"/>
+    <circle cx="65" cy="65" r="${r}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 65 65)"/>
+    <text x="65" y="61" text-anchor="middle" font-size="26" font-weight="800" fill="#eef4f6">${pagados}/${total}</text>
+    <text x="65" y="80" text-anchor="middle" font-size="12" fill="#8a979d">pagaron</text>
+  </svg>`;
+}
+async function renderArancelesAdmin() {
+  const box = document.getElementById('aranceles-cont');
+  if (!box) return;
+  await _cargarCfgArancel();
+  // Prefill config (sin pisar mientras el admin edita)
+  const fEl = document.getElementById('cfg-arancel-fecha');
+  if (fEl && document.activeElement !== fEl && _cfgArancel.fecha) fEl.value = _cfgArancel.fecha;
+  const vEl = document.getElementById('cfg-arancel-vence');
+  if (vEl && document.activeElement !== vEl && _cfgArancel.vence) { const d = new Date(_cfgArancel.vence), p = n => String(n).padStart(2, '0'); vEl.value = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+  const tab = state.arancelTab || 'Primera';
+  if (state.arancelFechaVista == null) state.arancelFechaVista = _cfgArancel.fecha || 1;
+  const fechaV = state.arancelFechaVista;
+  document.getElementById('aranceles-subtabs').innerHTML = [['Primera', '🥇 Primera'], ['A', '🥈 Zona A'], ['B', '🥈 Zona B']].map(([k, l]) => `<button class="tab-btn ${tab === k ? 'active' : ''}" onclick="seleccionarArancelTab('${k}')">${l}</button>`).join('');
+  document.getElementById('aranceles-fecha-sel').innerHTML = `Ver fecha: <select onchange="seleccionarArancelFecha(this.value)" style="padding:5px 8px;border-radius:8px;">${Array.from({ length: 11 }, (_, i) => i + 1).map(f => `<option value="${f}" ${f === fechaV ? 'selected' : ''}>Fecha ${f}${f === _cfgArancel.fecha ? ' (actual)' : ''}</option>`).join('')}</select>`;
+  const equipos = tab === 'Primera' ? equiposCacheAdmin.filter(e => e.division === 'Primera') : equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona === tab);
+  const total = equipos.length;
+  const pagosFecha = arancelesCache.filter(p => p.fecha === fechaV && p.estado !== 'rechazado' && (tab === 'Primera' ? p.division === 'Primera' : (p.division === 'Segunda' && p.zona === tab)));
+  const pagadoIds = new Set(pagosFecha.map(p => p.equipoId));
+  const pagados = equipos.filter(e => pagadoIds.has(e.id)).length;
+  const recaudado = pagosFecha.reduce((s, p) => s + (p.montoDeclarado || 0), 0);
+  const objetivo = total * ARANCEL_MONTO;
+  const fueraHora = pagosFecha.filter(p => p.fueraDeHora).length;
+  const filasPagaron = equipos.filter(e => pagadoIds.has(e.id)).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '')).map(e => {
+    const p = pagosFecha.find(x => x.equipoId === e.id) || {};
+    return `<div class="list-row" style="align-items:center;border-left:4px solid var(--ok);padding-left:10px;background:rgba(74,222,128,.06);border-radius:8px;margin-bottom:5px;">
+      ${p.comprobante ? `<img src="${p.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrande('${p.comprobante}')">` : ''}
+      <div style="flex:1;min-width:0;"><span style="color:var(--ok);font-weight:800;">✅ ${escapeHtml(e.nombre)}</span> · ${fmtPesos(p.montoDeclarado)} ${p.fueraDeHora ? '<span class="badge badge-warn">Fuera de hora</span>' : ''}
+        <div class="muted" style="font-size:12px;">${escapeHtml(p.nombreTransferencia || '')} · ${p.creadoEn ? new Date(p.creadoEn).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</div></div>
+      <button class="btn btn-sm btn-danger" onclick="rechazarArancel('${p.id}')">✕ Rechazar</button>
+    </div>`;
+  }).join('');
+  const filasFaltan = equipos.filter(e => !pagadoIds.has(e.id)).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '')).map(e => `<div class="list-row" style="align-items:center;border-left:4px solid var(--danger);padding-left:10px;background:rgba(248,113,113,.06);border-radius:8px;margin-bottom:5px;"><div style="flex:1;font-weight:800;color:var(--danger);">❌ ${escapeHtml(e.nombre)}</div><span class="badge badge-danger">Falta pagar</span></div>`).join('');
+  box.innerHTML = `
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+      ${donutArancelHtml(pagados, total)}
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:14px;">
+        <div>Pagaron: <strong style="color:var(--ok);">${pagados}</strong> de ${total} · Faltan: <strong style="color:var(--warn);">${total - pagados}</strong></div>
+        <div>Recaudado: <strong style="color:var(--ok);">${fmtPesos(recaudado)}</strong> / Objetivo: <strong>${fmtPesos(objetivo)}</strong></div>
+        <div>Pagaron fuera de hora: <strong>${fueraHora}</strong></div>
+      </div>
+    </div>
+    <h4 style="margin:10px 0 6px;">✅ Pagaron (${pagados})</h4>${filasPagaron || '<p class="muted">Nadie pagó todavía en esta fecha.</p>'}
+    <h4 style="margin:16px 0 6px;">⏳ Faltan (${total - pagados})</h4>${filasFaltan || '<p class="muted" style="color:var(--ok);">¡Todos pagaron!</p>'}`;
+}
+async function rechazarArancel(id) {
+  if (!confirm('¿Rechazar este pago? El equipo lo verá como rechazado y deberá volver a cargarlo.')) return;
+  try { await db.collection('aranceles').doc(id).update({ estado: 'rechazado' }); showToast('Pago rechazado.', 'ok'); } catch (e) { console.error(e); showToast('No se pudo rechazar.', 'error'); }
+}
+// ---- Mantenimiento: liberar memoria borrando comprobantes viejos ----
+async function limpiarComprobantesViejos() {
+  if (!confirm('LIBERAR MEMORIA\n\nEsto BORRA las imágenes de los comprobantes de INSCRIPCIÓN y SEGUROS de TODOS los equipos. Los montos y estados aprobados se conservan; solo se elimina la imagen. Es IRREVERSIBLE.\n\n¿Continuar?')) return;
+  try {
+    const snap = await db.collection('equipos').get();
+    let n = 0;
+    for (let i = 0; i < snap.docs.length; i += 300) {
+      const batch = db.batch();
+      snap.docs.slice(i, i + 300).forEach(doc => {
+        const eq = doc.data(), upd = {};
+        if (eq.pagoComprobante) upd.pagoComprobante = '';
+        if (eq.pagoSaldoComprobante) upd.pagoSaldoComprobante = '';
+        if (eq.seguroComprobante) upd.seguroComprobante = '';
+        if (Array.isArray(eq.pagoComprobantesHistorial) && eq.pagoComprobantesHistorial.some(t => t.comprobante)) upd.pagoComprobantesHistorial = eq.pagoComprobantesHistorial.map(t => ({ ...t, comprobante: '' }));
+        if (Array.isArray(eq.segurosTransacciones) && eq.segurosTransacciones.some(t => t.comprobante)) upd.segurosTransacciones = eq.segurosTransacciones.map(t => ({ ...t, comprobante: '' }));
+        if (Object.keys(upd).length) { batch.update(doc.ref, upd); n++; }
+      });
+      await batch.commit();
+    }
+    showToast(`Listo: comprobantes borrados de ${n} equipo(s).`, 'ok');
+  } catch (e) { console.error(e); showToast('No se pudo limpiar: ' + e.message, 'error'); }
+}
 function switchPanelEquipoTab(tab, renderSanc = true) {
   document.querySelectorAll('.tabs-equipo .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.petab === tab));
   document.getElementById('pe-tab-panel').classList.toggle('hidden', tab !== 'panel');
@@ -2417,7 +2723,9 @@ function switchPanelEquipoTab(tab, renderSanc = true) {
   document.getElementById('pe-tab-listabf').classList.toggle('hidden', tab !== 'listabf');
   document.getElementById('pe-tab-comprobantes').classList.toggle('hidden', tab !== 'comprobantes');
   document.getElementById('pe-tab-mensajes').classList.toggle('hidden', tab !== 'mensajes');
+  document.getElementById('pe-tab-pagos').classList.toggle('hidden', tab !== 'pagos');
   if (tab === 'sanciones' && renderSanc) renderSancionesEquipo();
+  if (tab === 'pagos') renderPagosEquipo();
   if (tab === 'carnet') renderCarnetTab();
   if (tab === 'partidos') renderPartidosEquipo();
   if (tab === 'listabf') renderListaBFPanel();
@@ -2463,7 +2771,9 @@ async function renderPagoPanel() {
 
   if (estado === 'rechazado' || estado === 'pendiente') {
     if (venciPagoTotal) {
-      notice.innerHTML = `<div class="glass notice notice-warn">⚠️ El plazo para pagar el arancel de inscripción venció el ${fechaPagoTotalTxt}. Contactá a la organización para regularizar tu situación.</div>`;
+      notice.innerHTML = `<div class="glass notice notice-warn">⚠️ El plazo para pagar el arancel de inscripción venció el ${fechaPagoTotalTxt}. Contactá a la organización para regularizar tu situación — igual podés seguir subiendo el comprobante.</div>`;
+      uploadWrap.classList.remove('hidden');
+      help.textContent = 'Cargá el comprobante cuando puedas — la organización va a revisar tu situación.';
       return;
     }
     if (estado === 'rechazado') {
@@ -2496,7 +2806,9 @@ async function renderPagoPanel() {
   }
 
   if (venciPagoTotal) {
-    notice.innerHTML = `<div class="glass notice notice-warn">⚠️ Tu seña fue aprobada, pero el plazo para abonar y cargar el saldo restante venció el ${fechaPagoTotalTxt}. Contactá a la organización para regularizar tu situación.</div>`;
+    notice.innerHTML = `<div class="glass notice notice-warn">⚠️ Tu seña fue aprobada, pero el plazo para abonar el saldo restante venció el ${fechaPagoTotalTxt}. Contactá a la organización — igual podés seguir subiendo el comprobante del saldo.</div>`;
+    saldoWrap.classList.remove('hidden');
+    helpSaldo.textContent = 'Subí el comprobante del saldo cuando puedas — la organización va a revisar tu situación.';
     return;
   }
 
@@ -2587,24 +2899,32 @@ async function renderSegurosPanel() {
         const esNoHabilitado = !sinDni && !esAprobado && !esManual && !esPendiente && venciSeguro;
         // esPendiente NO bloquea el checkbox — un jugador marcado por error en una tanda ya
         // subida (pero todavía sin revisar por el admin) se puede sacar destildándolo, sin
-        // tener que esperar a que el admin rechace todo el comprobante.
-        const noEditable = sinDni || esAprobado || esManual || venciSeguro;
+        // tener que esperar a que el admin rechace todo el comprobante. Pasada la fecha límite,
+        // el equipo ya NO puede sumar jugadores nuevos al seguro por su cuenta (a pedido
+        // explícito del usuario) — tiene que comunicarse con la organización, que lo carga a
+        // mano con habilitarSeguroTardio() a $8.000 (MONTO_SEGURO_POR_JUGADOR). Sí puede seguir
+        // destildando una tanda pendiente (eso es sacar, no agregar).
+        const noEditable = sinDni || esAprobado || esManual || (venciSeguro && !esPendiente);
         const checked = esAprobado || esManual || esPendiente || (!sinDni && seleccion.has(j.dni));
         let estadoTag = '';
         if (esAprobado) estadoTag = '<span class="badge badge-ok" style="margin-left:6px;">Asegurado</span>';
-        else if (esManual) estadoTag = '<span class="badge badge-cyan" style="margin-left:6px;">Habilitado (pago tardío)</span>';
+        else if (esManual) estadoTag = '<span class="badge badge-ok" style="margin-left:6px;">Asegurado</span>';
         else if (esPendiente) estadoTag = '<span class="badge badge-warn" style="margin-left:6px;">Pendiente</span>';
-        else if (esNoHabilitado) estadoTag = '<span class="badge badge-danger" style="margin-left:6px;">No habilitado</span>';
+        else if (esNoHabilitado) estadoTag = '<span class="badge badge-danger" style="margin-left:6px;">Comunicate con la organización</span>';
         const onchangeAttr = esPendiente
           ? `quitarJugadorSeguroPendiente('${escapeHtml(j.dni)}', this)`
           : `toggleSeguroJugador('${escapeHtml(j.dni)}', this.checked)`;
+        const titleAttr = sinDni ? 'Completá el DNI en la lista de buena fe para poder asegurar a este jugador'
+          : esPendiente ? 'Destildar para sacarlo de la tanda pendiente de revisión'
+          : esNoHabilitado ? 'El plazo para asegurar por tu cuenta venció — comunicate con la organización para que te lo carguemos'
+          : '';
         return `<tr>
           <td class="idx-cell"><span class="jersey-num">${i + 1}</span></td>
           <td class="uppercase-bold">${escapeHtml(j.apellido) || '-'}</td>
           <td>${escapeHtml(j.nombre) || '-'}</td>
           <td style="font-variant-numeric:tabular-nums;">${escapeHtml(j.dni) || 'sin DNI'}</td>
           <td style="text-align:center;">
-            <input type="checkbox" class="seguro-checkbox" ${checked ? 'checked' : ''} ${noEditable ? 'disabled' : ''} title="${sinDni ? 'Completá el DNI en la lista de buena fe para poder asegurar a este jugador' : esPendiente ? 'Destildar para sacarlo de la tanda pendiente de revisión' : ''}" onchange="${onchangeAttr}">${estadoTag}
+            <input type="checkbox" class="seguro-checkbox" ${checked ? 'checked' : ''} ${noEditable ? 'disabled' : ''} title="${titleAttr}" onchange="${onchangeAttr}">${estadoTag}
           </td>
         </tr>`;
       }).join('');
@@ -2626,7 +2946,7 @@ async function renderSegurosPanel() {
   const noHabilitadosCount = jugadores.filter(j => j.dni && !aprobadas.has(j.dni) && !habilitadosManual.has(j.dni) && !pendientes.has(j.dni)).length;
   const resumen = `${aprobadas.size} jugador(es) asegurado(s)${pendientes.size ? ` · ${pendientes.size} pendiente(s) de revisión` : ''}`;
   if (venciSeguro) {
-    notice.innerHTML = `<div class="glass notice notice-warn">⚠️ El plazo para pagar el seguro médico venció el ${fechaSeguroTxt}. ${resumen}${noHabilitadosCount ? ` · ${noHabilitadosCount} no habilitado(s)` : ''}. Los jugadores no habilitados no van a poder disputar partidos hasta regularizar la situación con la organización.</div>`;
+    notice.innerHTML = `<div class="glass notice notice-warn">⚠️ El plazo para asegurar jugadores por tu cuenta venció el ${fechaSeguroTxt}. ${resumen}${noHabilitadosCount ? ` · ${noHabilitadosCount} sin asegurar` : ''}. <strong>Para sumar jugadores al seguro ahora comunicate con la organización</strong> — nosotros lo cargamos por vos (pasa a costar $${MONTO_SEGURO_POR_JUGADOR.toLocaleString('es-AR')} por jugador). Los jugadores sin asegurar no van a poder disputar partidos hasta regularizar la situación.</div>`;
     uploadWrap.classList.add('hidden');
   } else {
     notice.innerHTML = `<div class="glass notice notice-info">ℹ️ ${resumen}. ${cfg.fechaLimiteSeguro ? `Tenés hasta el ${fechaSeguroTxt} para ir asegurando jugadores.` : ''} Podés ir marcando y pagando de a grupos, cuantas veces quieras.</div>`;
@@ -2753,7 +3073,7 @@ async function eliminarComprobantePropio(tipo, txId) {
 document.getElementById('pe-receipt-seguro-input').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file || !state.equipoId) return;
-  if (state.lockSeguro) { showToast('El plazo para pagar el seguro ya finalizó.', 'error'); e.target.value = ''; return; }
+  if (state.lockSeguro) { showToast('El plazo para asegurar por tu cuenta venció. Comunicate con la organización.', 'error'); e.target.value = ''; return; }
   const nombreTransferencia = document.getElementById('pe-nombre-transferencia-seguro').value.trim();
   const montoTransferido = parsearMonto(document.getElementById('pe-monto-transferencia-seguro').value);
   if (!nombreTransferencia) { showToast('Ingresá el nombre de quien realizó la transferencia.', 'error'); e.target.value = ''; return; }
@@ -3065,6 +3385,24 @@ function generarPDFEquipo(eq) {
     y += 7;
   });
 
+  // Cuerpo técnico (DT + ayudante de campo)
+  const dt = eq.dt || {}, ay = eq.ayudante || {};
+  if (dt.nombre || dt.dni || ay.nombre || ay.dni) {
+    y += 6;
+    doc.setFillColor(8, 145, 178); doc.rect(14, y - 6, pageWidth - 28, 8, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(9);
+    doc.text('Cuerpo Técnico', colX.ap, y); doc.text('Nombre', colX.no, y); doc.text('DNI', colX.dni, y);
+    y += 8;
+    doc.setTextColor(30, 30, 30);
+    [['DT', dt], ['Ayudante de campo', ay]].forEach(([rol, p], i) => {
+      if (i % 2 === 0) { doc.setFillColor(230, 247, 250); doc.rect(14, y - 5.5, pageWidth - 28, 7, 'F'); }
+      doc.setFont(undefined, 'bold'); doc.text(rol, colX.ap, y); doc.setFont(undefined, 'normal');
+      doc.text(p.nombre || '-', colX.no, y);
+      doc.text(p.dni || '-', colX.dni, y);
+      y += 7;
+    });
+  }
+
   doc.save(`buena_fe_${(eq.nombre || 'equipo').replace(/[^a-z0-9]+/gi, '_')}.pdf`);
 }
 
@@ -3077,6 +3415,8 @@ async function renderPanelAdmin() {
   switchAdminTab('torneo');
   await Promise.all([cargarEquiposAdmin(), cargarPagosAdmin(), cargarAvisosAdmin(), cargarConfigAdmin(), cargarAdminsList()]);
   iniciarSyncEquiposAdmin();
+  cargarPartidosTotal();
+  cargarAranceles();
   renderBannerPlazosVencidos();
 }
 async function renderBannerPlazosVencidos() {
@@ -3107,12 +3447,14 @@ function switchAdminTab(tab) {
   document.querySelectorAll('.tabs-admin .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.admintab').forEach(d => d.classList.add('hidden'));
   document.getElementById('admintab-' + tab).classList.remove('hidden');
+  if (tab === 'aranceles') renderArancelesAdmin();
   if (tab === 'mensajes') iniciarMensajesAdmin();
   else detenerMensajesAdmin();
 }
 function elegirDivisionAdmin(div) {
   state.adminDivisionActiva = div;
   document.getElementById('torneo-home').classList.add('hidden');
+  document.getElementById('torneo-datos-temporada').classList.add('hidden');
   document.getElementById('torneo-division-detail').classList.remove('hidden');
   document.getElementById('division-detail-title').textContent = div === 'Segunda' ? 'Segunda División' : 'Primera División';
   document.getElementById('torneo-division-detail').dataset.division = div;
@@ -3127,6 +3469,7 @@ function volverATorneoHome() {
   state.adminDivisionActiva = null;
   document.getElementById('torneo-division-detail').classList.add('hidden');
   document.getElementById('equipo-detalle-admin').classList.add('hidden');
+  document.getElementById('torneo-datos-temporada').classList.add('hidden');
   document.getElementById('torneo-home').classList.remove('hidden');
   detenerPartidosAdmin();
 }
@@ -4300,7 +4643,57 @@ async function calcularStatsTemporada() {
     equiposMontoEstimado
   };
 }
-async function abrirModalDatosTemporada() {
+// Pantalla completa (no modal — a pedido explícito del usuario, "odio las ventanitas").
+// #torneo-datos-temporada es hermana de #torneo-home/#torneo-division-detail, mismo patrón
+// de navegación (elegirDivisionAdmin/volverATorneoHome) que ya usa el resto del admin.
+let _datosTemporadaAbierta = false;
+async function abrirDatosTemporada() {
+  document.getElementById('torneo-home').classList.add('hidden');
+  document.getElementById('torneo-datos-temporada').classList.remove('hidden');
+  _datosTemporadaAbierta = true;
+  await renderDatosTemporadaContent();
+}
+function cerrarDatosTemporada() {
+  _datosTemporadaAbierta = false;
+  document.getElementById('torneo-datos-temporada').classList.add('hidden');
+  document.getElementById('torneo-home').classList.remove('hidden');
+}
+// Barre TODOS los equipos (equiposCacheAdmin, en vivo vía iniciarSyncEquiposAdmin) y arma dos
+// listas: a quién le falta completar inscripción y seguro — el "informe general fiel real en
+// vivo" pedido, sin tener que entrar equipo por equipo para saberlo. (Carnets se sacó de acá a
+// pedido explícito del usuario — no le interesa esa información en esta pantalla.)
+function calcularChecklistEquipos() {
+  const faltaInscripcion = [], faltaSeguro = [];
+  equiposCacheAdmin.forEach(eq => {
+    if (estadoGeneralPago(eq) !== 'aprobado') faltaInscripcion.push(eq);
+    if (scoreSeguroEquipo(eq) !== 1) faltaSeguro.push(eq);
+  });
+  return { faltaInscripcion, faltaSeguro };
+}
+function renderChecklistSectionHtml() {
+  const { faltaInscripcion, faltaSeguro } = calcularChecklistEquipos();
+  const listaEquipos = (lista) => lista.length === 0
+    ? `<p style="font-size:12px;color:var(--ok);margin:6px 0 0;">✅ Ningún equipo pendiente.</p>`
+    : `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">${lista.map(eq => `
+        <div class="list-row" style="align-items:center;padding:6px 10px;">
+          <span style="font-size:10px;font-weight:700;flex-shrink:0;color:${eq.division==='Segunda'?'var(--segunda)':'var(--cyan)'};">${eq.division==='Segunda'?'2°':'1°'}</span>
+          <span style="flex:1;min-width:0;font-size:12.5px;">${escapeHtml(eq.nombre)}</span>
+          <button class="btn btn-sm" onclick="elegirDivisionAdmin('${eq.division}');verDetalleEquipoAdmin('${eq.id}')">🗂 Ver equipo</button>
+        </div>`).join('')}</div>`;
+  const bloque = (icono, titulo, lista, color) => `
+    <div class="glass section-card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <h3 style="margin:0;font-size:14px;">${icono} ${titulo}</h3>
+        <span class="badge" style="background:${lista.length ? 'rgba(248,113,113,.12)' : 'rgba(74,222,128,.12)'};color:${lista.length ? 'var(--danger)' : 'var(--ok)'};border:1px solid ${lista.length ? 'var(--danger)' : 'var(--ok)'};">${lista.length} equipo(s)</span>
+      </div>
+      ${listaEquipos(lista)}
+    </div>`;
+  return `
+    <div class="data-section-sep" style="margin-top:0;">¿Quién le falta completar qué? (en vivo)</div>
+    ${bloque('📝', 'Inscripción pendiente', faltaInscripcion, 'var(--cyan)')}
+    ${bloque('🩺', 'Seguro incompleto', faltaSeguro, 'var(--segunda)')}`;
+}
+async function renderDatosTemporadaContent() {
   const s = await calcularStatsTemporada();
   const fmt = n => `$${n.toLocaleString('es-AR')}`;
 
@@ -4371,8 +4764,7 @@ async function abrirModalDatosTemporada() {
     ${anilloCobertura('Total', s.cubiertosTotal, s.jugadoresTotal, s.segPrimera + s.segSegunda, '#4ade80', 'rgba(74,222,128,.15)')}
   </div>`;
 
-  openModal(`
-    <h2 style="margin-bottom:4px;">📊 Datos de la Temporada</h2>
+  document.getElementById('datos-temporada-content').innerHTML = `
     <p class="muted" style="margin-bottom:14px;">${s.temporada ? `Temporada ${s.temporada}` : ''}</p>
 
     <div class="data-section-sep" style="margin-top:0;">Equipos</div>
@@ -4390,6 +4782,8 @@ async function abrirModalDatosTemporada() {
     <p class="muted" style="font-size:11.5px;margin-bottom:16px;">✅ ${s.pagoOk} equipo(s) con pago al día · 🩺 ${s.segurosOk} jugador(es) asegurados</p>
 
     ${s.equiposMontoEstimado > 0 ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;">⚠️ <strong>${s.equiposMontoEstimado} equipo(s)</strong> quedaron aprobados antes de que existiera el campo "monto declarado" (31/07/2026) — su parte de "Inscripciones" de abajo es una <strong>estimación</strong> con el monto teórico, no lo que dice el comprobante real. Buscalos con el badge "⚠️ Monto estimado" en la pestaña Inscripciones y confirmalos a mano contra la imagen.</div>` : ''}
+
+    ${renderChecklistSectionHtml()}
 
     <div class="data-section-sep" style="margin-top:0;">Objetivo de inscripciones</div>
     ${anillosHtml}
@@ -4409,7 +4803,7 @@ async function abrirModalDatosTemporada() {
     <div class="section-actions">
       <button class="btn btn-primary" onclick="generarPDFFinanciero()">📄 Descargar informe detallado</button>
     </div>
-  `);
+  `;
 }
 // Inscripción y seguro, cada uno puntuado 0 (nada resuelto) / 0.5 (en curso — comprobante
 // pendiente/rechazado, o solo una parte del plantel asegurada) / 1 (completo). Se suman para
@@ -4434,14 +4828,20 @@ function scoreSeguroEquipo(eq) {
   if (cubiertos > 0) return 0.5;
   return 0;
 }
+// Antes era un puntito de color con el detalle solo en el title (tooltip que no se ve al
+// tocar en el celular — la principal forma en que se usa esta lista). Ahora son dos etiquetas
+// de texto cortas, una por proceso, para que se entienda de un vistazo sin tener que pasar
+// el mouse ni adivinar qué significa el color.
 function semaforoEquipoHtml(eq) {
   const si = scoreInscripcionEquipo(eq);
   const ss = scoreSeguroEquipo(eq);
-  const total = si + ss;
-  const color = total >= 2 ? 'var(--ok)' : total <= 0 ? 'var(--danger)' : 'var(--warn)';
-  const txtScore = s => s === 1 ? 'completa' : s === 0.5 ? 'en curso' : 'sin resolver';
-  const title = `Inscripción: ${txtScore(si)} · Seguro: ${txtScore(ss)}`;
-  return `<span title="${escapeHtml(title)}" style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;border:1px solid rgba(0,0,0,.25);"></span>`;
+  const badge = (score, label) => {
+    const color = score === 1 ? 'var(--ok)' : score === 0 ? 'var(--danger)' : 'var(--warn)';
+    const bg = score === 1 ? 'rgba(74,222,128,.14)' : score === 0 ? 'rgba(248,113,113,.14)' : 'rgba(251,191,36,.14)';
+    const icon = score === 1 ? '✓' : score === 0 ? '✕' : '…';
+    return `<span style="font-size:9.5px;font-weight:800;color:${color};background:${bg};border:1px solid ${color};border-radius:5px;padding:1px 5px;flex-shrink:0;white-space:nowrap;">${label} ${icon}</span>`;
+  };
+  return badge(si, 'Insc.') + badge(ss, 'Seg.');
 }
 function renderEquiposAdminList() {
   try {
@@ -4458,19 +4858,12 @@ function renderEquiposAdminList() {
         ? `<img class="admin-eq-shield-sm" src="${eq.escudo}">`
         : `<div class="admin-eq-shield-ph">${escapeHtml((eq.nombre || '?').slice(0,2).toUpperCase())}</div>`;
       const pagoDot = semaforoEquipoHtml(eq);
-      // Aproximación del tamaño del documento — para detectar equipos cerca del límite de
-      // 1MB de Firestore ANTES de que se traben, en vez de enterarse cuando ya fallaron.
-      const pctLimite = Math.min(100, Math.round((new Blob([JSON.stringify(eq)]).size / 1048576) * 100));
-      const sizeDot = pctLimite >= 70
-        ? `<span title="${pctLimite}% del límite de tamaño de Firestore" style="width:8px;height:8px;border-radius:50%;background:${pctLimite >= 90 ? 'var(--danger)' : 'var(--warn)'};display:inline-block;flex-shrink:0;"></span>`
-        : '';
       return `<div class="admin-eq-row" onclick="verDetalleEquipoAdmin('${eq.id}')">
         ${shield}
         <span class="admin-eq-nombre">${escapeHtml(eq.nombre)}</span>
         <span style="font-size:10px;font-weight:700;color:${accent};background:${accentSoft};border:1px solid ${accent};border-radius:5px;padding:1px 5px;flex-shrink:0;">${isPrimera?'1°':'2°'}</span>
         <span style="font-size:11px;color:var(--text-dim);flex-shrink:0;">${count}/${NUM_JUGADORES}</span>
         ${pagoDot}
-        ${sizeDot}
         <button class="btn btn-sm" style="flex-shrink:0;" title="Restablecer contraseña de este equipo" onclick="event.stopPropagation();resetPasswordEquipo('${eq.id}','${escapeHtml(eq.nombre)}')">🔑</button>
         <span class="admin-eq-arrow">›</span>
       </div>`;
@@ -4508,6 +4901,7 @@ function iniciarSyncEquiposAdmin() {
     renderPagosAdminList();
     renderSegurosAdminList();
     renderSegurosPorEquipoAdmin();
+    if (_datosTemporadaAbierta) renderDatosTemporadaContent();
   }, e => console.error(e));
 }
 function detenerSyncEquiposAdmin() {
@@ -4726,6 +5120,64 @@ async function editarMontoDeclaradoSeguro(equipoId, txId) {
     await cargarEquiposAdmin();
   } catch (e) { console.error(e); showToast('No se pudo corregir el monto.', 'error'); }
 }
+// A pedido del usuario: antes solo se podía corregir el MONTO de una tanda de seguro, no la
+// cantidad/lista de jugadores que cubre (ej. el equipo tildó a alguien de más o de menos antes
+// de subir el comprobante, y ya no lo puede arreglar solo desde su lado si la tanda quedó
+// pendiente de revisión o ya fue aprobada). Modal con checkbox por jugador en vez de un prompt
+// de texto con DNIs sueltos, para no depender de que el admin tipee bien cada número.
+async function editarJugadoresSeguro(equipoId, txId) {
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const tx = (eq.segurosTransacciones || []).find(t => t.id === txId);
+    if (!tx) { showToast('No se encontró esa tanda.', 'error'); return; }
+    const jugadores = (eq.jugadores || []).filter(j => j.dni).sort((a, b) => (a.apellido || '').localeCompare(b.apellido || ''));
+    const dnisActuales = new Set(tx.dnis || []);
+    openModal(`
+      <h2 style="margin-bottom:4px;">👥 Corregir jugadores de la tanda</h2>
+      <p class="muted" style="margin-bottom:14px;font-size:12.5px;">Tildá quiénes van incluidos en este comprobante (${tx.dnis.length} jugador(es) actualmente).</p>
+      <div style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
+        ${jugadores.length === 0 ? '<p class="muted">Este equipo no tiene jugadores con DNI cargado.</p>' : jugadores.map(j => `
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.03);">
+            <input type="checkbox" value="${escapeHtml(j.dni)}" ${dnisActuales.has(j.dni) ? 'checked' : ''} class="ejs-check">
+            <span style="flex:1;">${escapeHtml(j.apellido)} ${escapeHtml(j.nombre)} <span class="muted" style="font-size:11px;">(${escapeHtml(j.dni)})</span></span>
+          </label>`).join('')}
+      </div>
+      <div class="section-actions">
+        <button class="btn btn-primary" onclick="guardarJugadoresSeguro('${equipoId}','${txId}')">Guardar</button>
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+      </div>
+    `);
+  } catch (e) { console.error(e); showToast('No se pudo abrir la corrección.', 'error'); }
+}
+async function guardarJugadoresSeguro(equipoId, txId) {
+  const nuevosDnis = Array.from(document.querySelectorAll('.ejs-check:checked')).map(el => el.value);
+  if (nuevosDnis.length === 0) { showToast('Tildá al menos un jugador.', 'error'); return; }
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const transacciones = eq.segurosTransacciones || [];
+    const tx = transacciones.find(t => t.id === txId);
+    if (!tx) { showToast('No se encontró esa tanda.', 'error'); return; }
+    const nuevasTransacciones = transacciones.map(t => t.id === txId ? { ...t, dnis: nuevosDnis } : t);
+    const datos = { segurosTransacciones: nuevasTransacciones };
+    // Si la tanda ya estaba aprobada, seguroJugadoresDni se recalcula como la unión de TODAS
+    // las tandas aprobadas (ya con esta corrección aplicada) — no alcanza con sumar/restar solo
+    // esta tanda, porque un jugador puede estar cubierto además por otra tanda aprobada distinta.
+    if (tx.estado === 'aprobado') {
+      const aprobadasDnis = nuevasTransacciones.filter(t => t.estado === 'aprobado').flatMap(t => t.dnis);
+      datos.seguroJugadoresDni = Array.from(new Set(aprobadasDnis));
+    }
+    await db.collection('equipos').doc(equipoId).update(datos);
+    showToast('Jugadores de la tanda corregidos.', 'ok');
+    closeModal();
+    await cargarPagosAdmin();
+    await cargarEquiposAdmin();
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo corregir.', 'error'); }
+}
 // Cada equipo es UN documento de Firestore, con límite duro de 1 MB — cada imagen guardada
 // (escudo, comprobantes, cada tanda de seguro) suma a ese total. Un equipo que subió muchos
 // comprobantes sueltos puede llegar al límite y quedar sin poder subir ninguno más ("no se
@@ -4759,6 +5211,59 @@ async function eliminarComprobanteSeguro(equipoId, txId) {
     showToast('Comprobante eliminado.', 'ok');
     verDetalleEquipoAdmin(equipoId);
   } catch (e) { console.error(e); showToast('No se pudo eliminar el comprobante.', 'error'); }
+}
+// Deshace una aprobación hecha por error (ej. se aprobó por accidente un comprobante
+// duplicado). aprobarPago/rechazarPago no sirven para esto: una vez 'aprobado', infoEtapaPago
+// devuelve etapa:null y rechazarPago se niega a tocarlo ("No hay nada pendiente de rechazar").
+// Y el equipo tiene bloqueado borrar un comprobante ya aprobado (a propósito, para no perder
+// pruebas de un pago real) — así que sin esto, una aprobación equivocada queda sin salida para
+// ambos lados. Vuelve la etapa a 'rechazado' (no a 'pendiente'): así el equipo ve claramente
+// que hay que resubir, en vez de una etapa "pendiente" fantasma sin comprobante nuevo.
+function marcarUltimaAprobadaComoRechazada(historial, etapa, fechaRevision) {
+  const lista = historial || [];
+  for (let i = lista.length - 1; i >= 0; i--) {
+    if (lista[i].etapa === etapa && lista[i].estado === 'aprobado') {
+      return lista.map((t, j) => j === i ? { ...t, estado: 'rechazado', fechaRevision } : t);
+    }
+  }
+  return lista;
+}
+async function revertirAprobacionInscripcion(equipoId, etapa) {
+  if (!confirm('¿Revertir esta aprobación?\n\nEl equipo va a volver a ver esta etapa como RECHAZADA y va a poder subir el comprobante correcto. Usalo solo si la aprobación fue un error (ej. comprobante duplicado aprobado por accidente) — no para un pago real que cambiaste de opinión.')) return;
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const campo = etapa === 'saldo' ? 'pagoSaldoEstado' : 'pagoEstado';
+    const campoFecha = etapa === 'saldo' ? 'pagoSaldoFechaRevision' : 'pagoFechaRevision';
+    const fechaRevision = new Date().toISOString();
+    const historial = marcarUltimaAprobadaComoRechazada(eq.pagoComprobantesHistorial, etapa, fechaRevision);
+    await db.collection('equipos').doc(equipoId).update({ [campo]: 'rechazado', [campoFecha]: fechaRevision, pagoComprobantesHistorial: historial });
+    showToast('Aprobación revertida.', 'ok');
+    crearMensajeSistema(equipoId, eq.nombre, eq.division, 'Estado de pago', `↩️ La organización revirtió la aprobación de tu ${etapa === 'saldo' ? 'saldo (50%)' : 'inscripción'} — el comprobante tenía un error. Subí de nuevo el comprobante correcto desde "Mi equipo".`, 'equipo', `↩️ Se revirtió la aprobación de ${etapa === 'saldo' ? 'saldo' : 'inscripción'} de ${eq.nombre}.`);
+    await cargarPagosAdmin();
+    await cargarEquiposAdmin();
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo revertir la aprobación.', 'error'); }
+}
+async function revertirAprobacionSeguro(equipoId, txId) {
+  if (!confirm('¿Revertir esta aprobación?\n\nLos jugadores de esta tanda van a volver a figurar como no asegurados, y el equipo va a poder subir el comprobante correcto. Usalo solo si la aprobación fue un error.')) return;
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const tx = (eq.segurosTransacciones || []).find(t => t.id === txId);
+    if (!tx) { showToast('No se encontró esa tanda.', 'error'); return; }
+    const fechaRevision = new Date().toISOString();
+    const nuevasTransacciones = (eq.segurosTransacciones || []).map(t => t.id === txId ? { ...t, estado: 'rechazado', fechaRevision } : t);
+    const seguroJugadoresDni = (eq.seguroJugadoresDni || []).filter(dni => !tx.dnis.includes(dni));
+    await db.collection('equipos').doc(equipoId).update({ segurosTransacciones: nuevasTransacciones, seguroJugadoresDni });
+    showToast('Aprobación revertida.', 'ok');
+    crearMensajeSistema(equipoId, eq.nombre, eq.division, 'Seguro médico', `↩️ La organización revirtió la aprobación del seguro de ${tx.dnis.length} jugador(es) — el comprobante tenía un error. Subí de nuevo el comprobante correcto desde "Seguro".`, 'equipo', `↩️ Se revirtió la aprobación de seguro de ${eq.nombre} (${tx.dnis.length} jugador(es)).`);
+    await cargarPagosAdmin();
+    await cargarEquiposAdmin();
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo revertir la aprobación.', 'error'); }
 }
 function marcarUltimaEntradaHistorial(historial, etapa, estado, fechaRevision) {
   const lista = historial || [];
@@ -4873,7 +5378,7 @@ function estadoSeguroEquipo(eq) {
 // "comprobante pendiente" que estadoSeguroEquipo no separa de "falta asegurar".
 function estadoJugadorSeguro(dni, eq, s) {
   if (s.asegurados.some(j => j.dni === dni)) return { label: 'Asegurado', clase: 'badge-ok' };
-  if (s.habilitadosManual.some(j => j.dni === dni)) return { label: 'Pago tardío', clase: 'badge-cyan' };
+  if (s.habilitadosManual.some(j => j.dni === dni)) return { label: 'Asegurado', clase: 'badge-ok' };
   const pendiente = (eq.segurosTransacciones || []).some(t => t.estado === 'pendiente' && (t.dnis || []).includes(dni));
   if (pendiente) return { label: 'Comprobante pendiente', clase: 'badge-warn' };
   return { label: 'Falta asegurar', clase: 'badge-danger' };
@@ -4973,6 +5478,7 @@ function renderSegurosAdminList() {
       <div class="admin-table-actions">
         <button class="btn btn-sm" onclick="verComprobanteSeguroAdmin('${eq.id}','${tx.id}')">Ver detalle</button>
         <button class="btn btn-sm" onclick="editarMontoDeclaradoSeguro('${eq.id}','${tx.id}')">✏️ Corregir monto</button>
+        <button class="btn btn-sm" onclick="editarJugadoresSeguro('${eq.id}','${tx.id}')">👥 Corregir jugadores</button>
         <button class="btn btn-sm" onclick="verDetalleEquipoAdmin('${eq.id}')">🗂 Ver todo</button>
         <button class="btn btn-sm btn-primary" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="aprobarSeguro('${eq.id}','${tx.id}')">✓ Aprobar</button>
         <button class="btn btn-sm btn-danger" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="rechazarSeguro('${eq.id}','${tx.id}')">✕ Rechazar</button>
@@ -5000,6 +5506,7 @@ function verComprobanteSeguroAdmin(equipoId, txId) {
     <div class="section-actions">
       <a class="btn" href="${tx.comprobante}" download="comprobante_seguro_${(eq.nombre || 'equipo').replace(/[^a-z0-9]+/gi, '_')}.jpg">⬇ Descargar</a>
       <button class="btn" onclick="closeModal();editarMontoDeclaradoSeguro('${eq.id}','${tx.id}')">✏️ Corregir monto</button>
+      <button class="btn" onclick="closeModal();editarJugadoresSeguro('${eq.id}','${tx.id}')">👥 Corregir jugadores</button>
       <button class="btn btn-primary" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="closeModal();aprobarSeguro('${eq.id}','${tx.id}')">✓ Aprobar</button>
       <button class="btn btn-danger" ${tx.estado !== 'pendiente' ? 'disabled' : ''} onclick="closeModal();rechazarSeguro('${eq.id}','${tx.id}')">✕ Rechazar</button>
     </div>
@@ -5185,6 +5692,241 @@ function generarRoundRobin(equipoIds) {
   }
   return rounds;
 }
+// ── Motor de fixture: horarios rotativos + canchas + interzonal ──────────────
+const SLOTS_FIXTURE = ['15:00','16:00','17:00','18:00','19:00','20:00','21:00'];
+// Round-robin que además informa qué equipo queda libre (bye) en cada fecha.
+function roundRobinConByes(equipoIds) {
+  let teams = shuffleArray(equipoIds);
+  teams.push('__BYE__');
+  const n = teams.length, half = n / 2;
+  let arr = teams.slice();
+  const rounds = [];
+  for (let r = 0; r < n - 1; r++) {
+    const matches = []; let bye = null;
+    for (let i = 0; i < half; i++) {
+      const home = arr[i], away = arr[n - 1 - i];
+      if (home === '__BYE__') bye = away;
+      else if (away === '__BYE__') bye = home;
+      else matches.push(r % 2 === 0 ? [home, away] : [away, home]);
+    }
+    rounds.push({ matches, bye });
+    const fixed = arr[0]; const rest = arr.slice(1); rest.unshift(rest.pop()); arr = [fixed, ...rest];
+  }
+  return rounds;
+}
+// Canchas por fecha (grilla balanceada acordada): Primera alterna cancha 1 y 2;
+// Segunda usa las otras dos, repartiendo la cancha 3 mitad y mitad entre zonas.
+function canchasFecha(f) {
+  const impar = f % 2 === 1;
+  return { primera: impar ? 1 : 2, zonaA: impar ? 2 : 3, zonaB: impar ? 3 : 1 };
+}
+// Reparte los partidos de una cancha en los primeros horarios, rotando el turno
+// de cada equipo: penaliza horarios ya usados y evita repetir el de la fecha
+// anterior. `usos`/`ultimo` se arrastran entre fechas.
+function asignarSlotsFixture(matches, usos, ultimo) {
+  const costo = (m, s) => {
+    const u = (usos[m[0]] && usos[m[0]][s] || 0) + (usos[m[1]] && usos[m[1]][s] || 0);
+    const rep = (ultimo[m[0]] === s ? 1 : 0) + (ultimo[m[1]] === s ? 1 : 0);
+    return u * 2 + rep;
+  };
+  const pend = matches.map((m, i) => ({ m, i }));
+  let libres = matches.map((_, s) => s);
+  const out = [];
+  while (pend.length) {
+    let best = null;
+    for (const pm of pend) for (const s of libres) {
+      const c = costo(pm.m, s);
+      if (!best || c < best.c || (c === best.c && pm.i < best.pm.i)) best = { pm, s, c };
+    }
+    for (const t of best.pm.m) { usos[t] = usos[t] || {}; usos[t][best.s] = (usos[t][best.s] || 0) + 1; ultimo[t] = best.s; }
+    out.push({ match: best.pm.m, horario: SLOTS_FIXTURE[best.s] });
+    pend.splice(pend.indexOf(best.pm), 1);
+    libres = libres.filter(x => x !== best.s);
+  }
+  return out;
+}
+// Genera TODO el fixture de Segunda: round-robin por zona + 1 interzonal por
+// fecha (los dos equipos que quedarían libres se enfrentan), con canchas y
+// horarios autoasignados. Todo queda editable a mano después.
+async function generarFixtureSegundaCompleto(division) {
+  const equiposA = equiposCacheAdmin.filter(eq => eq.division === division && eq.zona === 'A');
+  const equiposB = equiposCacheAdmin.filter(eq => eq.division === division && eq.zona === 'B');
+  if (equiposA.length < 2 || equiposB.length < 2) { showToast('Cada zona necesita al menos 2 equipos. Asigná las zonas primero.', 'error'); return; }
+  if (equiposA.length !== equiposB.length) {
+    if (!confirm(`Las zonas están desparejas (A: ${equiposA.length}, B: ${equiposB.length}). El interzonal funciona mejor con zonas iguales. ¿Generar igual?`)) return;
+  }
+  const existentes = partidosCacheAdmin.filter(p => p.division === division);
+  if (existentes.some(p => p.jugado)) {
+    if (!confirm('Segunda ya tiene resultados cargados. Regenerar el fixture borra TODOS los partidos actuales, incluidos los resultados. ¿Continuar?')) return;
+  } else if (existentes.length) {
+    if (!confirm('Esto reemplaza el fixture actual de Segunda. ¿Continuar?')) return;
+  }
+  const nombre = (id) => (equiposCacheAdmin.find(e => e.id === id) || {}).nombre || '—';
+  try {
+    const snap = await db.collection('partidos').where('division', '==', division).get();
+    const del = db.batch(); snap.forEach(d => del.delete(d.ref)); await del.commit();
+
+    const ra = roundRobinConByes(equiposA.map(e => e.id));
+    const rb = roundRobinConByes(equiposB.map(e => e.id));
+    const nFechas = Math.max(ra.length, rb.length);
+    const usos = {}, ultimo = {};
+    const batch = db.batch();
+    let total = 0;
+    const nuevo = (o) => {
+      const ref = db.collection('partidos').doc();
+      batch.set(ref, Object.assign({
+        division, golesLocal: null, golesVisitante: null,
+        goleadores: [], tarjetas: [], jugado: false, fechaCreacion: new Date().toISOString()
+      }, o));
+      total++;
+    };
+    for (let f = 1; f <= nFechas; f++) {
+      const c = canchasFecha(f);
+      const A = ra[f - 1], B = rb[f - 1];
+      const inter = (A && B && A.bye && B.bye) ? [A.bye, B.bye] : null;
+      // El interzonal (el 6º partido) va SIEMPRE a la cancha que NO es la 3, así
+      // la cancha 3 nunca queda con más de 5 partidos.
+      const interEnA = c.zonaA !== 3;
+      const listaA = (A ? A.matches.slice() : []);
+      const listaB = (B ? B.matches.slice() : []);
+      if (inter) { if (interEnA) listaA.push(inter); else listaB.push(inter); }
+      asignarSlotsFixture(listaA, usos, ultimo).forEach(({ match, horario }) => {
+        const esInter = inter && match[0] === inter[0] && match[1] === inter[1];
+        nuevo({
+          numeroFecha: f, zona: esInter ? 'INT' : 'A', interzonal: !!esInter, cancha: c.zonaA, horario,
+          equipoLocalId: match[0], equipoLocalNombre: nombre(match[0]),
+          equipoVisitanteId: match[1], equipoVisitanteNombre: nombre(match[1]),
+        });
+      });
+      asignarSlotsFixture(listaB, usos, ultimo).forEach(({ match, horario }) => {
+        const esInter = inter && match[0] === inter[0] && match[1] === inter[1];
+        nuevo({
+          numeroFecha: f, zona: esInter ? 'INT' : 'B', interzonal: !!esInter, cancha: c.zonaB, horario,
+          equipoLocalId: match[0], equipoLocalNombre: nombre(match[0]),
+          equipoVisitanteId: match[1], equipoVisitanteNombre: nombre(match[1]),
+        });
+      });
+    }
+    await batch.commit();
+    showToast(`Fixture de Segunda generado: ${nFechas} fechas, ${total} partidos.`, 'ok');
+    await cargarPartidosAdmin(division);
+  } catch (e) { console.error(e); showToast('No se pudo generar el fixture: ' + e.message, 'error'); }
+}
+// ── Fixture TOTAL: genera Primera + Segunda a la vez, coordinado (sin cruces) ──
+function basePartido(o) {
+  return Object.assign({ golesLocal: null, golesVisitante: null, goleadores: [], tarjetas: [], jugado: false, fechaCreacion: new Date().toISOString() }, o);
+}
+function construirFixturePrimera(equipos) {
+  const nombre = id => (equipos.find(e => e.id === id) || {}).nombre || '—';
+  const rounds = generarRoundRobin(equipos.map(e => e.id));
+  const usos = {}, ultimo = {}; const out = [];
+  rounds.forEach((round, idx) => {
+    const f = idx + 1, cancha = canchasFecha(f).primera;
+    asignarSlotsFixture(round, usos, ultimo).forEach(({ match, horario }) => {
+      out.push(basePartido({ division: 'Primera', numeroFecha: f, cancha, horario,
+        equipoLocalId: match[0], equipoLocalNombre: nombre(match[0]),
+        equipoVisitanteId: match[1], equipoVisitanteNombre: nombre(match[1]) }));
+    });
+  });
+  return out;
+}
+function construirFixtureSegunda(eqA, eqB, lookup) {
+  const nombre = id => (lookup.find(e => e.id === id) || {}).nombre || '—';
+  const ra = roundRobinConByes(eqA.map(e => e.id));
+  const rb = roundRobinConByes(eqB.map(e => e.id));
+  const nFechas = Math.max(ra.length, rb.length);
+  const usos = {}, ultimo = {}; const out = [];
+  for (let f = 1; f <= nFechas; f++) {
+    const c = canchasFecha(f); const A = ra[f - 1], B = rb[f - 1];
+    const inter = (A && B && A.bye && B.bye) ? [A.bye, B.bye] : null;
+    const interEnA = c.zonaA !== 3;
+    const listaA = A ? A.matches.slice() : []; const listaB = B ? B.matches.slice() : [];
+    if (inter) { if (interEnA) listaA.push(inter); else listaB.push(inter); }
+    const empujar = (lista, cancha, zonaNormal) => asignarSlotsFixture(lista, usos, ultimo).forEach(({ match, horario }) => {
+      const esInter = inter && match[0] === inter[0] && match[1] === inter[1];
+      out.push(basePartido({ division: 'Segunda', numeroFecha: f, zona: esInter ? 'INT' : zonaNormal, interzonal: !!esInter, cancha, horario,
+        equipoLocalId: match[0], equipoLocalNombre: nombre(match[0]),
+        equipoVisitanteId: match[1], equipoVisitanteNombre: nombre(match[1]) }));
+    });
+    empujar(listaA, c.zonaA, 'A'); empujar(listaB, c.zonaB, 'B');
+  }
+  return out;
+}
+async function borrarEnLotes(refs) {
+  for (let i = 0; i < refs.length; i += 400) { const b = db.batch(); refs.slice(i, i + 400).forEach(r => b.delete(r)); await b.commit(); }
+}
+async function escribirEnLotes(objs) {
+  for (let i = 0; i < objs.length; i += 400) { const b = db.batch(); objs.slice(i, i + 400).forEach(o => b.set(db.collection('partidos').doc(), o)); await b.commit(); }
+}
+async function generarFixtureTotal() {
+  const primera = equiposCacheAdmin.filter(e => e.division === 'Primera');
+  const segA = equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona === 'A');
+  const segB = equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona === 'B');
+  const haySeg = segA.length >= 2 && segB.length >= 2;
+  const partes = [];
+  if (primera.length >= 2) partes.push(`Primera (${primera.length} equipos)`);
+  if (haySeg) partes.push(`Segunda (Zona A: ${segA.length}, Zona B: ${segB.length})`);
+  if (!partes.length) { showToast('Faltan equipos o zonas. Primera necesita 2+; Segunda necesita las dos zonas con 2+ equipos.', 'error'); return; }
+  const sinZona = equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona !== 'A' && e.zona !== 'B').length;
+  const avisoZonas = sinZona ? `\n\n⚠️ Hay ${sinZona} equipo(s) de Segunda SIN zona: quedan afuera del fixture. Asigná las zonas primero si querés incluirlos.` : '';
+  if (!confirm(`Se generará el fixture completo de:\n\n• ${partes.join('\n• ')}${avisoZonas}\n\nEsto BORRA todos los partidos actuales de AMBAS categorías (incluidos resultados). ¿Continuar?`)) return;
+  try {
+    let nuevos = [];
+    if (primera.length >= 2) nuevos = nuevos.concat(construirFixturePrimera(primera));
+    if (haySeg) nuevos = nuevos.concat(construirFixtureSegunda(segA, segB, equiposCacheAdmin));
+    const snap = await db.collection('partidos').get();
+    await borrarEnLotes(snap.docs.filter(d => !d.data()._sim).map(d => d.ref));
+    await escribirEnLotes(nuevos);
+    showToast(`Fixture total generado: ${nuevos.length} partidos.`, 'ok');
+    cargarPartidosAdmin(state.adminDivisionActiva || 'Primera');
+  } catch (e) { console.error(e); showToast('No se pudo generar: ' + e.message, 'error'); }
+}
+async function borrarFixtureTotal() {
+  const actuales = partidosTotalCache.filter(p => !p._sim);
+  if (!actuales.length) { showToast('No hay partidos para borrar.', 'error'); return; }
+  const conRes = actuales.filter(p => p.jugado).length;
+  if (!confirm(`Esto borra los ${actuales.length} partidos del torneo (ambas categorías)${conRes ? `, incluidos ${conRes} con resultado` : ''}. ¿Continuar?`)) return;
+  try {
+    const snap = await db.collection('partidos').get();
+    await borrarEnLotes(snap.docs.filter(d => !d.data()._sim).map(d => d.ref));
+    showToast('Fixture borrado.', 'ok');
+    cargarPartidosAdmin(state.adminDivisionActiva || 'Primera');
+  } catch (e) { console.error(e); showToast('No se pudo borrar: ' + e.message, 'error'); }
+}
+// Cache de TODOS los partidos (ambas divisiones) para la vista unificada de fixture.
+let partidosTotalCache = [];
+let partidosTotalUnsub = null;
+function cargarPartidosTotal() {
+  if (partidosTotalUnsub) return;
+  partidosTotalUnsub = db.collection('partidos').onSnapshot(snap => {
+    partidosTotalCache = [];
+    snap.forEach(doc => { const d = { id: doc.id, ...doc.data() }; if (!d._sim) partidosTotalCache.push(d); });
+    partidosTotalCache.sort((a, b) => (a.numeroFecha || 0) - (b.numeroFecha || 0));
+    renderFixtureTotal();
+  }, e => console.error(e));
+}
+function detenerPartidosTotal() { if (partidosTotalUnsub) { partidosTotalUnsub(); partidosTotalUnsub = null; } }
+function buscarPartidoAdmin(id) { return partidosTotalCache.find(x => x.id === id) || partidosCacheAdmin.find(x => x.id === id); }
+function seleccionarFixtureTotalTab(t) { state.fixtureTotalTab = t; renderFixtureTotal(); }
+function renderFixtureTotal() {
+  const cont = document.getElementById('fixture-total-cont');
+  const tabsEl = document.getElementById('fixture-total-tabs');
+  if (!cont || !tabsEl) return;
+  const tab = state.fixtureTotalTab || 'Primera';
+  const defs = [['Primera', '🥇 Primera'], ['A', '🥈 Zona A'], ['B', '🥈 Zona B']];
+  tabsEl.innerHTML = defs.map(([k, label]) => `<button class="tab-btn ${tab === k ? 'active' : ''}" onclick="seleccionarFixtureTotalTab('${k}')">${label}</button>`).join('');
+  let partidos, equipos;
+  if (tab === 'Primera') {
+    partidos = partidosTotalCache.filter(p => p.division === 'Primera');
+    equipos = equiposCacheAdmin.filter(e => e.division === 'Primera');
+  } else {
+    const canchaKey = tab === 'A' ? 'zonaA' : 'zonaB';
+    partidos = partidosTotalCache.filter(p => p.division === 'Segunda' && (p.zona === tab || (p.interzonal && Number(p.cancha) === canchasFecha(p.numeroFecha)[canchaKey])));
+    equipos = equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona === tab);
+  }
+  cont.innerHTML = partidos.length ? renderFechasFixtureAdmin(partidos, equipos, partidosTotalCache)
+    : `<div class="empty-state">Todavía no hay fixture para esta categoría. Generalo con el botón de arriba.</div>`;
+}
 let partidosAdminUnsub = null;
 function cargarPartidosAdmin(division) {
   if (partidosAdminUnsub) { partidosAdminUnsub(); partidosAdminUnsub = null; }
@@ -5327,14 +6069,18 @@ async function generarFixtureDivisionCompleta(division) {
 
     const ids = equiposDivision.map(eq => eq.id);
     const rounds = generarRoundRobin(ids);
+    const usos = {}, ultimo = {};
     const batch = db.batch();
     rounds.forEach((round, idx) => {
-      round.forEach(([localId, visitanteId]) => {
+      const f = idx + 1;
+      const cancha = canchasFecha(f).primera; // Primera: fecha impar cancha 1, par cancha 2
+      asignarSlotsFixture(round, usos, ultimo).forEach(({ match, horario }) => {
+        const [localId, visitanteId] = match;
         const local = equiposCacheAdmin.find(e => e.id === localId);
         const visitante = equiposCacheAdmin.find(e => e.id === visitanteId);
         const ref = db.collection('partidos').doc();
         batch.set(ref, {
-          division, numeroFecha: idx + 1,
+          division, numeroFecha: f, cancha, horario,
           equipoLocalId: localId, equipoLocalNombre: local.nombre,
           equipoVisitanteId: visitanteId, equipoVisitanteNombre: visitante.nombre,
           golesLocal: null, golesVisitante: null,
@@ -5365,23 +6111,28 @@ async function borrarPartidosDivisionCompleta(division) {
     await cargarPartidosAdmin(division);
   } catch (e) { console.error(e); showToast('No se pudieron borrar los partidos.', 'error'); }
 }
-function renderFechasFixtureAdmin(partidosGrupo, equiposGrupo) {
+function renderFechasFixtureAdmin(partidosGrupo, equiposGrupo, fuenteTodos) {
+  const todos = fuenteTodos || partidosCacheAdmin;
   const teamIds = equiposGrupo.map(eq => eq.id);
   const fechas = [...new Set(partidosGrupo.map(p => p.numeroFecha))].sort((a, b) => a - b);
   let html = '';
   fechas.forEach(nf => {
     html += `<div class="fecha-group"><div class="fecha-group-title">Fecha ${nf}</div>`;
-    const partidosFecha = partidosGrupo.filter(p => p.numeroFecha === nf);
-    const playing = new Set([...partidosFecha.map(p => p.equipoLocalId), ...partidosFecha.map(p => p.equipoVisitanteId)]);
+    const partidosFecha = ordenarPorHorario(partidosGrupo.filter(p => p.numeroFecha === nf));
+    // "Libre" mirando todos los partidos de la fecha (incluye interzonal).
+    const todosFecha = todos.filter(p => p.numeroFecha === nf);
+    const playing = new Set([...todosFecha.map(p => p.equipoLocalId), ...todosFecha.map(p => p.equipoVisitanteId)]);
     const byeId = teamIds.find(id => !playing.has(id));
     const byeEq = byeId ? equiposGrupo.find(e => e.id === byeId) : null;
     partidosFecha.forEach(p => {
-      const pCancha = p.cancha ? `C${p.cancha}` : '—';
+      const pCancha = p.cancha ? `Cancha ${p.cancha}` : 'Cancha —';
       const pHorario = p.horario || '--:--';
       const pEstado = p.estado && p.estado !== 'pendiente' ? `<span class="badge-estado-planilla badge-${p.estado}">${{alineacion:'Alineando',primer_tiempo:'1°T',segundo_tiempo:'2°T',cerrado:'Cerrado'}[p.estado]||p.estado}</span>` : '';
-      html += `<div class="partido-row">
+      const interBadge = p.interzonal ? `<span style="display:inline-block;font-size:10px;font-weight:800;letter-spacing:.5px;color:#c4b5fd;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.5);border-radius:6px;padding:1px 6px;margin-left:6px;">⚔ INTERZONAL</span>` : '';
+      const rowStyle = p.interzonal ? ' style="background:rgba(167,139,250,.09);border-left:3px solid #a78bfa;border-radius:8px;padding-left:8px;"' : '';
+      html += `<div class="partido-row"${rowStyle}>
         <span class="partido-cancha-info" style="font-size:11px;color:var(--text-muted);margin-right:6px;">${pHorario} · ${pCancha}</span>
-        <span class="partido-equipos">${escapeHtml(p.equipoLocalNombre)} ${p.jugado ? `<strong>${p.golesLocal} - ${p.golesVisitante}</strong>` : '<span class="muted">vs</span>'} ${escapeHtml(p.equipoVisitanteNombre)} ${pEstado}</span>
+        <span class="partido-equipos">${escapeHtml(p.equipoLocalNombre)} ${p.jugado ? `<strong>${p.golesLocal} - ${p.golesVisitante}</strong>` : '<span class="muted">vs</span>'} ${escapeHtml(p.equipoVisitanteNombre)} ${interBadge} ${pEstado}</span>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm" style="background:var(--surface3)" onclick="abrirModalCancha('${p.id}','${p.cancha||''}','${p.horario||''}')">🕐 Cancha/Hora</button>
           <button class="btn btn-sm" onclick="abrirModalResultado('${p.id}')">${p.jugado ? 'Editar resultado' : 'Cargar resultado'}</button>
@@ -5403,29 +6154,55 @@ function renderFixtureAdminList() {
     wrap.innerHTML = renderFechasFixtureAdmin(partidosCacheAdmin, equiposDivision);
     return;
   }
-  const zonas = [...new Set(partidosCacheAdmin.map(p => p.zona))].filter(Boolean).sort();
+  const zonas = ['A', 'B'].filter(z => partidosCacheAdmin.some(p => p.zona === z));
   let html = '';
   zonas.forEach(zona => {
     html += `<h4 style="margin:18px 0 8px;">Zona ${zona}</h4>`;
-    html += renderFechasFixtureAdmin(partidosCacheAdmin.filter(p => p.zona === zona), equiposDivision.filter(eq => eq.zona === zona));
+    // El interzonal se muestra dentro de la zona que juega en su misma cancha esa fecha.
+    const canchaKey = zona === 'A' ? 'zonaA' : 'zonaB';
+    const grupo = partidosCacheAdmin.filter(p =>
+      p.zona === zona || (p.interzonal && Number(p.cancha) === canchasFecha(p.numeroFecha)[canchaKey])
+    );
+    html += renderFechasFixtureAdmin(grupo, equiposDivision.filter(eq => eq.zona === zona));
   });
-  wrap.innerHTML = html;
+  wrap.innerHTML = html || `<div class="empty-state">Todavía no se generó el fixture de esta división.</div>`;
 }
 function abrirModalCancha(partidoId, canchaActual, horarioActual) {
-  const cancha = prompt('Cancha (1, 2 o 3):', canchaActual||'');
-  if(cancha===null) return;
-  if(!['1','2','3'].includes(cancha.trim())) { showToast('Cancha debe ser 1, 2 o 3.','error'); return; }
-  const horario = prompt('Horario (ej: 10:00):', horarioActual||'');
-  if(horario===null) return;
-  db.collection('partidos').doc(partidoId).update({
-    cancha: Number(cancha.trim()),
-    horario: horario.trim()
-  }).then(()=>{ showToast('Cancha y horario guardados.','ok'); renderFixtureAdminList(); })
-    .catch(e=>{ console.error(e); showToast('Error al guardar.','error'); });
+  const p = buscarPartidoAdmin(partidoId);
+  if (!p) { showToast('No se encontró el partido.', 'error'); return; }
+  const canchaStr = prompt('Cancha (1, 2 o 3):', canchaActual || '');
+  if (canchaStr === null) return;
+  if (!['1','2','3'].includes(canchaStr.trim())) { showToast('Cancha debe ser 1, 2 o 3.', 'error'); return; }
+  const horarioStr = prompt('Horario (ej: 15:00):', horarioActual || '');
+  if (horarioStr === null) return;
+  const canchaNueva = Number(canchaStr.trim());
+  const horarioNuevo = horarioStr.trim();
+  // ¿Otro partido de la MISMA fecha ya ocupa esa cancha y horario? → choque real.
+  // Busca en TODOS los partidos (ambas categorías) para no cruzar canchas.
+  const fuente = partidosTotalCache.length ? partidosTotalCache : partidosCacheAdmin;
+  const ocupante = fuente.find(x =>
+    x.id !== partidoId && x.numeroFecha === p.numeroFecha &&
+    Number(x.cancha) === canchaNueva && (x.horario || '') === horarioNuevo
+  );
+  const doc = id => db.collection('partidos').doc(id);
+  if (ocupante) {
+    // Intercambio: el ocupante pasa al lugar (cancha+horario) que dejó este partido.
+    if (!confirm(`Ese horario ya lo tiene ${ocupante.equipoLocalNombre} vs ${ocupante.equipoVisitanteNombre}.\n\nSe intercambian: ese partido pasa a las ${p.horario || '--:--'} (cancha ${p.cancha || '—'}). ¿Confirmás?`)) return;
+    const batch = db.batch();
+    batch.update(doc(partidoId), { cancha: canchaNueva, horario: horarioNuevo });
+    batch.update(doc(ocupante.id), { cancha: Number(p.cancha) || ocupante.cancha, horario: p.horario || '' });
+    batch.commit()
+      .then(() => { showToast('Partidos intercambiados.', 'ok'); renderFixtureAdminList(); })
+      .catch(e => { console.error(e); showToast('Error al guardar.', 'error'); });
+  } else {
+    doc(partidoId).update({ cancha: canchaNueva, horario: horarioNuevo })
+      .then(() => { showToast('Cancha y horario guardados.', 'ok'); renderFixtureAdminList(); })
+      .catch(e => { console.error(e); showToast('Error al guardar.', 'error'); });
+  }
 }
 
 function abrirModalResultado(partidoId) {
-  const p = partidosCacheAdmin.find(x => x.id === partidoId);
+  const p = buscarPartidoAdmin(partidoId);
   if (!p) return;
   const local = equiposCacheAdmin.find(e => e.id === p.equipoLocalId) || {};
   const visitante = equiposCacheAdmin.find(e => e.id === p.equipoVisitanteId) || {};
@@ -5588,6 +6365,80 @@ function volverAEquiposAdmin() {
   document.getElementById('equipo-detalle-admin').classList.add('hidden');
   document.getElementById('torneo-division-detail').classList.remove('hidden');
 }
+// Admin: editar la lista de buena fe (agregar/editar jugadores), marcar
+// asegurados y cargar DT + ayudante de campo, todo en un modal.
+async function abrirEditarPlantelAdmin(equipoId) {
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) { showToast('No se encontró el equipo.', 'error'); return; }
+    const eq = doc.data();
+    const jugadores = (eq.jugadores && eq.jugadores.length ? eq.jugadores.slice(0, NUM_JUGADORES) : emptyJugadores());
+    while (jugadores.length < NUM_JUGADORES) jugadores.push({ apellido: '', nombre: '', dni: '' });
+    const aseguradoSet = new Set([...(eq.seguroJugadoresDni || []), ...(eq.seguroHabilitadoManual || []).map(h => h.dni)]);
+    const dt = eq.dt || {}, ay = eq.ayudante || {};
+    const filas = jugadores.map((j, i) => `
+      <tr>
+        <td class="idx-cell"><span class="jersey-num">${i + 1}</span></td>
+        <td><input type="text" class="uppercase-bold" data-i="${i}" data-f="apellido" value="${escapeHtml(j.apellido || '')}" placeholder="Apellido" oninput="this.value=this.value.toUpperCase()"></td>
+        <td><input type="text" data-i="${i}" data-f="nombre" value="${escapeHtml(j.nombre || '')}" placeholder="Nombre"></td>
+        <td><input type="text" data-i="${i}" data-f="dni" value="${escapeHtml(j.dni || '')}" placeholder="DNI" inputmode="numeric" maxlength="9" oninput="this.value=this.value.replace(/\\D/g,'')"></td>
+        <td style="text-align:center;"><input type="checkbox" class="ep-aseg" data-i="${i}" ${j.dni && aseguradoSet.has(j.dni) ? 'checked' : ''} title="Asegurado"></td>
+      </tr>`).join('');
+    openModal(`
+      <h2 style="margin-bottom:4px;">👥 Editar plantel — ${escapeHtml(eq.nombre || '')}</h2>
+      <p class="muted" style="margin-bottom:12px;font-size:12.5px;">Agregá o editá jugadores de la lista de buena fe, tildá cuáles están <strong>asegurados</strong> (cobertura manual de la organización, $${MONTO_SEGURO_POR_JUGADOR.toLocaleString('es-AR')} c/u — no toca lo ya pagado por comprobante), y cargá el cuerpo técnico.</p>
+      <div style="max-height:52vh;overflow-y:auto;">
+        <table class="jugadores-table"><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Aseg.</th></tr></thead><tbody id="ep-jug-body">${filas}</tbody></table>
+        <h3 style="margin:16px 0 8px;font-size:15px;">Cuerpo técnico</h3>
+        <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;">
+          <input type="text" id="ep-dt-nombre" value="${escapeHtml(dt.nombre || '')}" placeholder="DT — nombre y apellido">
+          <input type="text" id="ep-dt-dni" value="${escapeHtml(dt.dni || '')}" placeholder="DNI" inputmode="numeric" maxlength="9" oninput="this.value=this.value.replace(/\\D/g,'')">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;"><input type="checkbox" id="ep-dt-aseg" ${dt.dni && aseguradoSet.has(dt.dni) ? 'checked' : ''}> Aseg.</label>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:center;">
+          <input type="text" id="ep-ay-nombre" value="${escapeHtml(ay.nombre || '')}" placeholder="Ayudante de campo — nombre y apellido">
+          <input type="text" id="ep-ay-dni" value="${escapeHtml(ay.dni || '')}" placeholder="DNI" inputmode="numeric" maxlength="9" oninput="this.value=this.value.replace(/\\D/g,'')">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;"><input type="checkbox" id="ep-ay-aseg" ${ay.dni && aseguradoSet.has(ay.dni) ? 'checked' : ''}> Aseg.</label>
+        </div>
+      </div>
+      <div class="section-actions">
+        <button class="btn btn-primary" onclick="guardarPlantelAdmin('${equipoId}')">💾 Guardar plantel</button>
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+      </div>
+    `);
+  } catch (e) { console.error(e); showToast('No se pudo abrir el plantel.', 'error'); }
+}
+async function guardarPlantelAdmin(equipoId) {
+  try {
+    const jugadores = emptyJugadores();
+    document.querySelectorAll('#ep-jug-body input[data-f]').forEach(inp => {
+      const i = +inp.dataset.i; if (i >= 0 && i < jugadores.length) jugadores[i][inp.dataset.f] = inp.value.trim();
+    });
+    const checked = [];
+    document.querySelectorAll('#ep-jug-body .ep-aseg:checked').forEach(chk => {
+      const dni = (jugadores[+chk.dataset.i] || {}).dni; if (dni) checked.push(dni);
+    });
+    const dt = { nombre: (document.getElementById('ep-dt-nombre').value || '').trim(), dni: (document.getElementById('ep-dt-dni').value || '').trim() };
+    const ay = { nombre: (document.getElementById('ep-ay-nombre').value || '').trim(), dni: (document.getElementById('ep-ay-dni').value || '').trim() };
+    if (document.getElementById('ep-dt-aseg').checked && dt.dni) checked.push(dt.dni);
+    if (document.getElementById('ep-ay-aseg').checked && ay.dni) checked.push(ay.dni);
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    const eq = doc.exists ? doc.data() : {};
+    const txDnis = new Set(eq.seguroJugadoresDni || []); // cubiertos por comprobante — no se tocan
+    const prevManual = eq.seguroHabilitadoManual || [];
+    const nuevoManual = [];
+    Array.from(new Set(checked)).forEach(dni => {
+      if (txDnis.has(dni)) return;
+      const prev = prevManual.find(h => h.dni === dni);
+      nuevoManual.push(prev || { dni, fecha: new Date().toISOString(), monto: MONTO_SEGURO_POR_JUGADOR });
+    });
+    await db.collection('equipos').doc(equipoId).update({ jugadores, seguroHabilitadoManual: nuevoManual, dt, ayudante: ay });
+    showToast('Plantel actualizado.', 'ok');
+    closeModal();
+    await cargarEquiposAdmin();
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo guardar el plantel.', 'error'); }
+}
 async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
   try {
     const doc = await db.collection('equipos').doc(id).get();
@@ -5651,19 +6502,21 @@ async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
         <div style="flex:1;min-width:0;">
           <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
           ${f.editarOnclick ? `<button class="btn btn-sm" style="padding:1px 7px;font-size:10.5px;margin-left:6px;" onclick="${f.editarOnclick}">✏️ Corregir monto</button>` : ''}
+          ${f.editarJugadoresOnclick ? `<button class="btn btn-sm" style="padding:1px 7px;font-size:10.5px;margin-left:4px;" onclick="${f.editarJugadoresOnclick}">👥 Corregir jugadores</button>` : ''}
           ${f.borrarOnclick ? `<button class="btn btn-sm btn-danger" style="padding:1px 7px;font-size:10.5px;margin-left:4px;" onclick="${f.borrarOnclick}">🗑 Borrar</button>` : ''}
           <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transfirió: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
         </div>
         ${badgeEstadoComprobante(f.estado)}
         ${f.estado === 'pendiente' && f.aprobarOnclick ? `<button class="btn btn-sm btn-primary" onclick="${f.aprobarOnclick}">✓ Aprobar</button>` : ''}
         ${f.estado === 'pendiente' && f.rechazarOnclick ? `<button class="btn btn-sm btn-danger" onclick="${f.rechazarOnclick}">✕ Rechazar</button>` : ''}
+        ${f.estado === 'aprobado' && f.revertirOnclick ? `<button class="btn btn-sm" title="Usar solo si esta aprobación fue un error (ej. comprobante duplicado)" onclick="${f.revertirOnclick}">↩️ Revertir aprobación</button>` : ''}
       </div>`;
     // Aprobar/rechazar acá mismo (no solo desde las pestañas Inscripciones/Seguro de la
     // división) — refresca este mismo panel después, no solo las listas, para que se vea
     // el cambio sin tener que volver a entrar.
     const pagoComprobantesHtml = pagoHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de inscripción.</p>`
-      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}').then(()=>verDetalleEquipoAdmin('${id}'))`, borrarOnclick: t.id ? `eliminarComprobanteInscripcion('${id}','${t.id}')` : null, aprobarOnclick: `aprobarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))` })).join('');
+      : pagoHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: etapaLabel[t.etapa] || 'Inscripción', editarOnclick: `editarMontoDeclaradoInscripcion('${id}','${t.etapa}').then(()=>verDetalleEquipoAdmin('${id}'))`, borrarOnclick: t.id ? `eliminarComprobanteInscripcion('${id}','${t.id}')` : null, aprobarOnclick: `aprobarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarPago('${id}').then(()=>verDetalleEquipoAdmin('${id}'))`, revertirOnclick: `revertirAprobacionInscripcion('${id}','${t.etapa}')` })).join('');
 
     // --- Seguro médico ---
     const s = estadoSeguroEquipo(eq);
@@ -5672,7 +6525,6 @@ async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
     const seguroAprobadoTotal = calcularIngresoSeguro(eq);
     const cubiertosSet = new Set([...s.asegurados, ...s.habilitadosManual].map(j => j.dni));
     const pendientesSet = new Set((eq.segurosTransacciones || []).filter(t => t.estado === 'pendiente').flatMap(t => t.dnis));
-    const venciSeguroAdmin = !!(cfg.fechaLimiteSeguro && new Date() > new Date(cfg.fechaLimiteSeguro + 'T23:00:00'));
 
     const rosterRows = jugadores.filter(j => j.apellido || j.nombre || j.dni).map((j, i) => {
       const cubierto = j.dni && cubiertosSet.has(j.dni);
@@ -5681,10 +6533,17 @@ async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
       let estadoTxt = '<span class="muted">Sin DNI</span>';
       if (j.dni) {
         if (s.asegurados.some(a => a.dni === j.dni)) estadoTxt = '<span class="badge badge-ok">Asegurado</span>';
-        else if (s.habilitadosManual.some(a => a.dni === j.dni)) estadoTxt = '<span class="badge badge-cyan">Pago tardío</span>';
+        else if (s.habilitadosManual.some(a => a.dni === j.dni)) {
+          const hEntry = (eq.seguroHabilitadoManual || []).find(h => h.dni === j.dni);
+          const montoTxt = hEntry && hEntry.monto ? `<span class="muted" style="font-size:10px;margin-left:4px;">$${hEntry.monto.toLocaleString('es-AR')}${hEntry.monto !== 5000 ? ' ⚠️' : ''}</span>` : '';
+          estadoTxt = `<span class="badge badge-ok">Asegurado</span>${montoTxt} <button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" title="Sacar la habilitación manual y volver a la normalidad (ej. si se cargó con el monto viejo)" onclick="quitarHabilitacionManualSeguro('${id}','${escapeHtml(j.dni)}')">↩️ Sacar</button>`;
+        }
         else if (pendiente) estadoTxt = '<span class="badge badge-warn">Comprobante pendiente</span>';
-        else if (venciSeguroAdmin) estadoTxt = `<span class="badge badge-danger">No habilitado</span> <button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" onclick="habilitarSeguroTardio('${id}','${escapeHtml(j.dni)}','${escapeHtml(((j.apellido || '') + ' ' + (j.nombre || '')).trim())}')">Habilitar $7.000</button>`;
-        else estadoTxt = '<span class="badge badge-danger">Falta asegurar</span>';
+        // El botón de marcar manual ya NO depende de que haya vencido el plazo — a pedido
+        // del usuario: hay equipos que no pueden autogestionarse por otras razones (ej. quedaron
+        // sin espacio en el documento de Firestore, "falta de memoria") y necesitan que el admin
+        // los habilite a mano ANTES de la fecha límite, no solo después.
+        else estadoTxt = `<span class="badge badge-danger">Falta asegurar</span> <button class="btn btn-sm" style="padding:2px 8px;font-size:11px;" onclick="habilitarSeguroTardio('${id}','${escapeHtml(j.dni)}','${escapeHtml(((j.apellido || '') + ' ' + (j.nombre || '')).trim())}')">✅ Marcar asegurado ($${MONTO_SEGURO_POR_JUGADOR.toLocaleString('es-AR')})</button>`;
       }
       return `<tr style="background:${bg};"><td class="idx-cell"><span class="jersey-num">${j.numero || i + 1}</span></td><td class="uppercase-bold">${escapeHtml(j.apellido) || '-'}</td><td>${escapeHtml(j.nombre) || '-'}</td><td style="font-variant-numeric:tabular-nums;">${escapeHtml(j.dni) || '-'}</td><td>${estadoTxt}</td></tr>`;
     }).join('');
@@ -5696,7 +6555,7 @@ async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
       </div>`;
     const seguroComprobantesHtml = seguroHistorial.length === 0
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subió ningún comprobante de seguro.</p>`
-      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, borrarOnclick: `eliminarComprobanteSeguro('${id}','${t.id}')`, aprobarOnclick: `aprobarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))` })).join('');
+      : seguroHistorial.map(t => comprobanteRow({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, editarOnclick: `editarMontoDeclaradoSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, editarJugadoresOnclick: `editarJugadoresSeguro('${id}','${t.id}')`, borrarOnclick: `eliminarComprobanteSeguro('${id}','${t.id}')`, aprobarOnclick: `aprobarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, rechazarOnclick: `rechazarSeguro('${id}','${t.id}').then(()=>verDetalleEquipoAdmin('${id}'))`, revertirOnclick: `revertirAprobacionSeguro('${id}','${t.id}')` })).join('');
 
     // --- Carnets ---
     // El admin necesita poder generar el carnet de un equipo él mismo (ej. si el equipo
@@ -5757,6 +6616,7 @@ async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
           <div style="min-width:0;">
             <h2 style="margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(eq.nombre)}</h2>
             <div style="font-size:12px;color:var(--text-dim);">${escapeHtml(eq.division || '')} · ${count}/${NUM_JUGADORES} en lista de buena fe</div>
+            ${(eq.dt && (eq.dt.nombre || eq.dt.dni)) || (eq.ayudante && (eq.ayudante.nombre || eq.ayudante.dni)) ? `<div style="font-size:12px;color:var(--text-dim);margin-top:2px;">${eq.dt && eq.dt.nombre ? `DT: <strong>${escapeHtml(eq.dt.nombre)}</strong>` : ''}${(eq.dt && eq.dt.nombre) && (eq.ayudante && eq.ayudante.nombre) ? ' · ' : ''}${eq.ayudante && eq.ayudante.nombre ? `Ayudante: <strong>${escapeHtml(eq.ayudante.nombre)}</strong>` : ''}</div>` : ''}
           </div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--text-dim);margin-bottom:10px;">
@@ -5775,6 +6635,7 @@ async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
         ${avisoTamanioHtml}
         <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--glass-border);margin-top:12px;padding-top:12px;">
           <button class="btn btn-sm" onclick="abrirModalRenombrarEquipo('${id}','${escapeHtml(eq.nombre)}')">✏️ Cambiar nombre</button>
+          <button class="btn btn-sm btn-primary" onclick="abrirEditarPlantelAdmin('${id}')">👥 Editar plantel</button>
           <label class="btn btn-sm" style="cursor:pointer;">🖼 ${eq.escudo ? 'Cambiar escudo' : 'Subir escudo'}<input type="file" accept="image/png,image/jpeg,image/jpg,image/*" class="hidden" onchange="adminSubirEscudo('${id}',this)"></label>
           ${eq.escudo ? `<a class="btn btn-sm" href="${eq.escudo}" download="${archivo}">⬇ Escudo</a>` : ''}
           <button class="btn btn-sm btn-primary" onclick='generarPDFEquipo(${JSON.stringify(eq).replace(/'/g, "&#39;")})'>⬇ PDF lista</button>
@@ -5866,20 +6727,41 @@ async function renombrarEquipo(id, nombreNuevo) {
     if (!document.getElementById('equipo-detalle-admin').classList.contains('hidden')) verDetalleEquipoAdmin(id);
   } catch (e) { console.error(e); showToast('No se pudo cambiar el nombre.', 'error'); }
 }
+// Vía manual del admin para asegurar a un jugador después del plazo (cuando el equipo ya no
+// puede autogestionarse — ver renderSegurosPanel). El monto usa MONTO_SEGURO_POR_JUGADOR
+// (dinámico, sincronizado contra la config) en vez de un número fijo — antes decía "$7.000"
+// hardcodeado mientras el resto del sistema ya cobraba $8.000 pasada la fecha límite, dos
+// lugares con el mismo concepto y montos distintos.
 async function habilitarSeguroTardio(equipoId, dni, nombreJugador) {
-  if (!confirm(`¿Habilitar a ${nombreJugador} por pago tardío del seguro médico ($7.000)?\n\nConfirmá que ya recibiste ese pago antes de continuar — esta acción lo marca como habilitado para jugar.`)) return;
+  const monto = MONTO_SEGURO_POR_JUGADOR;
+  if (!confirm(`¿Marcar a ${nombreJugador} como asegurado (carga manual, $${monto.toLocaleString('es-AR')})?\n\nConfirmá que ya recibiste ese pago (o coordinaste la excepción) antes de continuar — esta acción lo marca como habilitado para jugar.`)) return;
   try {
     const doc = await db.collection('equipos').doc(equipoId).get();
     if (!doc.exists) return;
     const eq = doc.data();
-    if ((eq.seguroHabilitadoManual || []).some(h => h.dni === dni)) { showToast('Ese jugador ya estaba habilitado.', 'error'); return; }
-    const entry = { dni, fecha: new Date().toISOString(), monto: 7000 };
+    if ((eq.seguroHabilitadoManual || []).some(h => h.dni === dni)) { showToast('Ese jugador ya estaba asegurado.', 'error'); return; }
+    const entry = { dni, fecha: new Date().toISOString(), monto };
     await db.collection('equipos').doc(equipoId).update({ seguroHabilitadoManual: firebase.firestore.FieldValue.arrayUnion(entry) });
-    showToast(`${nombreJugador} habilitado por pago tardío.`, 'ok');
-    crearMensajeSistema(equipoId, eq.nombre, eq.division, 'Seguro médico', `✅ ${nombreJugador} fue habilitado para jugar tras regularizar el seguro médico fuera de término (recargo de $7.000).`, 'equipo', `✅ Se habilitó a ${nombreJugador} (${eq.nombre}) por pago tardío del seguro médico ($7.000).`).catch(() => {});
+    showToast(`${nombreJugador} marcado como asegurado.`, 'ok');
+    crearMensajeSistema(equipoId, eq.nombre, eq.division, 'Seguro médico', `✅ ${nombreJugador} fue asegurado por la organización (carga manual, $${monto.toLocaleString('es-AR')}).`, 'equipo', `✅ Se aseguró manualmente a ${nombreJugador} (${eq.nombre}) — $${monto.toLocaleString('es-AR')}.`).catch(() => {});
     closeModal();
     verDetalleEquipoAdmin(equipoId);
-  } catch (e) { console.error(e); showToast('No se pudo habilitar al jugador.', 'error'); }
+  } catch (e) { console.error(e); showToast('No se pudo asegurar al jugador.', 'error'); }
+}
+// Deshace una habilitación manual (ej. cargada con el monto viejo de $7.000, o aplicada por
+// error a alguien que en realidad pagó normal) — el jugador vuelve a depender solo de
+// seguroJugadoresDni/segurosTransacciones, como si nunca se hubiera usado el botón manual.
+async function quitarHabilitacionManualSeguro(equipoId, dni) {
+  if (!confirm('¿Sacar la habilitación manual de este jugador?\n\nVuelve a quedar como estaba antes (según su comprobante real, o sin asegurar si no tiene ninguno) — usalo si se habilitó por error o con el monto viejo.')) return;
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) return;
+    const eq = doc.data();
+    const nuevos = (eq.seguroHabilitadoManual || []).filter(h => h.dni !== dni);
+    await db.collection('equipos').doc(equipoId).update({ seguroHabilitadoManual: nuevos });
+    showToast('Habilitación manual removida.', 'ok');
+    verDetalleEquipoAdmin(equipoId);
+  } catch (e) { console.error(e); showToast('No se pudo actualizar.', 'error'); }
 }
 async function resetPasswordEquipo(id, nombre) {
   openModal(`
@@ -6477,6 +7359,20 @@ function iniciarMensajesAdmin() {
 function detenerMensajesAdmin() {
   if (_msgListenerAdmin) { _msgListenerAdmin(); _msgListenerAdmin = null; }
   if (_msgHiloListenerAdmin) { _msgHiloListenerAdmin(); _msgHiloListenerAdmin = null; }
+}
+async function marcarTodosLeidosAdmin() {
+  try {
+    const snap = await db.collection('mensajes').where('noLeidoAdmin', '>', 0).get();
+    if (snap.empty) { showToast('No hay mensajes sin leer.', 'ok'); return; }
+    if (!confirm(`¿Marcar como leídos los ${snap.size} chat(s) con mensajes sin leer?`)) return;
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 400) {
+      const batch = db.batch();
+      docs.slice(i, i + 400).forEach(d => batch.update(d.ref, { noLeidoAdmin: 0 }));
+      await batch.commit();
+    }
+    showToast(`${snap.size} chat(s) marcados como leídos.`, 'ok');
+  } catch (e) { console.error(e); showToast('No se pudo marcar como leídos: ' + e.message, 'error'); }
 }
 function _actualizarBadgeAdmin(hilos) {
   const n = hilos.reduce((s,h)=>s+(h.noLeidoAdmin||0),0);

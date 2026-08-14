@@ -26,6 +26,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 #offline-bar{position:fixed;top:0;left:0;right:0;z-index:9999;background:#b45309;color:#fff;font-size:12px;font-weight:700;text-align:center;padding:7px 12px;letter-spacing:.3px;transform:translateY(-100%);transition:transform .3s ease;}
 #offline-bar.visible{transform:translateY(0);}
 
+/* La app está armada solo para vertical (altura fija 100vh, columnas con scroll interno) —
+   en horizontal el viewport se achica en altura y las listas de jugadores quedan casi sin
+   espacio para mostrarse. En vez de dejar esa versión rota visible, se tapa todo con un aviso
+   claro. screen.orientation.lock (más abajo) evita que llegue a pasar cuando el navegador lo
+   soporta (PWA instalada), pero esto es la garantía real — funciona siempre, instalada o no. */
+#rotate-overlay{display:none;position:fixed;inset:0;z-index:10000;background:var(--bg);color:var(--text);flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+@media (orientation:landscape){#rotate-overlay{display:flex;}}
+#rotate-overlay .ro-ico{font-size:52px;animation:roSpin 1.6s ease-in-out infinite;}
+@keyframes roSpin{0%,100%{transform:rotate(0deg);}50%{transform:rotate(-90deg);}}
+#rotate-overlay .ro-txt{font-size:15px;font-weight:700;max-width:280px;}
+
 /* ── AMBIENT BLOBS ── */
 .ambient{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
 .blob{position:absolute;border-radius:50%;filter:blur(90px);}
@@ -229,7 +240,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   box-shadow:0 0 24px rgba(0,230,118,0.06);
 }
 .player-row.blocked{opacity:.28;cursor:not-allowed;}
-.player-row.no-habilitado{border-color:rgba(255,61,61,.35);background:rgba(255,61,61,.06);cursor:not-allowed;}
+.player-row.no-habilitado,.modal-player.no-habilitado{border-color:rgba(255,61,61,.35);background:rgba(255,61,61,.06);cursor:not-allowed;}
 .player-warn{font-size:10px;font-weight:700;color:var(--red);margin-top:2px;}
 .player-check{
   width:24px;height:24px;border-radius:8px;border:2px solid rgba(255,255,255,0.12);
@@ -722,6 +733,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 </head>
 <body>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
+<div id="rotate-overlay"><div class="ro-ico">📱</div><div class="ro-txt">Girá la tablet a vertical<br>La planilla funciona solo en modo vertical.</div></div>
 
 <!-- AMBIENT BLOBS -->
 <div class="ambient" aria-hidden="true">
@@ -777,7 +789,8 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
     </div>
     <div class="sim-wrap">
       <div class="sim-label">— Modo prueba —</div>
-      <button class="btn btn-ghost btn-sm" onclick="simCrearPartido()">🧪 Simular partido de prueba</button>
+      <button class="btn btn-ghost btn-sm" onclick="simCrearPartido(true)">🧪 Simular desde cero (con alineación)</button>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="simCrearPartido(false)">🧪 Simular ya armado (directo al partido)</button>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px;color:var(--red);" onclick="simBorrarPartido()">🗑 Borrar partido simulado</button>
     </div>
   </div>
@@ -1277,7 +1290,7 @@ async function cargarLista(){
   <div class="mc-hora">${p.horario||'--:--'}</div>
   <div style="flex:1;">
     <div class="mc-teams">${esc(p.equipoLocalNombre)}<span class="mc-vs">vs</span>${esc(p.equipoVisitanteNombre)}</div>
-    <div class="mc-fecha">Zona ${p.zona||'—'}</div>
+    <div class="mc-fecha">${p.interzonal?'⚔ Interzonal':'Zona '+(p.zona||'—')}</div>
     <span class="mc-estado ${estado}">${bloqueado?'🔒 Se habilita al cerrar el anterior':(labels[estado]||estado)}</span>
   </div>
   <span class="mc-arrow">›</span>
@@ -1526,9 +1539,16 @@ function fmtDni(d){
   if(n.length<=7)return n.slice(0,-3)+'.'+n.slice(-3);
   return n.slice(0,-6)+'.'+n.slice(-6,-3)+'.'+n.slice(-3);
 }
+// La alineación se ARMA en orden alfabético (más fácil tildar nombres de una lista larga), pero
+// una vez confirmada, para todo lo demás (columnas del partido en vivo, modales de gol/tarjeta/
+// sustitución, planilla impresa) al planillero le sirve más por número de camiseta — es lo que
+// ve en la espalda de cada jugador en la cancha. No reordena el array guardado, solo la vista.
+function ordenarPorNumero(alin){
+  return (alin||[]).slice().sort((a,b)=>(parseInt(a.numero,10)||99)-(parseInt(b.numero,10)||99));
+}
 function renderColumnaPartido(alin,evMap,capitanDni){
   if(!alin||!alin.length)return'<div style="color:var(--muted);font-size:11px;padding:8px 6px;">Sin alineación</div>';
-  return alin.map(j=>{
+  return ordenarPorNumero(alin).map(j=>{
     const ev=evMap[j.dni]||{};
     const hasEv=ev.goles||ev.ta||ev.td||ev.tr;
     const expulsado=ev.td||ev.tr;
@@ -1670,7 +1690,7 @@ function abrirModalGol(equipo){
   document.getElementById('modal-jugador-titulo').textContent='Gol para '+(esLocal?st.partido.equipoLocalNombre:st.partido.equipoVisitanteNombre);
   const lista=document.getElementById('modal-jugador-lista');lista.innerHTML='';
   if(!alin||!alin.length){lista.innerHTML='<div class="empty-msg">No hay alineación cargada.</div>';abrirModal('modal-jugador');return;}
-  alin.forEach(j=>{lista.innerHTML+=`<div class="modal-player" onclick="registrarGol('${escJs(j.dni)}','${escJs(j.nombre)}','${escJs(j.numero||'')}')"><div class="mp-num">${numCamiseta(j.numero)}</div><div><div class="mp-name">${esc(j.nombre)}</div><div class="mp-dni">DNI ${esc(j.dni)}</div></div></div>`;});
+  ordenarPorNumero(alin).forEach(j=>{lista.innerHTML+=`<div class="modal-player" onclick="registrarGol('${escJs(j.dni)}','${escJs(j.nombre)}','${escJs(j.numero||'')}')"><div class="mp-num">${numCamiseta(j.numero)}</div><div><div class="mp-name">${esc(j.nombre)}</div><div class="mp-dni">DNI ${esc(j.dni)}</div></div></div>`;});
   abrirModal('modal-jugador');
 }
 
@@ -1690,7 +1710,7 @@ function abrirModalTarjeta(equipo){
   document.getElementById('modal-jugador-titulo').textContent='Tarjeta a '+(esLocal?st.partido.equipoLocalNombre:st.partido.equipoVisitanteNombre);
   const lista=document.getElementById('modal-jugador-lista');lista.innerHTML='';
   if(!alin||!alin.length){lista.innerHTML='<div class="empty-msg">No hay alineación cargada.</div>';abrirModal('modal-jugador');return;}
-  alin.forEach(j=>{
+  ordenarPorNumero(alin).forEach(j=>{
     const yaAmarilla=st.eventos.some(ev=>ev.tipo==='tarjeta'&&ev.subtipo==='amarilla'&&ev.dni===j.dni&&ev.equipoId===equipoId);
     const expulsado=st.eventos.some(ev=>ev.tipo==='tarjeta'&&(ev.subtipo==='doble'||ev.subtipo==='roja')&&ev.dni===j.dni&&ev.equipoId===equipoId);
     const click=expulsado?'':` onclick="selJugadorTarjeta('${escJs(j.dni)}','${escJs(j.nombre)}','${escJs(j.numero||'')}')"`;
@@ -1977,7 +1997,13 @@ async function cerrarPlanilla(){
     await guardarPartido();
     await db.collection('partidos').doc(st.partidoId).update({estado:'cerrado',jugado:true,observaciones:obs,golesLocal:gL,golesVisitante:gV});
     if(st.unsub){st.unsub();st.unsub=null;}
-    toast('Planilla cerrada ✓',3000);setTimeout(()=>goScreen('screen-lista'),1500);
+    toast('Planilla cerrada ✓',3000);
+    // BUG: antes esto era goScreen('screen-lista'), que solo muestra de nuevo la pantalla con
+    // el HTML viejo (el de ANTES de abrir este partido) — el partido recién cerrado seguía
+    // apareciendo con su estado viejo y el siguiente de la cancha seguía viéndose bloqueado,
+    // aunque en la base ya estaba todo bien. cargarLista() vuelve a consultar y arma la lista
+    // de nuevo con el estado real (además ya llama a goScreen('screen-lista') internamente).
+    setTimeout(()=>cargarLista(),1500);
   }catch(e){toast('Error. Se sincronizará con conexión.');}
 }
 
@@ -1985,8 +2011,21 @@ function abrirModal(id){document.getElementById(id).classList.add('open');}
 function cerrarModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
 
-const SIM_PARTIDO_ID='sim_planilla';
-async function simCrearPartido(){
+// Antes SIM_PARTIDO_ID era un id fijo ('sim_planilla') que se reciclaba con .set() en cada
+// prueba. Problema real: una vez que ese partido de prueba se CERRABA (parte normal de probar
+// el circuito completo), la regla de Firestore que protege los partidos cerrados de cualquier
+// sesión no-admin (a propósito, para que nadie toque un resultado real ya cerrado) bloqueaba
+// también CUALQUIER intento de recrearlo o resetearlo — "Simular partido de prueba" y "Borrar
+// partido simulado" quedaban trabados los dos, justo por la misma protección que los hace
+// seguros. Ahora cada simulación crea un documento NUEVO (id con timestamp) — un `create` nunca
+// choca con esa regla, sin importar en qué estado haya quedado el anterior. Los viejos quedan
+// huérfanos pero inofensivos: _sim:true los excluye de cargarLista() en todos lados.
+function nuevoSimPartidoId(){ return 'sim_'+Date.now(); }
+// desdeCero=true: arranca en 'pendiente' con las dos alineaciones vacías — para probar el
+// circuito completo (armar alineación, chequeos de seguro/sanciones, designar capitán, etc.).
+// desdeCero=false: arranca ya con las alineaciones armadas, directo al partido en vivo — para
+// probar rápido goles/tarjetas/faltas/cierre sin tener que volver a cargar 20 jugadores cada vez.
+async function simCrearPartido(desdeCero){
   toast('Creando partido de prueba...',4000);
   try{
     const snap=await db.collection('equipos').limit(4).get();
@@ -1994,21 +2033,26 @@ async function simCrearPartido(){
     if(equipos.length<2){toast('Necesitás al menos 2 equipos.',3000);return;}
     const eqL=equipos[0],eqV=equipos[1];
     const mkAlin=(jugs,offset)=>jugs.filter(j=>j.apellido||j.nombre).slice(0,15).map((j,i)=>({dni:j.dni||'SIM'+i,nombre:((j.apellido||'').toUpperCase()+', '+(j.nombre||'')).trim(),numero:String(i+1+offset).padStart(2,'0')}));
-    const alinL=mkAlin(eqL.jugadores||[],0);
-    const alinV=mkAlin(eqV.jugadores||[],0);
-    await db.collection('partidos').doc(SIM_PARTIDO_ID).set({equipoLocalId:eqL.id,equipoLocalNombre:eqL.nombre||'Local',equipoVisitanteId:eqV.id,equipoVisitanteNombre:eqV.nombre||'Visitante',division:eqL.division||'Primera',zona:eqL.zona||'A',numeroFecha:99,cancha:Number(st.cancha||1),horario:'10:00',estado:'alineacion',jugado:false,alineacionLocal:alinL,alineacionVisitante:alinV,capitanLocalDni:alinL[0]?.dni||'',capitanVisitanteDni:alinV[0]?.dni||'',faltas:{local:{t1:0,t2:0},visitante:{t1:0,t2:0}},tiempoActual:1,eventos:[],firmas:{local:false,visitante:false},golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],_sim:true});
-    toast('Partido creado ✓',2000);setTimeout(()=>abrirPartido(SIM_PARTIDO_ID),800);
+    const alinL=desdeCero?[]:mkAlin(eqL.jugadores||[],0);
+    const alinV=desdeCero?[]:mkAlin(eqV.jugadores||[],0);
+    const simId=nuevoSimPartidoId();
+    await db.collection('partidos').doc(simId).set({equipoLocalId:eqL.id,equipoLocalNombre:eqL.nombre||'Local',equipoVisitanteId:eqV.id,equipoVisitanteNombre:eqV.nombre||'Visitante',division:eqL.division||'Primera',zona:eqL.zona||'A',numeroFecha:99,cancha:Number(st.cancha||1),horario:'10:00',estado:desdeCero?'pendiente':'alineacion',jugado:false,alineacionLocal:alinL,alineacionVisitante:alinV,capitanLocalDni:alinL[0]?.dni||'',capitanVisitanteDni:alinV[0]?.dni||'',faltas:{local:{t1:0,t2:0},visitante:{t1:0,t2:0}},tiempoActual:1,eventos:[],firmas:{local:false,visitante:false},golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],_sim:true});
+    localStorage.setItem('ligaf5_sim_id',simId);
+    toast('Partido creado ✓',2000);setTimeout(()=>abrirPartido(simId),800);
   }catch(e){toast('Error: '+e.message,4000);}
 }
 async function simBorrarPartido(){
-  if(!confirm('¿Borrar el partido simulado?'))return;
+  const simId=localStorage.getItem('ligaf5_sim_id');
+  if(!simId){toast('No hay ninguna simulación activa en este tablet.',3000);return;}
+  if(!confirm('¿Reiniciar el partido simulado?'))return;
   try{
-    // Borrar un documento requiere admin real (los partidos cerrados no se
-    // pueden tocar sin eso) — el planillero resetea el de prueba en vez de
-    // borrarlo, así el botón sigue funcionando con la sesión anónima.
-    await db.collection('partidos').doc(SIM_PARTIDO_ID).update({estado:'pendiente',jugado:false,alineacionLocal:[],alineacionVisitante:[],eventos:[],golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],firmas:{local:false,visitante:false}});
+    // Best-effort: si ya se cerró, esto va a fallar por la regla de partidos cerrados —
+    // y está bien que falle así, no hace falta mostrarlo como error. La próxima simulación
+    // de todos modos va a crear un documento nuevo, no depende de que esto funcione.
+    await db.collection('partidos').doc(simId).update({estado:'pendiente',jugado:false,alineacionLocal:[],alineacionVisitante:[],eventos:[],golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],firmas:{local:false,visitante:false}});
     toast('Reiniciado.',2000);
-  }catch(e){toast('Error: '+e.message,3000);}
+  }catch(e){toast('Listo — la próxima simulación va a arrancar de cero igual.',2500);}
+  localStorage.removeItem('ligaf5_sim_id');
 }
 
 // iOS Safari no soporta overscroll-behavior — este fix evita el rubber-band
@@ -2054,7 +2098,7 @@ function construirHtmlPlanilla(p,eventos,alinLocal,alinVisitante,faltas,firmas,p
   const capL=p.capitanLocalDni||(alinLocal[0]&&alinLocal[0].dni)||'';
   const capV=p.capitanVisitanteDni||(alinVisitante[0]&&alinVisitante[0].dni)||'';
   function buildRows(alin,eqId,capDni){
-    return alin.map(j=>{
+    return ordenarPorNumero(alin).map(j=>{
       const evs=eventos.filter(e=>e.dni===j.dni&&e.equipoId===eqId);
       const goles=evs.filter(e=>e.tipo==='gol').length;
       const ta=evs.filter(e=>e.tipo==='tarjeta'&&e.subtipo==='amarilla').length;
@@ -2064,6 +2108,14 @@ function construirHtmlPlanilla(p,eventos,alinLocal,alinVisitante,faltas,firmas,p
       const tarjStr=(ta?'🟨'.repeat(ta):'')+(td?'🟧':'')+(tr?'🟥':'');
       return`<tr style="${expulsado?'opacity:.45;text-decoration:line-through':''}"><td style="text-align:center;font-weight:700">${j.numero||'—'}</td><td>${fmtDni(j.dni)}</td><td>${esc(j.nombre)}${j.dni===capDni?' <b>(C)</b>':''}</td><td style="text-align:center">${'⚽'.repeat(goles)}</td><td style="text-align:center;letter-spacing:-2px">${tarjStr}</td></tr>`;
     }).join('');
+  }
+  // Cuerpo técnico (DT + ayudante de campo) — todo el que está en el banco y no es jugador, identificado.
+  function ctRows(eqId){
+    const eq=_eCache[eqId]||{};
+    const items=[['DT',eq.dt],['AYUDANTE',eq.ayudante]].filter(x=>x[1]&&(x[1].nombre||x[1].dni));
+    if(!items.length) return '';
+    return `<tr><td colspan="5" style="background:#e8e8e8;font-weight:700;font-size:6.5pt;letter-spacing:.5px;text-align:center;">CUERPO TÉCNICO (banco)</td></tr>`
+      +items.map(([rol,p])=>`<tr><td style="text-align:center;font-weight:700;font-size:6.5pt">${rol}</td><td>${fmtDni(p.dni||'')}</td><td>${esc(p.nombre||'—')}</td><td></td><td></td></tr>`).join('');
   }
   const fL1=faltas.local&&faltas.local.t1||0,fL2=faltas.local&&faltas.local.t2||0;
   const fV1=faltas.visitante&&faltas.visitante.t1||0,fV2=faltas.visitante&&faltas.visitante.t2||0;
@@ -2102,14 +2154,14 @@ function construirHtmlPlanilla(p,eventos,alinLocal,alinVisitante,faltas,firmas,p
       <tr><th colspan="5">${esc(p.equipoLocalNombre)} — LOCAL</th></tr>
       <tr><th>N°</th><th>DNI</th><th>APELLIDO Y NOMBRE</th><th>⚽</th><th>TAR</th></tr>
     </thead>
-    <tbody>${buildRows(alinLocal,p.equipoLocalId,capL)||'<tr><td colspan="5" class="no-ev">Sin alineación</td></tr>'}</tbody>
+    <tbody>${buildRows(alinLocal,p.equipoLocalId,capL)||'<tr><td colspan="5" class="no-ev">Sin alineación</td></tr>'}${ctRows(p.equipoLocalId)}</tbody>
   </table>
   <table>
     <thead>
       <tr><th colspan="5">${esc(p.equipoVisitanteNombre)} — VISITANTE</th></tr>
       <tr><th>N°</th><th>DNI</th><th>APELLIDO Y NOMBRE</th><th>⚽</th><th>TAR</th></tr>
     </thead>
-    <tbody>${buildRows(alinVisitante,p.equipoVisitanteId,capV)||'<tr><td colspan="5" class="no-ev">Sin alineación</td></tr>'}</tbody>
+    <tbody>${buildRows(alinVisitante,p.equipoVisitanteId,capV)||'<tr><td colspan="5" class="no-ev">Sin alineación</td></tr>'}${ctRows(p.equipoVisitanteId)}</tbody>
   </table>
 </div>
 
@@ -2311,10 +2363,41 @@ function actualizarBotonesAgregarJugador(){
   });
 }
 
-function abrirModalAgregarJugador(equipo){
+// La alineación inicial (mostrarAlineacion/renderAlineacion) bloquea muy bien a un jugador
+// suspendido por tarjetas o sin seguro médico pagado. La sustitución en vivo (agregar/entrar
+// jugador durante el partido) usaba una lista de "disponibles" sin ningún chequeo — dejaba
+// entrar a cualquiera del plantel, esté suspendido o no, sin ningún aviso. Mismo criterio que
+// mostrarAlineacion, para no tener dos reglas distintas para lo mismo.
+async function jugadoresBloqueadosEquipo(equipoId,division){
+  const cfg=await getCfg();
+  const venciSeguro=!!(cfg.fechaLimiteSeguro && new Date()>new Date(cfg.fechaLimiteSeguro+'T23:00:00'));
+  const eqData=_eCache[equipoId]||{};
+  const habilitadosSeguro=new Set([...(eqData.seguroJugadoresDni||[]), ...((eqData.seguroHabilitadoManual||[]).map(h=>h.dni))]);
+  const tarjetasDiv=await cargarTarjetasDivision(division);
+  return{venciSeguro,habilitadosSeguro,eqData,tarjetasDiv};
+}
+function motivoBloqueoJugador(dni,ctx){
+  const{venciSeguro,habilitadosSeguro,eqData,tarjetasDiv}=ctx;
+  if(tarjetasDiv){
+    const items=getSancionesActivas(tarjetasDiv[dni],eqData);
+    if(items.length)return'🚫 Suspendido: '+items.map(s=>s.label).join(', ');
+  }
+  if(venciSeguro&&dni&&!habilitadosSeguro.has(dni))return'Seguro médico pendiente';
+  return'';
+}
+function jugadorRowHtml(j,onclickAttr,motivo){
+  const bloqueado=!!motivo;
+  const avisoHtml=bloqueado?'<div class="player-warn">'+esc(motivo)+'</div>':'';
+  return'<div class="modal-player'+(bloqueado?' no-habilitado':'')+'" style="'+(bloqueado?'cursor:not-allowed;opacity:.55;':'cursor:pointer;')+'" '+(bloqueado?'onclick="toast(\''+escJs(motivo)+'\',4000)"':onclickAttr)+'>'+
+    '<div style="flex:1;"><div class="player-name">'+esc((j.apellido||'').toUpperCase()+(j.apellido&&j.nombre?', ':'')+( j.nombre||''))+'</div><div class="player-dni">DNI '+esc(j.dni)+'</div>'+avisoHtml+'</div>'+
+    (bloqueado?'':'<span style="color:var(--green);font-size:18px;">+</span>')+'</div>';
+}
+
+async function abrirModalAgregarJugador(equipo){
   const p=st.partido;if(!p)return;
   const alin=equipo==='local'?st.alineacionLocal:st.alineacionVisitante;
   const roster=equipo==='local'?(p.jugadoresLocal||[]):(p.jugadoresVisitante||[]);
+  const equipoId=equipo==='local'?p.equipoLocalId:p.equipoVisitanteId;
   const dniEnAlin=new Set(alin.map(j=>j.dni));
   const disponibles=roster.filter(j=>j.dni&&!dniEnAlin.has(j.dni))
     .sort((a,b)=>(a.apellido||'').localeCompare(b.apellido||'','es'));
@@ -2329,40 +2412,49 @@ function abrirModalAgregarJugador(equipo){
     lista.innerHTML='<div style="color:var(--muted);text-align:center;padding:16px;font-size:13px;">No hay jugadores disponibles.</div>';
     abrirModal('modal-agregar-jug');return;
   }
+  abrirModal('modal-agregar-jug'); // se abre ya (con lo que había) y se completa cuando resuelva el chequeo, para no sentir el modal trabado
   if(puedeAgregar){
+    const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
     lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Seleccioná para agregar</div>'+
-      disponibles.map(j=>'<div class="modal-player" style="cursor:pointer;" onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',null)">'+
-        '<div style="flex:1;"><div class="player-name">'+esc((j.apellido||'').toUpperCase()+(j.apellido&&j.nombre?', ':'')+( j.nombre||''))+'</div><div class="player-dni">DNI '+esc(j.dni)+'</div></div>'+
-        '<span style="color:var(--green);font-size:18px;">+</span></div>').join('');
+      disponibles.map(j=>jugadorRowHtml(j,'onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',null)"',motivoBloqueoJugador(j.dni,ctx))).join('');
   }else{
     lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">1. ¿Quién sale de la planilla?</div>'+
-      alin.map(j=>'<div class="modal-player" style="cursor:pointer;" onclick="mostrarIngresante(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\')">'+
+      ordenarPorNumero(alin).map(j=>'<div class="modal-player" style="cursor:pointer;" onclick="mostrarIngresante(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\')">'+
         '<span style="font-family:\'Big Shoulders Display\',sans-serif;font-size:17px;font-weight:700;color:rgba(255,255,255,.5);min-width:22px;text-align:center;">'+(j.numero||'—')+'</span>'+
         '<div style="flex:1;"><div class="player-name">'+esc(j.nombre)+'</div><div class="player-dni">'+fmtDni(j.dni)+'</div></div>'+
         '<span style="color:var(--orange);font-size:18px;">→</span></div>').join('');
   }
-  abrirModal('modal-agregar-jug');
 }
 
-function mostrarIngresante(equipo,dniSale){
+async function mostrarIngresante(equipo,dniSale){
   const p=st.partido;
   const alin=equipo==='local'?st.alineacionLocal:st.alineacionVisitante;
   const roster=equipo==='local'?(p.jugadoresLocal||[]):(p.jugadoresVisitante||[]);
+  const equipoId=equipo==='local'?p.equipoLocalId:p.equipoVisitanteId;
   const dniEnAlin=new Set(alin.map(j=>j.dni));
   const disponibles=roster.filter(j=>j.dni&&!dniEnAlin.has(j.dni))
     .sort((a,b)=>(a.apellido||'').localeCompare(b.apellido||'','es'));
   const salio=alin.find(j=>j.dni===dniSale);
   const lista=document.getElementById('mag-lista');
   lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">2. ¿Quién entra en lugar de '+esc(salio?salio.nombre:dniSale)+'?</div>'+
-    (disponibles.length?disponibles.map(j=>'<div class="modal-player" style="cursor:pointer;" onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',\''+escJs(dniSale)+'\')">'+
-      '<div style="flex:1;"><div class="player-name">'+esc((j.apellido||'').toUpperCase()+(j.apellido&&j.nombre?', ':'')+( j.nombre||''))+'</div><div class="player-dni">DNI '+esc(j.dni)+'</div></div>'+
-      '<span style="color:var(--green);font-size:18px;">+</span></div>').join(''):
-    '<div style="color:var(--muted);text-align:center;padding:16px;font-size:13px;">No hay jugadores disponibles.</div>');
+    '<div style="color:var(--muted);text-align:center;padding:10px;font-size:12px;">Verificando seguro y sanciones...</div>';
+  if(!disponibles.length){
+    lista.innerHTML='<div style="color:var(--muted);text-align:center;padding:16px;font-size:13px;">No hay jugadores disponibles.</div>';return;
+  }
+  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
+  lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">2. ¿Quién entra en lugar de '+esc(salio?salio.nombre:dniSale)+'?</div>'+
+    disponibles.map(j=>jugadorRowHtml(j,'onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',\''+escJs(dniSale)+'\')"',motivoBloqueoJugador(j.dni,ctx))).join('');
 }
 
 async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
-  cerrarModal('modal-agregar-jug');
   const p=st.partido;
+  const equipoId=equipo==='local'?p.equipoLocalId:p.equipoVisitanteId;
+  // Defensa en profundidad: repite el chequeo acá por si el modal quedó con una lista vieja
+  // en pantalla (ej. el equipo se actualizó mientras el modal estaba abierto).
+  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
+  const motivo=motivoBloqueoJugador(dniEntra,ctx);
+  if(motivo){toast('🚫 No se puede agregar: '+motivo,4000);return;}
+  cerrarModal('modal-agregar-jug');
   const roster=equipo==='local'?(p.jugadoresLocal||[]):(p.jugadoresVisitante||[]);
   const jugEntra=roster.find(j=>j.dni===dniEntra);
   if(!jugEntra){toast('Jugador no encontrado.');return;}
@@ -2389,6 +2481,14 @@ async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
     actualizarBotonesUndo();
     toast('✓ '+(dniSale?'Reemplazo':'Jugador')+' registrado');
   }catch(e){toast('Error al guardar.');}
+}
+
+// ── BLOQUEO DE ORIENTACIÓN (mejor esfuerzo) ──
+// Solo funciona con la app instalada (Agregar a pantalla de inicio) en navegadores que lo
+// soportan — en una pestaña normal del navegador, o en iOS, esto no hace nada y #rotate-overlay
+// (CSS puro, siempre activo) es la garantía real de que nunca se ve la versión rota.
+if (screen.orientation && screen.orientation.lock) {
+  screen.orientation.lock('portrait').catch(()=>{});
 }
 
 // ── OFFLINE INDICATOR ──
