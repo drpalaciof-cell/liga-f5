@@ -82,7 +82,7 @@ service cloud.firestore {
       // Una vez cerrado el partido, la planilla queda tal cual — ni el
       // planillero ni un equipo pueden modificarla. Solo el admin puede
       // corregir un error después, desde "Editar resultado".
-      allow update: if isAdmin() || (autenticado() && resource.data.estado != 'cerrado' && soloCamposPlanilla());
+      allow update: if isAdmin() || (autenticado() && resource.data.get('estado','') != 'cerrado' && soloCamposPlanilla());
       allow delete: if isAdmin();
     }
     // Pagos semanales de arancel. Un equipo carga el suyo (estado 'pagado' al

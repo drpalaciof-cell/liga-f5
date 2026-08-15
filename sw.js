@@ -24,7 +24,20 @@
 // planilla.html -- el planillero ahora marca el arranque real (pitazo) y el arranque del 2°
 // tiempo con un botón dedicado, en vez de que el cronómetro empiece solo al cargar la
 // alineación. Guarda horaArranque/horaFin1T/horaInicio2T/horaFin en cada partido.
-const CACHE = 'ligaf5-v20';
+// v21: URGENTE en pleno partido -- (1) editar el número de camiseta de un jugador ya
+// confirmado en la alineación (antes no se podía corregir un typo sin pasar por "Corregir
+// evento"), (2) agregar a la planilla un jugador que no está en la lista de buena fe del
+// equipo, cargándolo a mano, (3) botón "Actualizar" agregado también en la pantalla del
+// partido en vivo (antes solo estaba en la de elegir cancha).
+// v22: URGENTE -- confirmarAlineacion() esperaba (await) el ack del servidor antes de avanzar,
+// a diferencia de TODO el resto de la app (goles/tarjetas/faltas nunca esperan eso). Con señal
+// mala/nula en la cancha, Firestore no resuelve ese await hasta reconectar, y se veía como
+// "Error al guardar" justo al confirmar la alineación. Ahora guarda en segundo plano como el
+// resto, sin bloquear.
+// v23: el gate de "esperando arranque"/"entretiempo" tapaba TODA la pantalla del partido -- a
+// pedido del usuario, ahora es un botón más dentro de la planilla (mismo lugar que "FIN DEL
+// 1° TIEMPO"), para poder seguir viendo y tocando el resto de la planilla mientras se espera.
+const CACHE = 'ligaf5-v23';
 const ASSETS = [
   './index.html',
   './planilla.html',

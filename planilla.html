@@ -843,15 +843,6 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- ══ SCREEN: PARTIDO ══ -->
 <div class="screen" id="screen-partido">
 
-  <!-- Gate de "esperando arranque" / "entretiempo" — tapa toda la pantalla del partido hasta
-       que el planillero toca el botón en el momento REAL (pitazo del árbitro), en vez de que el
-       cronómetro arranque solo apenas se termina de cargar la alineación (que puede ser varios
-       minutos antes). Esto es lo que hace confiable el cronómetro que ve el admin en "En vivo". -->
-  <div id="arranque-gate" style="display:none;position:absolute;inset:0;z-index:500;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;">
-    <div id="arranque-gate-txt" style="font-size:15px;font-weight:700;max-width:300px;color:var(--text-dim);"></div>
-    <button class="btn btn-primary" id="arranque-gate-btn" style="font-size:17px;padding:16px 34px;"></button>
-  </div>
-
   <!-- COMPACT HEADER: back + marcador + período + división -->
   <div class="partido-header">
     <button class="topbar-back" onclick="cargarLista()">←</button>
@@ -870,6 +861,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <span class="ph-div-nombre" id="ph-division-nombre"></span>
       </div>
       <span class="ph-periodo" id="ph-periodo">1° TIEMPO</span>
+      <button onclick="actualizarApp()" title="Buscar actualización" style="background:none;border:none;color:rgba(255,255,255,0.35);font-size:15px;cursor:pointer;padding:4px 6px;">🔄</button>
     </div>
   </div>
 
@@ -949,6 +941,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <span class="add-ico">➕</span>LOCAL
       </button>
       <div class="footer-center">
+        <button class="btn-fin-tiempo" id="btn-arranque" style="display:none;background:var(--green);">▶ ARRANCÓ</button>
         <button class="btn-fin-tiempo" id="btn-halftime" onclick="finPrimerTiempo()">🔔 FIN DEL 1° TIEMPO</button>
         <button class="btn-fin-partido" id="btn-fin" onclick="finPartido()" style="display:none;">🏁 FIN DEL PARTIDO</button>
       </div>
@@ -1504,11 +1497,17 @@ async function confirmarAlineacion(){
     if(_aliCapitanDni){extraFields.capitanLocalDni=_aliCapitanDni;st.partido.capitanLocalDni=_aliCapitanDni;}
   }
   if(st.equipo==='visitante'&&_aliCapitanDni){extraFields.capitanVisitanteDni=_aliCapitanDni;st.partido.capitanVisitanteDni=_aliCapitanDni;}
-  try{
-    await db.collection('partidos').doc(st.partidoId).update({[campo]:alineacion,estado:'alineacion',...extraFields});
-    if(st.equipo==='local')st.alineacionLocal=alineacion;else st.alineacionVisitante=alineacion;
-    toast('Alineación confirmada ✓');setTimeout(iniciarAlineacion,600);
-  }catch(e){toast('Error al guardar.');if(btn)btn.disabled=false;}
+  // Antes esto esperaba (await) la confirmación del servidor antes de avanzar -- Firestore NO
+  // resuelve un .update() hasta que el backend lo confirma, ni bien se pierde señal. Con mala
+  // conexión en la cancha, eso se veía como "Error al guardar" y dejaba trabado al planillero
+  // justo antes de arrancar el partido. El resto de la app (goles, tarjetas, faltas) NUNCA
+  // espera esto: actualiza el estado local YA y guarda en segundo plano. Ahora esta función hace
+  // lo mismo, para que ande igual de bien con mala señal o sin conexión.
+  if(st.equipo==='local')st.alineacionLocal=alineacion;else st.alineacionVisitante=alineacion;
+  toast('Alineación confirmada ✓');
+  setTimeout(iniciarAlineacion,600);
+  db.collection('partidos').doc(st.partidoId).update({[campo]:alineacion,estado:'alineacion',...extraFields})
+    .catch(e=>{ console.error('confirmarAlineacion:',e); if(navigator.onLine)toast('⚠ No se guardó la alineación — reintentá con señal.',6000); });
 }
 
 function renderListasPartido(){
@@ -1517,8 +1516,8 @@ function renderListasPartido(){
   const evV=buildEventosJugador(st.partido.equipoVisitanteId);
   const capL=st.partido.capitanLocalDni||(st.alineacionLocal[0]&&st.alineacionLocal[0].dni)||'';
   const capV=st.partido.capitanVisitanteDni||(st.alineacionVisitante[0]&&st.alineacionVisitante[0].dni)||'';
-  document.getElementById('col-local').innerHTML=renderColumnaPartido(st.alineacionLocal,evL,capL);
-  document.getElementById('col-visitante').innerHTML=renderColumnaPartido(st.alineacionVisitante,evV,capV);
+  document.getElementById('col-local').innerHTML=renderColumnaPartido(st.alineacionLocal,evL,capL,'local');
+  document.getElementById('col-visitante').innerHTML=renderColumnaPartido(st.alineacionVisitante,evV,capV,'visitante');
 }
 function buildEventosJugador(equipoId){
   const m={};
@@ -1548,7 +1547,7 @@ function fmtDni(d){
 function ordenarPorNumero(alin){
   return (alin||[]).slice().sort((a,b)=>(parseInt(a.numero,10)||99)-(parseInt(b.numero,10)||99));
 }
-function renderColumnaPartido(alin,evMap,capitanDni){
+function renderColumnaPartido(alin,evMap,capitanDni,equipo){
   if(!alin||!alin.length)return'<div style="color:var(--muted);font-size:11px;padding:8px 6px;">Sin alineación</div>';
   return ordenarPorNumero(alin).map(j=>{
     const ev=evMap[j.dni]||{};
@@ -1560,8 +1559,27 @@ function renderColumnaPartido(alin,evMap,capitanDni){
     for(let i=0;i<(ev.ta||0);i++)icons+='🟨';
     if(ev.td)icons+='🟧';
     if(ev.tr)icons+='🟥';
-    return`<div class="prow-m${hasEv?' has-ev':''}${expulsado?' expulsado':''}"><span class="prow-mnum">${j.numero||'—'}</span><div class="prow-minfo"><div class="prow-mname">${esc(j.nombre)}</div><div class="prow-mdni">${fmtDni(j.dni)}</div></div>${esCap?'<span class="prow-cap">C</span>':''}${icons?`<span class="prow-mev">${icons}</span>`:''}</div>`;
+    return`<div class="prow-m${hasEv?' has-ev':''}${expulsado?' expulsado':''}"><span class="prow-mnum" style="cursor:pointer;text-decoration:underline dotted;" onclick="editarNumeroJugador('${escJs(equipo)}','${escJs(j.dni)}')" title="Tocá para corregir el número">${j.numero||'—'}</span><div class="prow-minfo"><div class="prow-mname">${esc(j.nombre)}</div><div class="prow-mdni">${fmtDni(j.dni)}</div></div>${esCap?'<span class="prow-cap">C</span>':''}${icons?`<span class="prow-mev">${icons}</span>`:''}</div>`;
   }).join('');
+}
+// Corregir el número de camiseta de un jugador YA confirmado en la alineación -- antes solo se
+// podía elegir el número al armar la alineación o al agregar un jugador nuevo; si se cargaba mal
+// no había forma de arreglarlo sin pasar por "Corregir evento" (que es solo para goles/tarjetas).
+function editarNumeroJugador(equipo,dni){
+  const alin=equipo==='local'?st.alineacionLocal:st.alineacionVisitante;
+  const j=alin.find(x=>x.dni===dni);
+  if(!j)return;
+  const numStr=prompt('Nuevo número de camiseta para '+(j.nombre||dni)+':',j.numero||'');
+  if(numStr===null)return;
+  const v=numStr.trim();
+  if(!v||!/^\d{1,2}$/.test(v)){toast('Número inválido — tiene que ser entre 1 y 99.',3000);return;}
+  const nuevo=v.padStart(2,'0');
+  if(alin.some(x=>x.dni!==dni&&x.numero===nuevo)){toast('Ese número ya lo tiene otro jugador del equipo.',3000);return;}
+  j.numero=nuevo;
+  const campo=equipo==='local'?'alineacionLocal':'alineacionVisitante';
+  db.collection('partidos').doc(st.partidoId).update({[campo]:alin})
+    .then(()=>{renderListasPartido();toast('✓ Número actualizado');})
+    .catch(()=>toast('Error al guardar.'));
 }
 
 function actualizarEscudos(){
@@ -1644,32 +1662,29 @@ function cambiarFalta(equipo,delta){
   }
 }
 
-function actualizarBotonestiempo(){
-  document.getElementById('btn-halftime').style.display=st.tiempoActual===1?'':'none';
-  document.getElementById('btn-fin').style.display=st.tiempoActual===2?'':'none';
-}
-
-// El "gate" tapa toda la pantalla del partido en dos momentos: recién armada la alineación
-// (esperando_inicio) y en el entretiempo (entretiempo) -- en los dos casos el cronómetro real
-// (el que ve el admin en "En vivo") tiene que arrancar justo cuando el planillero toca el botón,
-// no antes. Fuera de esos dos estados, el gate se oculta y se ve la planilla normal.
+// Antes esto era un botón, y "esperando_inicio"/"entretiempo" tapaban TODA la pantalla del
+// partido con un overlay hasta tocarlo -- a pedido del usuario, ahora es un botón más dentro de
+// la planilla (mismo lugar que "FIN DEL 1° TIEMPO"/"FIN DEL PARTIDO"), para poder seguir viendo
+// y tocando el resto de la planilla mientras se espera el pitazo del árbitro.
+function actualizarBotonestiempo(){ actualizarGateArranque(); }
 function actualizarGateArranque(){
-  const gate=document.getElementById('arranque-gate');
-  const txt=document.getElementById('arranque-gate-txt');
-  const btn=document.getElementById('arranque-gate-btn');
+  const btnArr=document.getElementById('btn-arranque');
+  const btnHalf=document.getElementById('btn-halftime');
+  const btnFin=document.getElementById('btn-fin');
   const estado=st.partido&&st.partido.estado;
+  btnArr.style.display='none';btnHalf.style.display='none';btnFin.style.display='none';
   if(estado==='esperando_inicio'){
-    gate.style.display='flex';
-    txt.textContent='Alineaciones confirmadas. Tocá el botón recién cuando el árbitro pite el inicio del partido.';
-    btn.textContent='▶ Arrancó el partido';
-    btn.onclick=confirmarArranque;
+    btnArr.textContent='▶ ARRANCÓ EL PARTIDO';
+    btnArr.onclick=confirmarArranque;
+    btnArr.style.display='';
   }else if(estado==='entretiempo'){
-    gate.style.display='flex';
-    txt.textContent='Entretiempo. Tocá el botón recién cuando el árbitro reanude el juego.';
-    btn.textContent='▶ Arrancó el 2° tiempo';
-    btn.onclick=confirmarArranque2T;
+    btnArr.textContent='▶ ARRANCÓ EL 2° TIEMPO';
+    btnArr.onclick=confirmarArranque2T;
+    btnArr.style.display='';
+  }else if(st.tiempoActual===1){
+    btnHalf.style.display='';
   }else{
-    gate.style.display='none';
+    btnFin.style.display='';
   }
 }
 function confirmarArranque(){
@@ -2415,14 +2430,14 @@ async function abrirModalAgregarJugador(equipo){
     :'El equipo ya tiene 15 jugadores. Seleccioná uno para reemplazar.';
   const lista=document.getElementById('mag-lista');
   if(!disponibles.length){
-    lista.innerHTML='<div style="color:var(--muted);text-align:center;padding:16px;font-size:13px;">No hay jugadores disponibles.</div>';
+    lista.innerHTML='<div style="color:var(--muted);text-align:center;padding:16px 0;font-size:13px;">No hay jugadores disponibles.</div>'+(puedeAgregar?manualAddRowHtml(equipo,null):'');
     abrirModal('modal-agregar-jug');return;
   }
   abrirModal('modal-agregar-jug'); // se abre ya (con lo que había) y se completa cuando resuelva el chequeo, para no sentir el modal trabado
   if(puedeAgregar){
     const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
     lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Seleccioná para agregar</div>'+
-      disponibles.map(j=>jugadorRowHtml(j,'onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',null)"',motivoBloqueoJugador(j.dni,ctx))).join('');
+      disponibles.map(j=>jugadorRowHtml(j,'onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',null)"',motivoBloqueoJugador(j.dni,ctx))).join('')+manualAddRowHtml(equipo,null);
   }else{
     lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">1. ¿Quién sale de la planilla?</div>'+
       ordenarPorNumero(alin).map(j=>'<div class="modal-player" style="cursor:pointer;" onclick="mostrarIngresante(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\')">'+
@@ -2445,11 +2460,54 @@ async function mostrarIngresante(equipo,dniSale){
   lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">2. ¿Quién entra en lugar de '+esc(salio?salio.nombre:dniSale)+'?</div>'+
     '<div style="color:var(--muted);text-align:center;padding:10px;font-size:12px;">Verificando seguro y sanciones...</div>';
   if(!disponibles.length){
-    lista.innerHTML='<div style="color:var(--muted);text-align:center;padding:16px;font-size:13px;">No hay jugadores disponibles.</div>';return;
+    lista.innerHTML='<div style="color:var(--muted);text-align:center;padding:16px 0;font-size:13px;">No hay jugadores disponibles.</div>'+manualAddRowHtml(equipo,dniSale);return;
   }
   const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
   lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">2. ¿Quién entra en lugar de '+esc(salio?salio.nombre:dniSale)+'?</div>'+
-    disponibles.map(j=>jugadorRowHtml(j,'onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',\''+escJs(dniSale)+'\')"',motivoBloqueoJugador(j.dni,ctx))).join('');
+    disponibles.map(j=>jugadorRowHtml(j,'onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',\''+escJs(dniSale)+'\')"',motivoBloqueoJugador(j.dni,ctx))).join('')+manualAddRowHtml(equipo,dniSale);
+}
+// Fila fija al final de la lista de "a quién agregar" -- para un jugador que juega hoy pero
+// nunca quedó cargado en la lista de buena fe del equipo (roster.jugadores). Sin esto, un
+// jugador ausente de esa lista no se podía sumar a la planilla en pleno partido.
+function manualAddRowHtml(equipo,dniSale){
+  return '<div class="modal-player" style="cursor:pointer;border-top:1px dashed rgba(255,255,255,.15);margin-top:10px;padding-top:14px;" onclick="agregarJugadorManual(\''+escJs(equipo)+'\','+(dniSale?'\''+escJs(dniSale)+'\'':'null')+')">'+
+    '<div style="flex:1;"><div class="player-name">➕ Jugador que no está en la lista</div><div class="player-dni" style="color:var(--muted);">Cargarlo a mano (nombre, DNI y número)</div></div></div>';
+}
+async function agregarJugadorManual(equipo,dniSale){
+  const p=st.partido;
+  const equipoId=equipo==='local'?p.equipoLocalId:p.equipoVisitanteId;
+  const nombre=(prompt('Nombre y apellido del jugador:')||'').trim();
+  if(!nombre)return;
+  const dniStr=(prompt('DNI del jugador (sin puntos):')||'').trim().replace(/\D/g,'');
+  if(!dniStr){toast('DNI inválido.',3000);return;}
+  const alinChk=equipo==='local'?st.alineacionLocal:st.alineacionVisitante;
+  if(alinChk.some(x=>x.dni===dniStr)){toast('Ese DNI ya está en la alineación.',3000);return;}
+  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
+  const motivo=motivoBloqueoJugador(dniStr,ctx);
+  if(motivo){toast('🚫 No se puede agregar: '+motivo,4000);return;}
+  cerrarModal('modal-agregar-jug');
+  let numero='';
+  while(true){
+    const numStr=prompt('Número de camiseta para '+nombre+' (solo números, sin repetir):','');
+    if(numStr===null)return;
+    const v=numStr.trim();
+    if(!v||!/^\d{1,2}$/.test(v)){alert('Ingresá un número válido entre 1 y 99.');continue;}
+    const usados=new Set(alinChk.filter(j=>!dniSale||j.dni!==dniSale).map(j=>j.numero));
+    if(usados.has(v)||usados.has(v.padStart(2,'0'))){alert('Ese número ya está en uso. Elegí otro.');continue;}
+    numero=v.padStart(2,'0');break;
+  }
+  const nuevoJug={dni:dniStr,nombre:nombre.toUpperCase(),numero};
+  let alin=(equipo==='local'?st.alineacionLocal:st.alineacionVisitante).slice();
+  if(dniSale){alin=alin.filter(j=>j.dni!==dniSale);}
+  alin.push(nuevoJug);
+  if(equipo==='local')st.alineacionLocal=alin;else st.alineacionVisitante=alin;
+  const campo=equipo==='local'?'alineacionLocal':'alineacionVisitante';
+  try{
+    await db.collection('partidos').doc(st.partidoId).update({[campo]:alin});
+    renderListasPartido();
+    actualizarBotonesUndo();
+    toast('✓ '+(dniSale?'Reemplazo':'Jugador')+' cargado a mano');
+  }catch(e){toast('Error al guardar.');}
 }
 
 async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
