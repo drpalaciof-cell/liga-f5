@@ -1197,6 +1197,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 
     <div class="tabs-admin">
       <button class="tab-btn active" data-tab="torneo" onclick="switchAdminTab('torneo')">🏆 Torneo Clausura</button>
+      <button class="tab-btn" data-tab="envivo" onclick="switchAdminTab('envivo')">🔴 En vivo</button>
       <button class="tab-btn" data-tab="mensajes" onclick="switchAdminTab('mensajes')">✉️ Mensajes<span class="msg-tab-badge" id="msg-admin-tab-badge"></span></button>
       <button class="tab-btn" data-tab="avisos" onclick="switchAdminTab('avisos')">Avisos</button>
       <button class="tab-btn" data-tab="config" onclick="switchAdminTab('config')">Configuración</button>
@@ -1435,6 +1436,14 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     </div>
 
     <!-- Avisos tab -->
+    <div id="admintab-envivo" class="admintab hidden">
+      <div class="glass section-card">
+        <h3>🔴 En vivo — las 3 canchas</h3>
+        <p class="wizard-help" style="margin-bottom:14px;">Se actualiza solo, en cuanto el planillero de cada cancha carga un gol, tarjeta o cierra el partido — no hace falta recargar la página.</p>
+        <div id="envivo-cont" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;"></div>
+      </div>
+    </div>
+
     <div id="admintab-aranceles" class="admintab hidden">
       <div class="glass section-card">
         <h3>💵 Aranceles por fecha</h3>
@@ -3448,6 +3457,7 @@ function switchAdminTab(tab) {
   document.querySelectorAll('.admintab').forEach(d => d.classList.add('hidden'));
   document.getElementById('admintab-' + tab).classList.remove('hidden');
   if (tab === 'aranceles') renderArancelesAdmin();
+  if (tab === 'envivo') renderEnVivoAdmin();
   if (tab === 'mensajes') iniciarMensajesAdmin();
   else detenerMensajesAdmin();
 }
@@ -5903,9 +5913,51 @@ function cargarPartidosTotal() {
     snap.forEach(doc => { const d = { id: doc.id, ...doc.data() }; if (!d._sim) partidosTotalCache.push(d); });
     partidosTotalCache.sort((a, b) => (a.numeroFecha || 0) - (b.numeroFecha || 0));
     renderFixtureTotal();
+    renderEnVivoAdmin();
   }, e => console.error(e));
 }
 function detenerPartidosTotal() { if (partidosTotalUnsub) { partidosTotalUnsub(); partidosTotalUnsub = null; } }
+// Pestaña "En vivo": una tarjeta por cancha con el partido que está jugándose ahora (o el
+// próximo, o el último cerrado si ya terminaron todos) -- reusa partidosTotalCache, que ya
+// escucha Firestore en tiempo real desde que se abre el panel admin (cargarPartidosTotal()),
+// así que no hace falta un listener nuevo ni recargar nada a mano.
+function renderEnVivoAdmin() {
+  const cont = document.getElementById('envivo-cont');
+  if (!cont) return;
+  const pendientes = partidosTotalCache.filter(p => !p.jugado);
+  const fechasPend = [...new Set(pendientes.map(p => Number(p.numeroFecha)).filter(f => !isNaN(f)))].sort((a, b) => a - b);
+  const fechaActiva = fechasPend.length ? fechasPend[0] : null;
+  const deHoy = fechaActiva != null ? partidosTotalCache.filter(p => Number(p.numeroFecha) === fechaActiva) : [];
+  if (!deHoy.length) { cont.innerHTML = `<div class="empty-state">No hay ninguna fecha en curso ahora mismo.</div>`; return; }
+  const labels = { alineacion: '🟡 En alineación', primer_tiempo: '🔴 1er tiempo', segundo_tiempo: '🔴 2do tiempo' };
+  const EN_CURSO = ['alineacion', 'primer_tiempo', 'segundo_tiempo'];
+  cont.innerHTML = [1, 2, 3].map(cancha => {
+    const deCancha = deHoy.filter(p => Number(p.cancha) === cancha).sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
+    if (!deCancha.length) return `<div class="glass" style="border-radius:14px;padding:16px;"><h4 style="margin:0 0 8px;">Cancha ${cancha}</h4><p class="muted" style="margin:0;">Sin partidos hoy.</p></div>`;
+    const enCurso = deCancha.find(p => EN_CURSO.includes(p.estado));
+    const p = enCurso || deCancha.find(p => !p.jugado) || deCancha[deCancha.length - 1];
+    const estadoTxt = enCurso ? labels[p.estado] : (p.jugado ? '✓ Cerrado' : `⏳ Próximo · ${p.horario || '--:--'}`);
+    const marcador = (enCurso || p.jugado) ? `${p.golesLocal ?? 0} - ${p.golesVisitante ?? 0}` : 'vs';
+    const goleadoresHtml = (p.goleadores || []).length
+      ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:6px;">⚽ ${p.goleadores.map(g => `${escapeHtml(g.jugadorNombre || '')}${g.cantidad > 1 ? ' (' + g.cantidad + ')' : ''}`).join(', ')}</div>` : '';
+    const tarjetasHtml = (p.tarjetas || []).length
+      ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;">${p.tarjetas.map(t => `${t.tipo === 'roja' || t.dobleAmarilla ? '🟥' : '🟨'} ${escapeHtml(t.jugadorNombre || '')}`).join(', ')}</div>` : '';
+    const interBadge = p.interzonal ? ' <span style="font-size:10px;color:#c4b5fd;">⚔ INT</span>' : '';
+    return `<div class="glass" style="border-radius:14px;padding:16px;${enCurso ? 'border:1px solid rgba(255,80,80,.4);' : ''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h4 style="margin:0;">Cancha ${cancha}</h4>
+        <span style="font-size:11px;font-weight:700;color:${enCurso ? '#ff6b6b' : 'var(--text-dim)'};">${estadoTxt}</span>
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:2px;">${escapeHtml(p.division || '')}${p.zona && p.zona !== 'INT' ? ' · Zona ' + p.zona : ''}${interBadge}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div style="font-weight:700;font-size:14.5px;flex:1;">${escapeHtml(p.equipoLocalNombre || '')}</div>
+        <div style="font-weight:800;font-size:20px;color:var(--division-color);white-space:nowrap;">${marcador}</div>
+        <div style="font-weight:700;font-size:14.5px;flex:1;text-align:right;">${escapeHtml(p.equipoVisitanteNombre || '')}</div>
+      </div>
+      ${goleadoresHtml}${tarjetasHtml}
+    </div>`;
+  }).join('');
+}
 function buscarPartidoAdmin(id) { return partidosTotalCache.find(x => x.id === id) || partidosCacheAdmin.find(x => x.id === id); }
 function seleccionarFixtureTotalTab(t) { state.fixtureTotalTab = t; renderFixtureTotal(); }
 function renderFixtureTotal() {

@@ -16,7 +16,11 @@
 // v18: fix en cargarDivisionesCanchas() -- mostraba division/zona mezclando TODAS las fechas
 // futuras para una misma cancha (la cancha de Primera y las zonas de Segunda rotan fecha a
 // fecha), ahora se acota a la fecha activa (la más baja con partidos sin jugar).
-const CACHE = 'ligaf5-v18';
+// v19: nueva pestaña "🔴 En vivo" en el panel admin (index.html) -- una tarjeta por cancha con
+// el partido en curso (marcador, goleadores, tarjetas) o el próximo, en tiempo real vía
+// Firestore -- para seguir las 3 canchas desde una computadora sin abrir 3 pestañas del
+// planillero.
+const CACHE = 'ligaf5-v19';
 const ASSETS = [
   './index.html',
   './planilla.html',
