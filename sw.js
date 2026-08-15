@@ -10,7 +10,10 @@
 // toque index.html o planilla.html es lo que hace que las tablets ya abiertas se actualicen
 // solas sin que nadie tenga que cerrar la app a mano.
 // v16: index.html agrega el mismo botón manual "🔄 Actualizar" que ya tenía planilla.html.
-const CACHE = 'ligaf5-v16';
+// v17: se saca el overlay de "girá la tablet a vertical" de planilla.html -- bloqueaba abrir
+// la app desde una computadora (pantalla horizontal). El bloqueo de rotación queda a cargo del
+// sistema operativo de cada tablet en vez de la app.
+const CACHE = 'ligaf5-v17';
 const ASSETS = [
   './index.html',
   './planilla.html',
