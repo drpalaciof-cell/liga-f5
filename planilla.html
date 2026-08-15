@@ -175,8 +175,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   border-radius:20px;border:1px solid;margin-top:4px;letter-spacing:.5px;
 }
 .mc-estado.pendiente{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:var(--muted);}
-.mc-estado.alineacion{background:rgba(0,230,118,0.08);border-color:rgba(0,230,118,0.28);color:var(--green);}
+.mc-estado.alineacion,.mc-estado.esperando_inicio{background:rgba(0,230,118,0.08);border-color:rgba(0,230,118,0.28);color:var(--green);}
 .mc-estado.primer_tiempo,.mc-estado.segundo_tiempo{background:rgba(255,112,67,0.08);border-color:rgba(255,112,67,0.28);color:var(--orange);}
+.mc-estado.entretiempo{background:rgba(255,214,0,0.08);border-color:rgba(255,214,0,0.28);color:var(--yellow);}
 .mc-estado.cerrado{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);color:rgba(255,255,255,0.2);}
 .empty-msg{text-align:center;color:var(--muted);padding:44px 20px;font-size:14px;line-height:1.8;}
 
@@ -842,6 +843,15 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- ══ SCREEN: PARTIDO ══ -->
 <div class="screen" id="screen-partido">
 
+  <!-- Gate de "esperando arranque" / "entretiempo" — tapa toda la pantalla del partido hasta
+       que el planillero toca el botón en el momento REAL (pitazo del árbitro), en vez de que el
+       cronómetro arranque solo apenas se termina de cargar la alineación (que puede ser varios
+       minutos antes). Esto es lo que hace confiable el cronómetro que ve el admin en "En vivo". -->
+  <div id="arranque-gate" style="display:none;position:absolute;inset:0;z-index:500;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;">
+    <div id="arranque-gate-txt" style="font-size:15px;font-weight:700;max-width:300px;color:var(--text-dim);"></div>
+    <button class="btn btn-primary" id="arranque-gate-btn" style="font-size:17px;padding:16px 34px;"></button>
+  </div>
+
   <!-- COMPACT HEADER: back + marcador + período + división -->
   <div class="partido-header">
     <button class="topbar-back" onclick="cargarLista()">←</button>
@@ -1269,7 +1279,7 @@ async function cargarLista(){
       </div>`;
     }
     if(!partidos.length){body.innerHTML+='<div class="empty-msg">Todos los partidos de esta cancha ya fueron cerrados.</div>';return;}
-    const labels={pendiente:'Pendiente',alineacion:'En alineación',primer_tiempo:'1° Tiempo',segundo_tiempo:'2° Tiempo',cerrado:'Cerrado'};
+    const labels={pendiente:'Pendiente',alineacion:'En alineación',esperando_inicio:'Esperando inicio',primer_tiempo:'1° Tiempo',entretiempo:'Entretiempo',segundo_tiempo:'2° Tiempo',cerrado:'Cerrado'};
     // Solo el primer partido no cerrado (en orden de horario) queda
     // habilitado para abrir — evita que se salteen partidos fuera de orden.
     const primerActivoId=(partidos.find(p=>(p.estado||'pendiente')!=='cerrado')||{}).id;
@@ -1586,12 +1596,15 @@ function irAPartido(){
     divBadge.style.display='none';
   }
   if((p.estado||'pendiente')==='alineacion'||(p.estado||'pendiente')==='pendiente'){
-    db.collection('partidos').doc(st.partidoId).update({estado:'primer_tiempo'});
-    st.partido.estado='primer_tiempo';
+    // Antes esto arrancaba el 1er tiempo (y su cronómetro) apenas se terminaba de cargar la
+    // alineación -- podía ser varios minutos antes del pitazo real del árbitro. Ahora queda
+    // "esperando_inicio" hasta que el planillero toque el botón del gate, justo en el pitazo.
+    db.collection('partidos').doc(st.partidoId).update({estado:'esperando_inicio'});
+    st.partido.estado='esperando_inicio';
   }
   // Tema naranja para Segunda División
   document.getElementById('screen-partido').classList.toggle('theme-segunda', divKey==='segunda');
-  actualizarMarcador();actualizarFaltas();renderEventos();actualizarBotonestiempo();actualizarBotonesMinuto();actualizarBotonesUndo();actualizarBotonesAgregarJugador();
+  actualizarMarcador();actualizarFaltas();renderEventos();actualizarBotonestiempo();actualizarBotonesMinuto();actualizarBotonesUndo();actualizarBotonesAgregarJugador();actualizarGateArranque();
   goScreen('screen-partido');
   fixIosScroll(document.getElementById('col-local'));
   fixIosScroll(document.getElementById('col-visitante'));
@@ -1636,9 +1649,41 @@ function actualizarBotonestiempo(){
   document.getElementById('btn-fin').style.display=st.tiempoActual===2?'':'none';
 }
 
+// El "gate" tapa toda la pantalla del partido en dos momentos: recién armada la alineación
+// (esperando_inicio) y en el entretiempo (entretiempo) -- en los dos casos el cronómetro real
+// (el que ve el admin en "En vivo") tiene que arrancar justo cuando el planillero toca el botón,
+// no antes. Fuera de esos dos estados, el gate se oculta y se ve la planilla normal.
+function actualizarGateArranque(){
+  const gate=document.getElementById('arranque-gate');
+  const txt=document.getElementById('arranque-gate-txt');
+  const btn=document.getElementById('arranque-gate-btn');
+  const estado=st.partido&&st.partido.estado;
+  if(estado==='esperando_inicio'){
+    gate.style.display='flex';
+    txt.textContent='Alineaciones confirmadas. Tocá el botón recién cuando el árbitro pite el inicio del partido.';
+    btn.textContent='▶ Arrancó el partido';
+    btn.onclick=confirmarArranque;
+  }else if(estado==='entretiempo'){
+    gate.style.display='flex';
+    txt.textContent='Entretiempo. Tocá el botón recién cuando el árbitro reanude el juego.';
+    btn.textContent='▶ Arrancó el 2° tiempo';
+    btn.onclick=confirmarArranque2T;
+  }else{
+    gate.style.display='none';
+  }
+}
+function confirmarArranque(){
+  const horaArranque=new Date().toISOString();
+  st.partido.estado='primer_tiempo';
+  st.partido.horaArranque=horaArranque;
+  db.collection('partidos').doc(st.partidoId).update({estado:'primer_tiempo',horaArranque});
+  actualizarGateArranque();
+  toast('⚽ Arrancó el partido');
+}
+
 // confirm() bloquea el hilo mientras está abierto, pero un doble-tap en la pantalla encola un
 // segundo click que se procesa recién cuando se cierra el primer diálogo — reabriendo otro
-// igual. Si el planillero lo confirma dos veces por reflejo, finPrimerTiempo() volvería a
+// igual. Si el planillero lo confirma dos veces por reflejo, confirmarArranque2T() volvería a
 // resetear las faltas del 2° tiempo aunque ya se hubiera cargado alguna en el medio. Este
 // guard evita esa segunda ejecución, igual que ya se hace en confirmarAlineacion (BUG3).
 let _cambiandoTiempo=false;
@@ -1646,11 +1691,24 @@ function finPrimerTiempo(){
   if(_cambiandoTiempo)return;
   _cambiandoTiempo=true;
   if(!confirm('¿Confirmar fin del 1° tiempo?')){_cambiandoTiempo=false;return;}
+  const horaFin1T=new Date().toISOString();
+  st.partido.estado='entretiempo'; // BUG1: actualizar estado local para que actualizarBotonesAgregarJugador lo detecte
+  st.partido.horaFin1T=horaFin1T;
+  actualizarBotonesAgregarJugador();actualizarGateArranque();
+  db.collection('partidos').doc(st.partidoId).update({estado:'entretiempo',horaFin1T});
+  toast('Fin del 1° tiempo — entretiempo');
+  _cambiandoTiempo=false;
+}
+function confirmarArranque2T(){
+  if(_cambiandoTiempo)return;
+  _cambiandoTiempo=true;
+  const horaInicio2T=new Date().toISOString();
   st.tiempoActual=2;st.faltas.local.t2=0;st.faltas.visitante.t2=0;
-  st.partido.estado='segundo_tiempo'; // BUG1: actualizar estado local para que actualizarBotonesAgregarJugador lo detecte
-  actualizarMarcador();actualizarFaltas();actualizarBotonestiempo();actualizarBotonesMinuto();actualizarBotonesAgregarJugador();
-  db.collection('partidos').doc(st.partidoId).update({estado:'segundo_tiempo',tiempoActual:2});
-  toast('Inicio del 2° tiempo');
+  st.partido.estado='segundo_tiempo';
+  st.partido.horaInicio2T=horaInicio2T;
+  actualizarMarcador();actualizarFaltas();actualizarBotonestiempo();actualizarBotonesMinuto();actualizarBotonesAgregarJugador();actualizarGateArranque();
+  db.collection('partidos').doc(st.partidoId).update({estado:'segundo_tiempo',tiempoActual:2,horaInicio2T});
+  toast('⚽ Arrancó el 2° tiempo');
   _cambiandoTiempo=false;
 }
 
@@ -1987,7 +2045,7 @@ async function cerrarPlanilla(){
   const gV=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoVisitanteId).length;
   try{
     await guardarPartido();
-    await db.collection('partidos').doc(st.partidoId).update({estado:'cerrado',jugado:true,observaciones:obs,golesLocal:gL,golesVisitante:gV});
+    await db.collection('partidos').doc(st.partidoId).update({estado:'cerrado',jugado:true,observaciones:obs,golesLocal:gL,golesVisitante:gV,horaFin:new Date().toISOString()});
     if(st.unsub){st.unsub();st.unsub=null;}
     toast('Planilla cerrada ✓',3000);
     // BUG: antes esto era goScreen('screen-lista'), que solo muestra de nuevo la pantalla con
@@ -2222,7 +2280,7 @@ async function renderHistorialLista(){
   await actualizarBotonCerrarFechaPlanillero();
   if(!fecha){wrap.innerHTML='';return;}
   const partidos=_histPartidos.filter(p=>String(p.numeroFecha||'?')===String(fecha));
-  const labels={pendiente:'Pendiente',alineacion:'En alineación',primer_tiempo:'1° Tiempo',segundo_tiempo:'2° Tiempo',cerrado:'✓ Cerrada'};
+  const labels={pendiente:'Pendiente',alineacion:'En alineación',esperando_inicio:'Esperando inicio',primer_tiempo:'1° Tiempo',entretiempo:'Entretiempo',segundo_tiempo:'2° Tiempo',cerrado:'✓ Cerrada'};
   if(!partidos.length){wrap.innerHTML='<div class="empty-msg">Sin partidos en esta fecha.</div>';return;}
   wrap.innerHTML=partidos.map(p=>{
     const estado=p.estado||'pendiente';

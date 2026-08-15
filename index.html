@@ -365,8 +365,9 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 .fecha-group-title{font-size:12px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
 .partido-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--glass-border);margin-bottom:6px;flex-wrap:wrap;}
 .badge-estado-planilla{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;}
-.badge-alineacion{background:#0d2a10;color:#00e676;}
+.badge-alineacion,.badge-esperando_inicio{background:#0d2a10;color:#00e676;}
 .badge-primer_tiempo,.badge-segundo_tiempo{background:#2a1a00;color:#ff7043;}
+.badge-entretiempo{background:#2a2500;color:#ffd600;}
 .badge-cerrado{background:#1a1a2a;color:var(--cyan);}
 .badge-pendiente{background:#1a1a1a;color:#555;}
 .partido-equipos{font-size:13.5px;}
@@ -5929,8 +5930,8 @@ function renderEnVivoAdmin() {
   const fechaActiva = fechasPend.length ? fechasPend[0] : null;
   const deHoy = fechaActiva != null ? partidosTotalCache.filter(p => Number(p.numeroFecha) === fechaActiva) : [];
   if (!deHoy.length) { cont.innerHTML = `<div class="empty-state">No hay ninguna fecha en curso ahora mismo.</div>`; return; }
-  const labels = { alineacion: '🟡 En alineación', primer_tiempo: '🔴 1er tiempo', segundo_tiempo: '🔴 2do tiempo' };
-  const EN_CURSO = ['alineacion', 'primer_tiempo', 'segundo_tiempo'];
+  const labels = { esperando_inicio: '⏸ Esperando arranque', primer_tiempo: '🔴 1er tiempo', entretiempo: '⏸ Entretiempo (ET)', segundo_tiempo: '🔴 2do tiempo' };
+  const EN_CURSO = ['esperando_inicio', 'primer_tiempo', 'entretiempo', 'segundo_tiempo'];
   cont.innerHTML = [1, 2, 3].map(cancha => {
     const deCancha = deHoy.filter(p => Number(p.cancha) === cancha).sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
     if (!deCancha.length) return `<div class="glass" style="border-radius:14px;padding:16px;"><h4 style="margin:0 0 8px;">Cancha ${cancha}</h4><p class="muted" style="margin:0;">Sin partidos hoy.</p></div>`;
@@ -5943,6 +5944,22 @@ function renderEnVivoAdmin() {
     const tarjetasHtml = (p.tarjetas || []).length
       ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;">${p.tarjetas.map(t => `${t.tipo === 'roja' || t.dobleAmarilla ? '🟥' : '🟨'} ${escapeHtml(t.jugadorNombre || '')}`).join(', ')}</div>` : '';
     const interBadge = p.interzonal ? ' <span style="font-size:10px;color:#c4b5fd;">⚔ INT</span>' : '';
+    // Cronómetro: NO es el reloj oficial del partido (eso lo lleva el árbitro en cancha) --
+    // es solo para que el admin vea cuánto pasó desde que el planillero tocó "Arrancó"/"Arrancó
+    // el 2do", como referencia de sincronización entre canchas y de cuánto duró cada tiempo.
+    let tiempoLinea = '';
+    if (p.estado === 'primer_tiempo' && p.horaArranque) {
+      tiempoLinea = `<span class="envivo-clock" data-desde="${p.horaArranque}">00:00</span>`;
+    } else if (p.estado === 'segundo_tiempo' && p.horaInicio2T) {
+      tiempoLinea = `<span class="envivo-clock" data-desde="${p.horaInicio2T}">00:00</span>`;
+    } else if (p.estado === 'entretiempo' && p.horaArranque && p.horaFin1T) {
+      tiempoLinea = `1er tiempo: ${fmtMinCrono(new Date(p.horaFin1T) - new Date(p.horaArranque))}`;
+    } else if (p.jugado && p.horaArranque && p.horaFin1T && p.horaInicio2T && p.horaFin) {
+      const t1 = new Date(p.horaFin1T) - new Date(p.horaArranque), t2 = new Date(p.horaFin) - new Date(p.horaInicio2T);
+      tiempoLinea = `Duró ${fmtMinCrono(t1 + t2)} · 1T ${fmtMinCrono(t1)} + 2T ${fmtMinCrono(t2)}`;
+    }
+    const enVivoTick = p.estado === 'primer_tiempo' || p.estado === 'segundo_tiempo';
+    const tiempoHtml = tiempoLinea ? `<div style="text-align:center;font-variant-numeric:tabular-nums;font-weight:800;margin:2px 0 8px;font-size:${enVivoTick ? '24px' : '11.5px'};color:${enVivoTick ? '#ff6b6b' : 'var(--text-dim)'};">${tiempoLinea}</div>` : '';
     return `<div class="glass" style="border-radius:14px;padding:16px;${enCurso ? 'border:1px solid rgba(255,80,80,.4);' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <h4 style="margin:0;">Cancha ${cancha}</h4>
@@ -5954,10 +5971,22 @@ function renderEnVivoAdmin() {
         <div style="font-weight:800;font-size:20px;color:var(--division-color);white-space:nowrap;">${marcador}</div>
         <div style="font-weight:700;font-size:14.5px;flex:1;text-align:right;">${escapeHtml(p.equipoVisitanteNombre || '')}</div>
       </div>
-      ${goleadoresHtml}${tarjetasHtml}
+      ${tiempoHtml}${goleadoresHtml}${tarjetasHtml}
     </div>`;
   }).join('');
 }
+function fmtMinCrono(ms) { return Math.max(0, Math.round(ms / 60000)) + ' min'; }
+// Tick del cronómetro en vivo de la pestaña "En vivo" -- corre siempre en segundo plano (es
+// barato: si no hay ningún .envivo-clock en pantalla, no hace nada) para no depender de que
+// Firestore mande un evento cada segundo, cosa que nunca va a pasar.
+setInterval(() => {
+  document.querySelectorAll('.envivo-clock').forEach(el => {
+    const desde = el.dataset.desde;
+    if (!desde) return;
+    const totalSeg = Math.max(0, Math.floor((Date.now() - new Date(desde).getTime()) / 1000));
+    el.textContent = String(Math.floor(totalSeg / 60)).padStart(2, '0') + ':' + String(totalSeg % 60).padStart(2, '0');
+  });
+}, 1000);
 function buscarPartidoAdmin(id) { return partidosTotalCache.find(x => x.id === id) || partidosCacheAdmin.find(x => x.id === id); }
 function seleccionarFixtureTotalTab(t) { state.fixtureTotalTab = t; renderFixtureTotal(); }
 function renderFixtureTotal() {
@@ -7049,8 +7078,8 @@ function filtrarPlanillasAdmin() {
   actualizarBotonCerrarFecha();
   if (!fecha) { wrap.innerHTML = ''; return; }
   const partidos = _planillasCache.filter(p => String(p.numeroFecha || '?') === String(fecha));
-  const eLabel = { pendiente: 'Pendiente', alineacion: 'En alineación', primer_tiempo: '1° Tiempo', segundo_tiempo: '2° Tiempo', cerrado: '✓ Cerrada' };
-  const eClass = { pendiente: 'badge-pendiente', alineacion: 'badge-alineacion', primer_tiempo: 'badge-primer_tiempo', segundo_tiempo: 'badge-segundo_tiempo', cerrado: 'badge-cerrado' };
+  const eLabel = { pendiente: 'Pendiente', alineacion: 'En alineación', esperando_inicio: 'Esperando inicio', primer_tiempo: '1° Tiempo', entretiempo: 'Entretiempo', segundo_tiempo: '2° Tiempo', cerrado: '✓ Cerrada' };
+  const eClass = { pendiente: 'badge-pendiente', alineacion: 'badge-alineacion', esperando_inicio: 'badge-esperando_inicio', primer_tiempo: 'badge-primer_tiempo', entretiempo: 'badge-entretiempo', segundo_tiempo: 'badge-segundo_tiempo', cerrado: 'badge-cerrado' };
   if (!partidos.length) { wrap.innerHTML = '<p class="empty-state">Sin partidos en esta fecha.</p>'; return; }
   wrap.innerHTML = partidos.map(p => {
     const gL = p.golesLocal ?? '—', gV = p.golesVisitante ?? '—';

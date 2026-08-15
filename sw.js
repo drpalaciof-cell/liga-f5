@@ -20,7 +20,11 @@
 // el partido en curso (marcador, goleadores, tarjetas) o el próximo, en tiempo real vía
 // Firestore -- para seguir las 3 canchas desde una computadora sin abrir 3 pestañas del
 // planillero.
-const CACHE = 'ligaf5-v19';
+// v20: cronómetro real en "En vivo". Nuevos estados 'esperando_inicio' y 'entretiempo' en
+// planilla.html -- el planillero ahora marca el arranque real (pitazo) y el arranque del 2°
+// tiempo con un botón dedicado, en vez de que el cronómetro empiece solo al cargar la
+// alineación. Guarda horaArranque/horaFin1T/horaInicio2T/horaFin en cada partido.
+const CACHE = 'ligaf5-v20';
 const ASSETS = [
   './index.html',
   './planilla.html',
