@@ -60,7 +60,13 @@
 // partido siga tecnicamente en la pantalla de alineacion.
 // (3) en "En vivo" (index.html), goleadores y tarjetas ahora se separan por equipo -- antes
 // salian todos mezclados en una sola lista sin poder saber de que lado era cada uno.
-const CACHE = 'ligaf5-v27';
+// v28: nuevo boton "📋 Cargar alineacion por adelantado" en la pestana "En vivo" del panel admin
+// (index.html) -- el admin puede cargar la lista de buena fe + capitan del proximo partido de
+// cada cancha antes de que el planillero llegue a esa pantalla, para no perder tiempo cuando el
+// partido ya tiene que arrancar. Escribe los mismos campos que usa planilla.html
+// (alineacionLocal/Visitante, capitanLocalDni/VisitanteDni) -- iniciarAlineacion() detecta que
+// ya estan cargadas y salta derecho a la pantalla del partido.
+const CACHE = 'ligaf5-v28';
 const ASSETS = [
   './index.html',
   './planilla.html',

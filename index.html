@@ -5930,8 +5930,8 @@ function detenerPartidosTotal() { if (partidosTotalUnsub) { partidosTotalUnsub()
 // ya terminaron todos) -- reusa partidosTotalCache, que ya escucha Firestore en tiempo real
 // desde que se abre el panel admin o alguien toca la pestaña pública (cargarPartidosTotal() es
 // idempotente), así que no hace falta un listener nuevo ni recargar nada a mano.
-function renderEnVivoAdmin() { renderEnVivoCards('envivo-cont'); }
-function renderEnVivoPublico() { renderEnVivoCards('envivo-publico-cont'); }
+function renderEnVivoAdmin() { renderEnVivoCards('envivo-cont', true); }
+function renderEnVivoPublico() { renderEnVivoCards('envivo-publico-cont', false); }
 // Fase real del partido según los timestamps guardados -- distinta del campo 'estado' (que
 // decide qué pantalla ve el planillero y puede ir atrasado: si marcó el arranque temprano
 // mientras todavía cargaba la alineación, o si tocó "FIN DEL PARTIDO" pero no terminó de cerrar
@@ -5944,7 +5944,7 @@ function faseCrono(p) {
   if (p.horaArranque) return 'primer_tiempo';
   return p.estado || 'pendiente';
 }
-function renderEnVivoCards(contId) {
+function renderEnVivoCards(contId, isAdmin) {
   const cont = document.getElementById(contId);
   if (!cont) return;
   const pendientes = partidosTotalCache.filter(p => !p.jugado);
@@ -6014,10 +6014,90 @@ function renderEnVivoCards(contId) {
         <div style="flex:1;">${eventosLocalHtml}</div>
         <div style="flex:1;text-align:right;">${eventosVisitanteHtml}</div>
       </div>
+      ${(isAdmin && !p.jugado && (!(p.alineacionLocal || []).length || !(p.alineacionVisitante || []).length)) ? `<button class="btn btn-sm" style="width:100%;margin-top:10px;" onclick="abrirModalAlineacionAdmin('${p.id}')">📋 Cargar alineación por adelantado</button>` : ''}
     </div>`;
   }).join('');
 }
 function fmtMinCrono(ms) { return Math.max(0, Math.round(ms / 60000)) + ' min'; }
+// Cargar la alineación de un partido por adelantado, desde el panel admin -- a pedido del
+// usuario: se pierde tiempo si el planillero recién arranca a cargar la lista cuando el partido
+// ya tiene que empezar. Escribe los mismos campos que confirmarAlineacion() en planilla.html
+// (alineacionLocal/Visitante, capitanLocalDni/VisitanteDni) -- cuando el planillero abra ese
+// partido, iniciarAlineacion() ve que ya están las dos alineaciones cargadas y salta derecho a
+// la pantalla del partido, sin pedir la lista de nuevo.
+function abrirModalAlineacionAdmin(partidoId) {
+  const p = buscarPartidoAdmin(partidoId);
+  if (!p) { showToast('Partido no encontrado.', 'error'); return; }
+  const eqL = equiposCacheAdmin.find(e => e.id === p.equipoLocalId) || {};
+  const eqV = equiposCacheAdmin.find(e => e.id === p.equipoVisitanteId) || {};
+  const col = (equipo, jugadores, alinExistente, capDni) => {
+    const numByDni = {}; (alinExistente || []).forEach(j => numByDni[j.dni] = j.numero);
+    const selDnis = new Set((alinExistente || []).map(j => j.dni));
+    const rows = (jugadores || []).filter(j => j.dni).slice()
+      .sort((a, b) => (a.apellido || '').localeCompare(b.apellido || '', 'es'))
+      .map(j => {
+        const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
+        return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+          <input type="checkbox" class="ali-adm-chk" data-equipo="${equipo}" data-dni="${j.dni}" ${selDnis.has(j.dni) ? 'checked' : ''}>
+          <span style="flex:1;font-size:12.5px;">${escapeHtml(nombre)} <span class="muted" style="font-size:10.5px;">DNI ${escapeHtml(j.dni)}</span></span>
+          <input type="text" inputmode="numeric" maxlength="2" placeholder="N°" value="${escapeHtml(numByDni[j.dni] || '')}" class="ali-adm-num" data-equipo="${equipo}" data-dni="${j.dni}" style="width:42px;padding:5px;border-radius:6px;text-align:center;">
+        </label>`;
+      }).join('');
+    const capOptions = (jugadores || []).filter(j => j.dni).map(j => {
+      const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
+      return `<option value="${j.dni}" ${j.dni === capDni ? 'selected' : ''}>${escapeHtml(nombre)}</option>`;
+    }).join('');
+    const nombreEq = equipo === 'local' ? p.equipoLocalNombre : p.equipoVisitanteNombre;
+    return `<div style="flex:1;min-width:230px;">
+      <h4 style="margin:0 0 8px;">${escapeHtml(nombreEq || '')}</h4>
+      <div style="max-height:280px;overflow-y:auto;margin-bottom:10px;">${rows || '<p class="muted" style="font-size:12px;">Sin jugadores cargados en el plantel.</p>'}</div>
+      <label style="font-size:11px;color:var(--text-dim);">Capitán</label>
+      <select id="ali-adm-cap-${equipo}" style="width:100%;padding:6px;border-radius:8px;margin-top:4px;"><option value="">—</option>${capOptions}</select>
+    </div>`;
+  };
+  openModal(`<h3>📋 Cargar alineación por adelantado</h3>
+    <p class="wizard-help" style="margin-bottom:14px;">${escapeHtml(p.equipoLocalNombre || '')} vs ${escapeHtml(p.equipoVisitanteNombre || '')} · Cancha ${p.cancha || '—'} · ${p.horario || ''}<br>Tildá los jugadores que van a jugar, ponele el número y elegí el capitán. Se guarda directo en el partido — cuando el planillero lo abra, ya la va a encontrar cargada.</p>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;">
+      ${col('local', eqL.jugadores, p.alineacionLocal || [], p.capitanLocalDni || '')}
+      ${col('visitante', eqV.jugadores, p.alineacionVisitante || [], p.capitanVisitanteDni || '')}
+    </div>
+    <div class="section-actions" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="guardarAlineacionAdmin('${p.id}')">💾 Guardar alineación</button>
+    </div>`);
+}
+function guardarAlineacionAdmin(partidoId) {
+  const p = buscarPartidoAdmin(partidoId);
+  if (!p) { showToast('Partido no encontrado.', 'error'); return; }
+  const armar = (equipo, equipoId) => {
+    const roster = (equiposCacheAdmin.find(e => e.id === equipoId) || {}).jugadores || [];
+    const byDni = {}; roster.forEach(j => { if (j.dni) byDni[j.dni] = j; });
+    const checks = [...document.querySelectorAll(`.ali-adm-chk[data-equipo="${equipo}"]:checked`)];
+    const alin = []; const usados = new Set(); let faltaNum = false, numRepe = false;
+    checks.forEach(chk => {
+      const dni = chk.dataset.dni;
+      const numInput = document.querySelector(`.ali-adm-num[data-equipo="${equipo}"][data-dni="${dni}"]`);
+      const num = (numInput.value || '').trim();
+      if (!num) { faltaNum = true; return; }
+      const numPad = num.padStart(2, '0');
+      if (usados.has(numPad)) { numRepe = true; return; }
+      usados.add(numPad);
+      const j = byDni[dni] || {};
+      const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
+      alin.push({ dni, numero: numPad, nombre });
+    });
+    return { alin, faltaNum, numRepe };
+  };
+  const rLocal = armar('local', p.equipoLocalId), rVis = armar('visitante', p.equipoVisitanteId);
+  if (rLocal.faltaNum || rVis.faltaNum) { showToast('Todos los jugadores tildados necesitan número de camiseta.', 'error'); return; }
+  if (rLocal.numRepe || rVis.numRepe) { showToast('Hay números de camiseta repetidos dentro de un mismo equipo.', 'error'); return; }
+  if (!rLocal.alin.length && !rVis.alin.length) { showToast('Tildá al menos un jugador de algún equipo.', 'error'); return; }
+  const updates = {};
+  if (rLocal.alin.length) { updates.alineacionLocal = rLocal.alin; const capL = document.getElementById('ali-adm-cap-local').value; if (capL) updates.capitanLocalDni = capL; }
+  if (rVis.alin.length) { updates.alineacionVisitante = rVis.alin; const capV = document.getElementById('ali-adm-cap-visitante').value; if (capV) updates.capitanVisitanteDni = capV; }
+  db.collection('partidos').doc(partidoId).update(updates)
+    .then(() => { showToast('Alineación guardada ✓ El planillero ya la va a encontrar cargada.', 'ok'); closeModal(); })
+    .catch(e => { console.error(e); showToast('Error al guardar: ' + (e.message || e.code || e), 'error'); });
+}
 // Tick del cronómetro en vivo de la pestaña "En vivo" -- corre siempre en segundo plano (es
 // barato: si no hay ningún .envivo-clock en pantalla, no hace nada) para no depender de que
 // Firestore mande un evento cada segundo, cosa que nunca va a pasar.
