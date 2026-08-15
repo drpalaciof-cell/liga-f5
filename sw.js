@@ -84,7 +84,9 @@
 // (3) los nombres de arbitro se cargan una sola vez por cancha (guardados en
 // avisosPlanilla/{cancha}) y se precargan solos en los proximos partidos de esa cancha, en vez
 // de tener que tipearlos partido por partido.
-const CACHE = 'ligaf5-v31';
+// v32: "Llamar al organizador" ahora pide un motivo opcional (prompt, cancelable sin cancelar
+// el llamado) -- se ve en el banner del admin y en el texto de la notificacion push.
+const CACHE = 'ligaf5-v32';
 const ASSETS = [
   './index.html',
   './planilla.html',

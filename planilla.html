@@ -2788,9 +2788,12 @@ function responderAviso(textoFijo){
 function llamarOrganizador(){
   if(!st.cancha){toast('Elegí una cancha primero.',2500);return;}
   if(_avisosData&&_avisosData.llamada){toast('Ya avisaste — esperando que te atiendan.',3000);return;}
+  // El texto es opcional -- cancelar el cuadro de texto NO cancela el llamado, solo lo manda
+  // sin motivo (tiene que seguir siendo rápido, es para pedir ayuda ya).
+  const texto=(prompt('¿Por qué motivo? (opcional, tocá Aceptar vacío para mandar sin escribir nada)')||'').trim();
   toast('📣 Aviso enviado a la organización',3000);
   db.collection('avisosPlanilla').doc(String(st.cancha))
-    .set({llamada:true,llamadaHora:new Date().toISOString(),llamadaPlanillero:st.planillero||''},{merge:true})
+    .set({llamada:true,llamadaHora:new Date().toISOString(),llamadaPlanillero:st.planillero||'',llamadaTexto:texto},{merge:true})
     .catch(e=>console.error('llamarOrganizador:',e));
 }
 function actualizarBotonLlamarOrganizador(){

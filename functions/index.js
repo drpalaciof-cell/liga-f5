@@ -242,9 +242,10 @@ exports.enviarPushAvisoPlanilla = onDocumentWritten('avisosPlanilla/{cancha}', a
     });
   }
   if (after.llamada && !before.llamada) {
+    const motivo = (after.llamadaTexto || '').trim();
     await enviarPush('admin', {
       title: '🚨 Llamando al organizador',
-      body: `Cancha ${cancha} necesita al organizador.`,
+      body: motivo ? `Cancha ${cancha}: ${motivo}` : `Cancha ${cancha} necesita al organizador.`,
       rol: 'admin'
     });
   }
