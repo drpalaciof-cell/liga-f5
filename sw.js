@@ -51,7 +51,16 @@
 // v26: al abrir un partido nuevo, antes siempre arrancaba pidiendo la alineación del equipo
 // local primero -- ahora, si ninguno de los dos cargó todavía, se le pregunta al planillero con
 // cuál equipo arrancar (a veces uno está listo con lista y capitán antes que el otro).
-const CACHE = 'ligaf5-v26';
+// v27: 3 pedidos del usuario en pleno partido --
+// (1) el cronometro de 2do tiempo cortaba recien al terminar de cerrar la planilla (firmas +
+// observaciones), no al tocar "FIN DEL PARTIDO" -- ahora corta ahi mismo.
+// (2) se puede marcar la hora REAL de arranque desde la propia pantalla de alineacion
+// (marcarArranqueTemprano()), para cuando el arbitro no espera a que se termine de cargar la
+// lista -- el cronometro (tanto el del planillero como el de "En vivo") ya lo refleja aunque el
+// partido siga tecnicamente en la pantalla de alineacion.
+// (3) en "En vivo" (index.html), goleadores y tarjetas ahora se separan por equipo -- antes
+// salian todos mezclados en una sola lista sin poder saber de que lado era cada uno.
+const CACHE = 'ligaf5-v27';
 const ASSETS = [
   './index.html',
   './planilla.html',

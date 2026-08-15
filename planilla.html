@@ -818,6 +818,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
       <p>Marcá los jugadores que participan hoy (máx. 15)</p>
       <div class="counter-badge" id="ali-counter">0 / 15 seleccionados</div>
     </div>
+    <div id="ali-arranque-aviso" style="text-align:center;font-size:12.5px;font-weight:700;padding:10px 14px;margin-bottom:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;"></div>
 
     <!-- ÁRBITROS — solo visible al cargar equipo local -->
     <div id="arbitros-section" style="display:none;margin-bottom:14px;">
@@ -1373,6 +1374,7 @@ function elegirEquipoPrimero(){
       <span style="color:var(--green);font-size:20px;">→</span>
     </div>`;
   }).join('');
+  actualizarAvisoArranqueTemprano();
   goScreen('screen-alineacion');
 }
 
@@ -1421,6 +1423,7 @@ async function mostrarAlineacion(equipo){
   }else{arbSec.style.display='none';}
   _aliCapitanDni=(esLocal?st.partido.capitanLocalDni:st.partido.capitanVisitanteDni)||'';
   renderCapitanSelector(equipo);
+  actualizarAvisoArranqueTemprano();
   goScreen('screen-alineacion');
   fixIosScroll(document.querySelector('#screen-alineacion .scroll'));
 }
@@ -1647,9 +1650,14 @@ function irAPartido(){
   if((p.estado||'pendiente')==='alineacion'||(p.estado||'pendiente')==='pendiente'){
     // Antes esto arrancaba el 1er tiempo (y su cronómetro) apenas se terminaba de cargar la
     // alineación -- podía ser varios minutos antes del pitazo real del árbitro. Ahora queda
-    // "esperando_inicio" hasta que el planillero toque el botón del gate, justo en el pitazo.
-    db.collection('partidos').doc(st.partidoId).update({estado:'esperando_inicio'});
-    st.partido.estado='esperando_inicio';
+    // "esperando_inicio" hasta que el planillero toque el botón del gate, justo en el pitazo --
+    // SALVO que ya haya marcado el arranque temprano (marcarArranqueTemprano(), desde la propia
+    // pantalla de alineación) porque el árbitro no esperó a que se terminara de cargar la lista.
+    // En ese caso el reloj ya está corriendo de verdad, así que no tiene sentido volver a pedir
+    // el mismo botón acá.
+    const nuevoEstado=p.horaArranque?'primer_tiempo':'esperando_inicio';
+    db.collection('partidos').doc(st.partidoId).update({estado:nuevoEstado});
+    st.partido.estado=nuevoEstado;
   }
   // Tema naranja para Segunda División
   document.getElementById('screen-partido').classList.toggle('theme-segunda', divKey==='segunda');
@@ -1703,13 +1711,25 @@ function actualizarBotonestiempo(){ actualizarGateArranque(); }
 // lleva el árbitro), es de referencia, arranca desde horaArranque/horaInicio2T y se reinicia en
 // cada tiempo. El setInterval de más abajo lo tickea cada segundo; acá solo se decide si se
 // muestra y desde cuándo, cada vez que cambia el estado del partido.
+// Fase real del partido según los timestamps guardados -- distinta del campo 'estado' (que
+// decide qué PANTALLA mostrar y puede ir atrasado: si se marcó el arranque temprano desde la
+// alineación, o si se tocó "FIN DEL PARTIDO" pero todavía no se terminó de cerrar la planilla).
+function faseCrono(p){
+  if(!p)return'pendiente';
+  if(p.horaFin)return'cerrado';
+  if(p.horaInicio2T)return'segundo_tiempo';
+  if(p.horaFin1T)return'entretiempo';
+  if(p.horaArranque)return'primer_tiempo';
+  return p.estado||'pendiente';
+}
 function actualizarCronoPartido(){
   const el=document.getElementById('ph-crono');
   if(!el)return;
   const p=st.partido;
+  const fase=faseCrono(p);
   let desde=null;
-  if(p&&p.estado==='primer_tiempo'&&p.horaArranque)desde=p.horaArranque;
-  else if(p&&p.estado==='segundo_tiempo'&&p.horaInicio2T)desde=p.horaInicio2T;
+  if(fase==='primer_tiempo')desde=p.horaArranque;
+  else if(fase==='segundo_tiempo')desde=p.horaInicio2T;
   if(!desde){el.style.display='none';el.dataset.desde='';return;}
   el.dataset.desde=desde;
   el.style.display='';
@@ -1749,6 +1769,35 @@ function confirmarArranque(){
   actualizarGateArranque();
   toast('⚽ Arrancó el partido');
 }
+// El árbitro no espera a que se termine de cargar la lista de buena fe -- en la práctica el
+// partido ya arrancó mientras el planillero todavía está tildando jugadores. Este botón (visible
+// en las pantallas de alineación) marca la hora REAL de arranque ahí mismo, sin esperar a llegar
+// a la pantalla del partido. irAPartido() respeta esto: si ya está marcado, no vuelve a pedir el
+// botón "Arrancó" de nuevo una vez que se termina de cargar todo.
+function marcarArranqueTemprano(){
+  if(st.partido.horaArranque){toast('Ya estaba marcado.',2500);return;}
+  const horaArranque=new Date().toISOString();
+  st.partido.horaArranque=horaArranque;
+  db.collection('partidos').doc(st.partidoId).update({horaArranque}).catch(()=>{});
+  toast('⚽ Hora de arranque marcada — seguí cargando la lista tranquilo.',4000);
+  actualizarAvisoArranqueTemprano();
+}
+function actualizarAvisoArranqueTemprano(){
+  const el=document.getElementById('ali-arranque-aviso');
+  if(!el)return;
+  if(st.partido&&st.partido.horaArranque){
+    const hhmm=new Date(st.partido.horaArranque).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    el.innerHTML='✅ Arrancó a las '+hhmm+'. Si pasa un gol o tarjeta antes de terminar la lista, cargalo apenas llegues a la pantalla del partido — se puede agregar en cualquier momento, no hace falta que sea al instante.';
+    el.style.color='var(--green)';
+    el.style.cursor='default';
+    el.onclick=null;
+  }else{
+    el.innerHTML='▶ ¿Ya arrancó el árbitro? <u>Tocá acá para marcar la hora real</u> — podés seguir cargando la lista después.';
+    el.style.color='var(--orange)';
+    el.style.cursor='pointer';
+    el.onclick=marcarArranqueTemprano;
+  }
+}
 
 // confirm() bloquea el hilo mientras está abierto, pero un doble-tap en la pantalla encola un
 // segundo click que se procesa recién cuando se cierra el primer diálogo — reabriendo otro
@@ -1786,6 +1835,13 @@ function finPartido(){
   _cambiandoTiempo=true;
   if(!confirm('¿Confirmar fin del partido?')){_cambiandoTiempo=false;return;}
   _cambiandoTiempo=false;
+  // Corta el cronómetro ACÁ, apenas se toca el botón -- antes seguía corriendo mientras se
+  // completaban observaciones y firmas de capitanes en la pantalla de cierre (que siempre tarda
+  // un rato), así que el tiempo de "2do tiempo" quedaba inflado con ese rato de más.
+  const horaFin=new Date().toISOString();
+  st.partido.horaFin=horaFin;
+  actualizarCronoPartido();
+  db.collection('partidos').doc(st.partidoId).update({horaFin}).catch(()=>{});
   const p=st.partido;
   document.getElementById('cierre-local-nombre').textContent=p.equipoLocalNombre;
   document.getElementById('cierre-visitante-nombre').textContent=p.equipoVisitanteNombre;
@@ -2112,7 +2168,10 @@ function cerrarPlanilla(){
   const p=st.partido;
   const gL=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoLocalId).length;
   const gV=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoVisitanteId).length;
-  const horaFin=new Date().toISOString();
+  // Reusa la hora que ya se marcó al tocar "FIN DEL PARTIDO" (finPartido()) -- no genera una
+  // nueva acá, porque completar observaciones y firmas siempre tarda un rato y eso NO es parte
+  // del tiempo de juego.
+  const horaFin=p.horaFin||new Date().toISOString();
   // Antes esto esperaba (await) el ack del servidor en DOS escrituras seguidas antes de avanzar
   // -- con mala señal, "Planilla cerrada ✓" podía tardar minutos (o nunca aparecer) aunque el
   // partido ya estuviera terminado. Mismo criterio que el resto de la app: actualiza el estado
