@@ -73,7 +73,10 @@
 // (pantalla de lista y header del partido). Admin: banner siempre visible (en cualquier pestana)
 // cuando alguna cancha esta llamando, con boton "Atendi", y boton "✉️ Mandar aviso" +
 // respuesta del planillero en cada tarjeta de "En vivo".
-const CACHE = 'ligaf5-v29';
+// v30: notificationclick ahora distingue destino segun data.target -- los avisos para el
+// planillero (nuevo sistema admin<->planillero) abren/enfocan planilla.html en vez de
+// index.html. push handler reenvia el campo target al abrir la notificacion.
+const CACHE = 'ligaf5-v30';
 const ASSETS = [
   './index.html',
   './planilla.html',
@@ -152,7 +155,7 @@ self.addEventListener('push', event => {
       icon: './assets/icon-192.png',
       badge: './assets/icon-192.png',
       vibrate: [200, 100, 200],
-      data: { rol: data.rol || '' }
+      data: { rol: data.rol || '', target: data.target || '' }
     })
   );
 });
@@ -162,6 +165,13 @@ self.addEventListener('notificationclick', event => {
   const data = event.notification.data || {};
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+      // Avisos para el planillero abren/enfocan planilla.html, nunca index.html -- el resto
+      // (mensajes equipo<->admin) sigue yendo a index.html como siempre.
+      if (data.target === 'planilla') {
+        const cPlanilla = cs.find(c => c.url.includes('planilla.html'));
+        if (cPlanilla) { cPlanilla.focus(); return; }
+        return clients.openWindow('./planilla.html');
+      }
       if (cs.length > 0) {
         cs[0].focus();
         cs[0].postMessage({ type: 'OPEN_MENSAJES', rol: data.rol });

@@ -814,6 +814,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
   <div class="topbar">
     <button class="topbar-back" onclick="goScreen('screen-cancha')">←</button>
     <div><div class="topbar-title" id="lista-title">Cancha 1</div><div class="topbar-sub">Seleccioná un partido</div></div>
+    <button class="btn-notif-planillero" onclick="activarNotificacionesPlanillero()" title="Activar notificaciones" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:16px;padding:4px 6px;cursor:pointer;">🔔</button>
     <button class="btn-llamar-organizador" data-variant="texto" onclick="llamarOrganizador()" style="background:none;border:none;color:var(--orange);font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer;white-space:nowrap;">📣 Organizador</button>
     <button onclick="cargarLista()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;padding:4px 8px;cursor:pointer;line-height:1;" title="Recargar">↺</button>
   </div>
@@ -1248,6 +1249,13 @@ function getSancionesActivas(counts, eq){
 async function cargarLista(){
   if(st.unsub){st.unsub();st.unsub=null;}
   iniciarSyncAvisos();
+  // Si ya había permiso concedido de una sesión anterior, re-suscribe solo (sin volver a
+  // preguntar) -- importante porque la suscripción queda guardada POR CANCHA
+  // (pushSubscriptions/cancha_N) y esta tablet puede terminar en una cancha distinta a la de
+  // la última vez.
+  if('Notification' in window && Notification.permission==='granted'){
+    activarNotificacionesPlanillero(true);
+  }
   sessionStorage.setItem('ligaf5_screen','lista');sessionStorage.removeItem('ligaf5_pid');
   document.getElementById('lista-title').textContent='Cancha '+st.cancha;
   const body=document.getElementById('lista-body');
@@ -2736,6 +2744,43 @@ function actualizarBotonLlamarOrganizador(){
       :(activa?'🚨 Esperando...':'📣 Organizador');
     btn.style.color=activa?'#ff6b6b':'var(--orange)';
   });
+}
+
+// Notificaciones push para los avisos de la organización -- mismo mecanismo que ya usa
+// index.html (misma clave VAPID, misma colección pushSubscriptions), guardado bajo
+// pushSubscriptions/cancha_{N} en vez de admin/equipo_X. La Cloud Function
+// enviarPushAvisoPlanilla dispara la notificación cuando llega un mensaje nuevo -- así el
+// planillero se entera aunque tenga la tablet bloqueada o esté en otra pantalla, no solo cuando
+// mira la franja de abajo.
+const VAPID_PUBLIC='BDZe4cNkg6SdSMRcaFej2v7dVwBli5FFxIe8i460m7jLIbvMdGATsuCQ2PZjxGjlBvHfM7TPqLwrt4L3M_9DgpU';
+function _b64ToUint8(b64){
+  const pad='='.repeat((4-b64.length%4)%4);
+  const raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
+  const arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+async function activarNotificacionesPlanillero(silent){
+  if(!st.cancha){if(!silent)toast('Elegí una cancha primero.',2500);return;}
+  if(!('PushManager' in window)||!('serviceWorker' in navigator)){
+    if(silent)return;
+    const esIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+    toast(esIOS?'En iPhone: abrí esto en Safari, "Agregar a pantalla de inicio", y activá las notificaciones desde ahí.':'Este navegador no soporta notificaciones push.',6000);
+    return;
+  }
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted'){if(!silent)toast('Permiso de notificaciones denegado.',3000);return;}
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_b64ToUint8(VAPID_PUBLIC)});
+    await db.collection('pushSubscriptions').doc('cancha_'+st.cancha).set({
+      subscription:JSON.parse(JSON.stringify(sub)),rol:'planilla',cancha:st.cancha,
+      updatedAt:new Date().toISOString()
+    });
+    document.querySelectorAll('.btn-notif-planillero').forEach(b=>b.textContent='🔔✓');
+    if(!silent)toast('Notificaciones activadas para esta cancha ✓',3000);
+  }catch(e){console.error(e);if(!silent)toast('Error al activar notificaciones.',3000);}
 }
 
 // Botón manual "🔄 Actualizar" (pantalla de elegir cancha). El chequeo automático de abajo

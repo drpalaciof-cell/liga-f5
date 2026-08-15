@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
@@ -201,6 +201,59 @@ exports.enviarNotificacionPush = onDocumentCreated('mensajes/{mensajeId}/replies
     if (err.statusCode === 404 || err.statusCode === 410) {
       await db.collection('pushSubscriptions').doc(targetDocId).delete();
     }
+  }
+});
+
+// Envía la notificación push a una suscripción guardada en pushSubscriptions/{docId} -- misma
+// lógica de limpieza (borrar la suscripción si quedó vencida) que ya usaba
+// enviarNotificacionPush, factorizada para reusar acá.
+async function enviarPush(docId, payload) {
+  const subDoc = await db.collection('pushSubscriptions').doc(docId).get();
+  if (!subDoc.exists) return;
+  const subscription = subDoc.data().subscription;
+  if (!subscription) return;
+  try {
+    await webpush.sendNotification(subscription, JSON.stringify(payload));
+  } catch (err) {
+    console.error('Error enviando push a', docId, err.statusCode, err.body);
+    if (err.statusCode === 404 || err.statusCode === 410) {
+      await db.collection('pushSubscriptions').doc(docId).delete();
+    }
+  }
+}
+
+// Avisos rápidos admin <-> planillero por cancha (1 doc por cancha en avisosPlanilla, sin
+// historial). Un solo trigger cubre los 3 casos: el admin manda un mensaje nuevo (push al
+// planillero de esa cancha), el planillero llama al organizador (push al admin), o el
+// planillero responde un mensaje (push al admin, para no depender de que esté mirando la
+// pantalla en ese momento).
+exports.enviarPushAvisoPlanilla = onDocumentWritten('avisosPlanilla/{cancha}', async (event) => {
+  ensureVapid();
+  const cancha = event.params.cancha;
+  const before = event.data.before.exists ? event.data.before.data() : {};
+  const after = event.data.after.exists ? event.data.after.data() : null;
+  if (!after) return; // documento borrado, nada que avisar
+
+  if (after.msgHora && after.msgHora !== before.msgHora) {
+    await enviarPush('cancha_' + cancha, {
+      title: `📣 Aviso — Cancha ${cancha}`,
+      body: (after.msgTexto || '').slice(0, 140),
+      target: 'planilla'
+    });
+  }
+  if (after.llamada && !before.llamada) {
+    await enviarPush('admin', {
+      title: '🚨 Llamando al organizador',
+      body: `Cancha ${cancha} necesita al organizador.`,
+      rol: 'admin'
+    });
+  }
+  if (after.msgRespuesta && after.msgRespuestaHora !== before.msgRespuestaHora) {
+    await enviarPush('admin', {
+      title: `💬 Cancha ${cancha} respondió`,
+      body: (after.msgRespuesta || '').slice(0, 140),
+      rol: 'admin'
+    });
   }
 });
 
