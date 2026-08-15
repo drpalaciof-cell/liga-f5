@@ -1450,6 +1450,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       <div class="glass section-card">
         <h3>🔴 En vivo — las 3 canchas</h3>
         <p class="wizard-help" style="margin-bottom:14px;">Se actualiza solo, en cuanto el planillero de cada cancha carga un gol, tarjeta o cierra el partido — no hace falta recargar la página.</p>
+        <button class="btn" style="margin-bottom:14px;" onclick="mandarAvisoTodasCanchas()">📢 Mandar aviso a las 3 canchas a la vez</button>
         <div id="envivo-cont" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;"></div>
       </div>
     </div>
@@ -5974,6 +5975,18 @@ function mandarAvisoCancha(cancha) {
     .then(() => showToast('Aviso enviado a cancha ' + cancha, 'ok'))
     .catch(e => { console.error(e); showToast('Error al enviar: ' + (e.message || e.code || e), 'error'); });
 }
+function mandarAvisoTodasCanchas() {
+  const texto = (prompt('Mensaje para las 3 canchas:') || '').trim();
+  if (!texto) return;
+  const hora = new Date().toISOString();
+  const batch = db.batch();
+  ['1', '2', '3'].forEach(c => {
+    batch.set(db.collection('avisosPlanilla').doc(c), { msgTexto: texto, msgHora: hora, msgRespuesta: null, msgRespuestaHora: null }, { merge: true });
+  });
+  batch.commit()
+    .then(() => showToast('Aviso enviado a las 3 canchas', 'ok'))
+    .catch(e => { console.error(e); showToast('Error al enviar: ' + (e.message || e.code || e), 'error'); });
+}
 // Fase real del partido según los timestamps guardados -- distinta del campo 'estado' (que
 // decide qué pantalla ve el planillero y puede ir atrasado: si marcó el arranque temprano
 // mientras todavía cargaba la alineación, o si tocó "FIN DEL PARTIDO" pero no terminó de cerrar
@@ -6027,15 +6040,20 @@ function renderEnVivoCards(contId, isAdmin) {
     // basa en faseCrono() (los timestamps reales), no en el campo 'estado' -- si el planillero
     // marcó el arranque temprano (todavía cargando la alineación) o ya tocó "FIN DEL PARTIDO"
     // (todavía completando firmas), el cronómetro ya lo refleja acá antes de que 'estado' llegue.
+    // Pausa (lesión u otro corte que pide el árbitro, botón nuevo del planillero): se descuenta
+    // del tiempo mostrado, tanto en vivo como en los resúmenes de duración, para que coincida
+    // con lo que ve el planillero.
     let tiempoLinea = '';
     if (fase === 'primer_tiempo' && p.horaArranque) {
-      tiempoLinea = `<span class="envivo-clock" data-desde="${p.horaArranque}">00:00</span>`;
+      tiempoLinea = `<span class="envivo-clock" data-desde="${p.horaArranque}" data-pausa-acum="${p.pausaAcumulada1T || 0}" ${p.pausaActiva && p.pausaDesde ? `data-pausa-desde="${p.pausaDesde}"` : ''}>00:00</span>`;
     } else if (fase === 'segundo_tiempo' && p.horaInicio2T) {
-      tiempoLinea = `<span class="envivo-clock" data-desde="${p.horaInicio2T}">00:00</span>`;
+      tiempoLinea = `<span class="envivo-clock" data-desde="${p.horaInicio2T}" data-pausa-acum="${p.pausaAcumulada2T || 0}" ${p.pausaActiva && p.pausaDesde ? `data-pausa-desde="${p.pausaDesde}"` : ''}>00:00</span>`;
     } else if (fase === 'entretiempo' && p.horaArranque && p.horaFin1T) {
-      tiempoLinea = `1er tiempo: ${fmtMinCrono(new Date(p.horaFin1T) - new Date(p.horaArranque))}`;
+      const t1neto = (new Date(p.horaFin1T) - new Date(p.horaArranque)) - (p.pausaAcumulada1T || 0);
+      tiempoLinea = `1er tiempo: ${fmtMinCrono(t1neto)}`;
     } else if (fase === 'cerrado' && p.horaArranque && p.horaFin1T && p.horaInicio2T && p.horaFin) {
-      const t1 = new Date(p.horaFin1T) - new Date(p.horaArranque), t2 = new Date(p.horaFin) - new Date(p.horaInicio2T);
+      const t1 = (new Date(p.horaFin1T) - new Date(p.horaArranque)) - (p.pausaAcumulada1T || 0);
+      const t2 = (new Date(p.horaFin) - new Date(p.horaInicio2T)) - (p.pausaAcumulada2T || 0);
       tiempoLinea = `Duró ${fmtMinCrono(t1 + t2)} · 1T ${fmtMinCrono(t1)} + 2T ${fmtMinCrono(t2)}`;
     }
     const enVivoTick = fase === 'primer_tiempo' || fase === 'segundo_tiempo';
@@ -6155,8 +6173,10 @@ setInterval(() => {
   document.querySelectorAll('.envivo-clock').forEach(el => {
     const desde = el.dataset.desde;
     if (!desde) return;
-    const totalSeg = Math.max(0, Math.floor((Date.now() - new Date(desde).getTime()) / 1000));
-    el.textContent = String(Math.floor(totalSeg / 60)).padStart(2, '0') + ':' + String(totalSeg % 60).padStart(2, '0');
+    const pausaAcum = Number(el.dataset.pausaAcum || 0);
+    const hastaMs = el.dataset.pausaDesde ? new Date(el.dataset.pausaDesde).getTime() : Date.now();
+    const totalSeg = Math.max(0, Math.floor((hastaMs - new Date(desde).getTime() - pausaAcum) / 1000));
+    el.textContent = String(Math.floor(totalSeg / 60)).padStart(2, '0') + ':' + String(totalSeg % 60).padStart(2, '0') + (el.dataset.pausaDesde ? ' ⏸' : '');
   });
 }, 1000);
 function buscarPartidoAdmin(id) { return partidosTotalCache.find(x => x.id === id) || partidosCacheAdmin.find(x => x.id === id); }

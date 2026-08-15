@@ -878,6 +878,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
       </div>
       <span class="ph-periodo" id="ph-periodo">1° TIEMPO</span>
       <span id="ph-crono" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:15px;color:var(--orange);letter-spacing:.5px;"></span>
+      <button id="btn-pausa-crono" onclick="togglePausaCronometro()" title="Pausar/reanudar por lesión u otro corte del árbitro" style="display:none;background:none;border:none;color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;padding:4px 6px;cursor:pointer;white-space:nowrap;">⏸ Pausar</button>
       <button class="btn-llamar-organizador" data-variant="icono" onclick="llamarOrganizador()" style="background:none;border:none;color:var(--orange);font-size:11px;font-weight:700;padding:4px 6px;cursor:pointer;white-space:nowrap;">📣</button>
       <button onclick="actualizarApp()" title="Buscar actualización" style="background:none;border:none;color:rgba(255,255,255,0.35);font-size:15px;cursor:pointer;padding:4px 6px;">🔄</button>
     </div>
@@ -1442,8 +1443,14 @@ async function mostrarAlineacion(equipo){
   const arbSec=document.getElementById('arbitros-section');
   if(esLocal){
     arbSec.style.display='';
-    document.getElementById('arb1-input').value=st.partido.arbitro1||'';
-    document.getElementById('arb2-input').value=st.partido.arbitro2||'';
+    // Los árbitros de la cancha se cargan UNA vez y quedan guardados en avisosPlanilla/{cancha}
+    // (mismo doc que ya se usa para los avisos) -- si el partido no tiene todavía su propio
+    // arbitro1/2, se precarga con el último que se guardó para esta cancha, así no hay que
+    // volver a tipearlo partido tras partido. Si el planillero lo cambia acá, queda como el
+    // nuevo default para los próximos partidos de esta cancha (ver confirmarAlineacion()).
+    const arbCancha=_avisosData||{};
+    document.getElementById('arb1-input').value=st.partido.arbitro1||arbCancha.arbitro1||'';
+    document.getElementById('arb2-input').value=st.partido.arbitro2||arbCancha.arbitro2||'';
   }else{arbSec.style.display='none';}
   _aliCapitanDni=(esLocal?st.partido.capitanLocalDni:st.partido.capitanVisitanteDni)||'';
   renderCapitanSelector(equipo);
@@ -1553,6 +1560,11 @@ async function confirmarAlineacion(){
     st.partido.arbitro1=extraFields.arbitro1;
     st.partido.arbitro2=extraFields.arbitro2;
     if(_aliCapitanDni){extraFields.capitanLocalDni=_aliCapitanDni;st.partido.capitanLocalDni=_aliCapitanDni;}
+    // Queda como default de esta cancha para los próximos partidos (ver mostrarAlineacion()) --
+    // si cambió respecto a lo que ya estaba guardado, para no escribir de más en cada partido.
+    if(st.cancha&&(extraFields.arbitro1||extraFields.arbitro2)&&(!_avisosData||_avisosData.arbitro1!==extraFields.arbitro1||_avisosData.arbitro2!==extraFields.arbitro2)){
+      db.collection('avisosPlanilla').doc(String(st.cancha)).set({arbitro1:extraFields.arbitro1,arbitro2:extraFields.arbitro2},{merge:true}).catch(()=>{});
+    }
   }
   if(st.equipo==='visitante'&&_aliCapitanDni){extraFields.capitanVisitanteDni=_aliCapitanDni;st.partido.capitanVisitanteDni=_aliCapitanDni;}
   // Antes esto esperaba (await) la confirmación del servidor antes de avanzar -- Firestore NO
@@ -1746,24 +1758,66 @@ function faseCrono(p){
   if(p.horaArranque)return'primer_tiempo';
   return p.estado||'pendiente';
 }
+// Pausa del cronómetro (lesión u otro corte de juego que pide el árbitro) -- se guarda en el
+// partido para que "En vivo" (admin/público) también la refleje, no solo la pantalla del
+// planillero. pausaAcumulada1T/2T es el total ya pausado en ESE tiempo (se suma recién al
+// reanudar); pausaDesde marca el arranque de la pausa actual, si hay una en curso.
 function actualizarCronoPartido(){
   const el=document.getElementById('ph-crono');
   if(!el)return;
   const p=st.partido;
   const fase=faseCrono(p);
-  let desde=null;
-  if(fase==='primer_tiempo')desde=p.horaArranque;
-  else if(fase==='segundo_tiempo')desde=p.horaInicio2T;
-  if(!desde){el.style.display='none';el.dataset.desde='';return;}
+  let desde=null,pausaAcum=0;
+  if(fase==='primer_tiempo'){desde=p.horaArranque;pausaAcum=p.pausaAcumulada1T||0;}
+  else if(fase==='segundo_tiempo'){desde=p.horaInicio2T;pausaAcum=p.pausaAcumulada2T||0;}
+  if(!desde){el.style.display='none';el.dataset.desde='';delete el.dataset.pausaDesde;return;}
   el.dataset.desde=desde;
+  el.dataset.pausaAcum=String(pausaAcum);
+  if(p.pausaActiva&&p.pausaDesde)el.dataset.pausaDesde=p.pausaDesde;else delete el.dataset.pausaDesde;
   el.style.display='';
+  actualizarBotonPausa();
 }
 setInterval(()=>{
   const el=document.getElementById('ph-crono');
   if(!el||!el.dataset.desde)return;
-  const totalSeg=Math.max(0,Math.floor((Date.now()-new Date(el.dataset.desde).getTime())/1000));
-  el.textContent=String(Math.floor(totalSeg/60)).padStart(2,'0')+':'+String(totalSeg%60).padStart(2,'0');
+  const pausaAcum=Number(el.dataset.pausaAcum||0);
+  const hastaMs=el.dataset.pausaDesde?new Date(el.dataset.pausaDesde).getTime():Date.now();
+  const totalSeg=Math.max(0,Math.floor((hastaMs-new Date(el.dataset.desde).getTime()-pausaAcum)/1000));
+  el.textContent=String(Math.floor(totalSeg/60)).padStart(2,'0')+':'+String(totalSeg%60).padStart(2,'0')+(el.dataset.pausaDesde?' ⏸':'');
 },1000);
+function actualizarBotonPausa(){
+  const btn=document.getElementById('btn-pausa-crono');
+  if(!btn)return;
+  const p=st.partido;
+  const fase=faseCrono(p);
+  const enJuego=fase==='primer_tiempo'||fase==='segundo_tiempo';
+  btn.style.display=enJuego?'':'none';
+  if(!enJuego)return;
+  btn.textContent=(p&&p.pausaActiva)?'▶ Reanudar':'⏸ Pausar';
+  btn.style.color=(p&&p.pausaActiva)?'#ff6b6b':'rgba(255,255,255,0.5)';
+}
+function togglePausaCronometro(){
+  const p=st.partido;
+  const fase=faseCrono(p);
+  if(fase!=='primer_tiempo'&&fase!=='segundo_tiempo'){toast('El cronómetro no está corriendo ahora.',2500);return;}
+  if(p.pausaActiva){
+    const desdeMs=new Date(p.pausaDesde).getTime();
+    const durMs=Math.max(0,Date.now()-desdeMs);
+    const campo=fase==='primer_tiempo'?'pausaAcumulada1T':'pausaAcumulada2T';
+    const nuevoAcum=(p[campo]||0)+durMs;
+    p.pausaActiva=false;p.pausaDesde=null;p[campo]=nuevoAcum;
+    actualizarCronoPartido();
+    const upd={pausaActiva:false,pausaDesde:null};upd[campo]=nuevoAcum;
+    db.collection('partidos').doc(st.partidoId).update(upd).catch(()=>{});
+    toast('▶ Cronómetro reanudado');
+  }else{
+    const ahora=new Date().toISOString();
+    p.pausaActiva=true;p.pausaDesde=ahora;
+    actualizarCronoPartido();
+    db.collection('partidos').doc(st.partidoId).update({pausaActiva:true,pausaDesde:ahora}).catch(()=>{});
+    toast('⏸ Cronómetro pausado — avisá cuando el árbitro reanude');
+  }
+}
 function actualizarGateArranque(){
   actualizarCronoPartido();
   const btnArr=document.getElementById('btn-arranque');
@@ -1848,8 +1902,11 @@ function confirmarArranque2T(){
   st.tiempoActual=2;st.faltas.local.t2=0;st.faltas.visitante.t2=0;
   st.partido.estado='segundo_tiempo';
   st.partido.horaInicio2T=horaInicio2T;
+  // Por las dudas quede una pausa colgada del 1er tiempo (no debería, pero el 2do arranca
+  // limpio sí o sí).
+  st.partido.pausaActiva=false;st.partido.pausaDesde=null;
   actualizarMarcador();actualizarFaltas();actualizarBotonestiempo();actualizarBotonesMinuto();actualizarBotonesAgregarJugador();actualizarGateArranque();
-  db.collection('partidos').doc(st.partidoId).update({estado:'segundo_tiempo',tiempoActual:2,horaInicio2T});
+  db.collection('partidos').doc(st.partidoId).update({estado:'segundo_tiempo',tiempoActual:2,horaInicio2T,pausaActiva:false,pausaDesde:null});
   toast('⚽ Arrancó el 2° tiempo');
   _cambiandoTiempo=false;
 }

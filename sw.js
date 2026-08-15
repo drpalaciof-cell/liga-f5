@@ -76,7 +76,15 @@
 // v30: notificationclick ahora distingue destino segun data.target -- los avisos para el
 // planillero (nuevo sistema admin<->planillero) abren/enfocan planilla.html en vez de
 // index.html. push handler reenvia el campo target al abrir la notificacion.
-const CACHE = 'ligaf5-v30';
+// v31: 3 pedidos del usuario --
+// (1) index.html: boton "📢 Mandar aviso a las 3 canchas a la vez" en "En vivo".
+// (2) planilla.html: boton "⏸ Pausar"/"▶ Reanudar" cronometro (lesion u otro corte del
+// arbitro) -- descuenta el tiempo pausado del cronometro, tanto el del planillero como el de
+// "En vivo" (admin/publico), que ahora tambien lo refleja.
+// (3) los nombres de arbitro se cargan una sola vez por cancha (guardados en
+// avisosPlanilla/{cancha}) y se precargan solos en los proximos partidos de esa cancha, en vez
+// de tener que tipearlos partido por partido.
+const CACHE = 'ligaf5-v31';
 const ASSETS = [
   './index.html',
   './planilla.html',
