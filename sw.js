@@ -9,7 +9,8 @@
 // puede quedar corriendo el JS viejo indefinidamente. Bumpear este número en CADA deploy que
 // toque index.html o planilla.html es lo que hace que las tablets ya abiertas se actualicen
 // solas sin que nadie tenga que cerrar la app a mano.
-const CACHE = 'ligaf5-v15';
+// v16: index.html agrega el mismo botón manual "🔄 Actualizar" que ya tenía planilla.html.
+const CACHE = 'ligaf5-v16';
 const ASSETS = [
   './index.html',
   './planilla.html',

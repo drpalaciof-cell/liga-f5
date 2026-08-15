@@ -1570,7 +1570,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
   </div>
 </section>
 
-<footer><div class="container">Liga F5 Formosa © <span id="footer-year"></span></div></footer>
+<footer><div class="container">Liga F5 Formosa © <span id="footer-year"></span> · <a href="javascript:void(0)" onclick="actualizarApp()" style="color:inherit;text-decoration:underline;">🔄 Buscar actualización</a></div></footer>
 
 <div id="modal-overlay" class="hidden">
   <div id="modal-content" class="glass"></div>
@@ -7228,6 +7228,24 @@ async function activarNotificaciones(rol) {
     if (btn) btn.textContent = '🔔✓';
     showToast('Notificaciones activadas.', 'ok');
   } catch(e) { showToast('Error al activar notificaciones.', 'error'); console.error(e); }
+}
+
+// Botón manual "🔄 Actualizar" (footer). El chequeo automático de abajo (visibilitychange/
+// focus/cada 5min) solo dispara un reload cuando sw.js CAMBIA DE CONTENIDO -- si un deploy
+// toca index.html/planilla.html pero no sw.js, una pestaña ya abierta puede quedar corriendo
+// el JS viejo indefinidamente sin que nadie note nada raro. Este botón no depende de eso:
+// fuerza el chequeo del service worker y, pase lo que pase con eso, recarga la página -- como
+// el fetch handler de sw.js pide el HTML a la red primero (network-first) cuando hay señal, un
+// reload solo ya alcanza para traer la versión más nueva.
+function actualizarApp(){
+  if(!navigator.onLine){ showToast('Sin conexión — no se puede buscar actualización ahora. Se actualizará sola cuando vuelva la señal.', 'error'); return; }
+  showToast('Buscando actualización...', 'ok');
+  const irYRecargar=()=>setTimeout(()=>location.reload(),400);
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistration().then(reg=>reg?reg.update().catch(()=>{}):null).finally(irYRecargar);
+  }else{
+    irYRecargar();
+  }
 }
 
 if ('serviceWorker' in navigator) {
