@@ -3,7 +3,13 @@
 // los 2 scripts de CDN que planilla.html realmente usa y faltaban acá: firebase-auth-compat.js
 // (sin él no hay login anónimo, y sin login anónimo ninguna escritura a Firestore funciona) y
 // html2canvas.min.js (necesario para generar el PDF de la planilla).
-const CACHE = 'ligaf5-v14';
+// v15: sin cambios acá — el bump es a propósito. El chequeo automático de actualización de la
+// app (cada 5min / al volver a primer plano) solo dispara cuando este archivo cambia de
+// contenido; si un deploy toca solo index.html/planilla.html, una app ya abierta en una tablet
+// puede quedar corriendo el JS viejo indefinidamente. Bumpear este número en CADA deploy que
+// toque index.html o planilla.html es lo que hace que las tablets ya abiertas se actualicen
+// solas sin que nadie tenga que cerrar la app a mano.
+const CACHE = 'ligaf5-v15';
 const ASSETS = [
   './index.html',
   './planilla.html',

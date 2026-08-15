@@ -765,6 +765,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
   <div class="scroll">
     <div style="display:flex;justify-content:space-between;padding:8px 12px 0;">
       <button onclick="abrirHistorial()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;font-family:'Manrope',sans-serif;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px;letter-spacing:.3px;">📄 Historial</button>
+      <button onclick="actualizarApp()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;font-family:'Manrope',sans-serif;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px;letter-spacing:.3px;">🔄 Actualizar</button>
       <button onclick="irAlInicio()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;font-family:'Manrope',sans-serif;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px;letter-spacing:.3px;">⟵ Cambiar planillero</button>
     </div>
     <div class="cancha-logo">
@@ -2439,6 +2440,24 @@ async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
 // (CSS puro, siempre activo) es la garantía real de que nunca se ve la versión rota.
 if (screen.orientation && screen.orientation.lock) {
   screen.orientation.lock('portrait').catch(()=>{});
+}
+
+// Botón manual "🔄 Actualizar" (pantalla de elegir cancha). El chequeo automático de abajo
+// (visibilitychange/focus/cada 5min) solo dispara un reload cuando sw.js CAMBIA DE CONTENIDO
+// -- si un deploy toca index.html/planilla.html pero no sw.js, una app ya abierta puede quedar
+// corriendo el JS viejo indefinidamente sin que nadie note nada raro. Este botón no depende de
+// eso: fuerza el chequeo del service worker y, pase lo que pase con eso, recarga la página --
+// como el fetch handler de sw.js pide el HTML a la red primero (network-first) cuando hay
+// señal, un reload solo ya alcanza para traer la versión más nueva.
+function actualizarApp(){
+  if(!navigator.onLine){ toast('Sin conexión — no se puede buscar actualización ahora. Se actualizará sola cuando vuelva la señal.',4000); return; }
+  toast('Buscando actualización...',1500);
+  const irYRecargar=()=>setTimeout(()=>location.reload(),400);
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistration().then(reg=>reg?reg.update().catch(()=>{}):null).finally(irYRecargar);
+  }else{
+    irYRecargar();
+  }
 }
 
 // ── OFFLINE INDICATOR ──
