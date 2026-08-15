@@ -48,7 +48,10 @@
 // (2) planilla.html -- cronómetro visible para el propio planillero (al lado de "1° TIEMPO"/
 // "2° TIEMPO" en el header del partido), mismo criterio que el de "En vivo": de referencia, no
 // es el reloj oficial que lleva el árbitro.
-const CACHE = 'ligaf5-v25';
+// v26: al abrir un partido nuevo, antes siempre arrancaba pidiendo la alineación del equipo
+// local primero -- ahora, si ninguno de los dos cargó todavía, se le pregunta al planillero con
+// cuál equipo arrancar (a veces uno está listo con lista y capitán antes que el otro).
+const CACHE = 'ligaf5-v26';
 const ASSETS = [
   './index.html',
   './planilla.html',

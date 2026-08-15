@@ -1345,13 +1345,43 @@ async function abrirPartido(id,cardEl){
 async function iniciarAlineacion(){
   const localOk=st.alineacionLocal.length>0;
   const visitanteOk=st.alineacionVisitante.length>0;
+  // Antes esto siempre arrancaba por el equipo local -- a pedido del usuario, si ninguno de los
+  // dos equipos cargó todavía, se le pregunta al planillero con cuál arrancar (a veces un
+  // equipo está listo con su lista y capitán antes que el otro, y no tiene sentido hacerlo
+  // esperar al que todavía no llegó).
+  if(!localOk&&!visitanteOk){elegirEquipoPrimero();return;}
   if(!localOk){await mostrarAlineacion('local');}
   else if(!visitanteOk){await mostrarAlineacion('visitante');}
   else{irAPartido();}
 }
 
+function elegirEquipoPrimero(){
+  const p=st.partido;
+  document.getElementById('ali-topbar-title').textContent='¿Quién arranca?';
+  document.getElementById('ali-topbar-sub').textContent='';
+  document.getElementById('ali-equipo-nombre').textContent='¿Qué equipo carga primero?';
+  document.querySelector('#screen-alineacion .ali-header p').textContent='A veces un equipo está listo (lista + capitán) antes que el otro — elegí con cuál arrancar.';
+  document.getElementById('arbitros-section').style.display='none';
+  document.getElementById('ali-cap-section').style.display='none';
+  document.getElementById('ali-counter').style.display='none';
+  document.getElementById('btn-confirmar-ali').style.display='none';
+  document.getElementById('ali-lista').innerHTML=['local','visitante'].map(eq=>{
+    const nombre=eq==='local'?p.equipoLocalNombre:p.equipoVisitanteNombre;
+    const etiqueta=eq==='local'?'Local':'Visitante';
+    return`<div class="modal-player" style="cursor:pointer;padding:18px;margin-bottom:10px;" onclick="mostrarAlineacion('${eq}')">
+      <div style="flex:1;"><div class="player-name" style="font-size:16px;">${esc(nombre)}</div><div class="player-dni">${etiqueta}</div></div>
+      <span style="color:var(--green);font-size:20px;">→</span>
+    </div>`;
+  }).join('');
+  goScreen('screen-alineacion');
+}
+
 async function mostrarAlineacion(equipo){
   st.equipo=equipo;
+  // Por si se viene de elegirEquipoPrimero(), que los esconde para mostrar los dos botones.
+  document.getElementById('ali-counter').style.display='';
+  document.getElementById('btn-confirmar-ali').style.display='';
+  document.querySelector('#screen-alineacion .ali-header p').textContent='Marcá los jugadores que participan hoy (máx. 15)';
   const p=st.partido;const esLocal=equipo==='local';
   const equipoId=esLocal?p.equipoLocalId:p.equipoVisitanteId;
   const equipoNombre=esLocal?p.equipoLocalNombre:p.equipoVisitanteNombre;
