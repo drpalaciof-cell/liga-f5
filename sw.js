@@ -86,7 +86,10 @@
 // de tener que tipearlos partido por partido.
 // v32: "Llamar al organizador" ahora pide un motivo opcional (prompt, cancelable sin cancelar
 // el llamado) -- se ve en el banner del admin y en el texto de la notificacion push.
-const CACHE = 'ligaf5-v32';
+// v33: en los avisos admin<->planillero, ahora se ve el NOMBRE del planillero ademas de la
+// cancha (banner, tarjeta "En vivo" y notificacion push) -- el dato ya se guardaba, solo
+// faltaba mostrarlo.
+const CACHE = 'ligaf5-v33';
 const ASSETS = [
   './index.html',
   './planilla.html',

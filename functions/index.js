@@ -243,15 +243,18 @@ exports.enviarPushAvisoPlanilla = onDocumentWritten('avisosPlanilla/{cancha}', a
   }
   if (after.llamada && !before.llamada) {
     const motivo = (after.llamadaTexto || '').trim();
+    const quienLlama = (after.llamadaPlanillero || '').trim();
+    const canchaTxt = `Cancha ${cancha}${quienLlama ? ' (' + quienLlama + ')' : ''}`;
     await enviarPush('admin', {
       title: '🚨 Llamando al organizador',
-      body: motivo ? `Cancha ${cancha}: ${motivo}` : `Cancha ${cancha} necesita al organizador.`,
+      body: motivo ? `${canchaTxt}: ${motivo}` : `${canchaTxt} necesita al organizador.`,
       rol: 'admin'
     });
   }
   if (after.msgRespuesta && after.msgRespuestaHora !== before.msgRespuestaHora) {
+    const quienResp = (after.msgRespuestaDe || '').trim();
     await enviarPush('admin', {
-      title: `💬 Cancha ${cancha} respondió`,
+      title: `💬 Cancha ${cancha}${quienResp ? ' — ' + quienResp : ''} respondió`,
       body: (after.msgRespuesta || '').slice(0, 140),
       rol: 'admin'
     });
