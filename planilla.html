@@ -1651,9 +1651,13 @@ function editarNumeroJugador(equipo,dni){
   if(alin.some(x=>x.dni!==dni&&x.numero===nuevo)){toast('Ese número ya lo tiene otro jugador del equipo.',3000);return;}
   j.numero=nuevo;
   const campo=equipo==='local'?'alineacionLocal':'alineacionVisitante';
+  // Igual que el resto: actualiza la pantalla YA, guarda en segundo plano -- antes esperaba
+  // (.then) el ack del servidor para recién ahí mostrar el número nuevo, y con mala señal se
+  // veía como si no hubiera pasado nada.
+  renderListasPartido();
+  toast('✓ Número actualizado');
   db.collection('partidos').doc(st.partidoId).update({[campo]:alin})
-    .then(()=>{renderListasPartido();toast('✓ Número actualizado');})
-    .catch(()=>toast('Error al guardar.'));
+    .catch(e=>{ console.error('editarNumeroJugador:',e); if(navigator.onLine)toast('⚠ No se guardó — reintentá con señal.',6000); });
 }
 
 function actualizarEscudos(){

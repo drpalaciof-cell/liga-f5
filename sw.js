@@ -97,7 +97,12 @@
 // (2) admin: "Cargar alineacion por adelantado" ya no espera a que cierre el partido en curso --
 // busca el proximo partido de la cancha (por horario) al que le falte alineacion, sin importar
 // si el anterior sigue jugandose.
-const CACHE = 'ligaf5-v34';
+// v35: auditoria offline completa de nuevo (a pedido del usuario, de cara a la proxima fecha).
+// Encontrado y corregido: editarNumeroJugador() esperaba (.then) el ack del servidor para
+// recien ahi actualizar la pantalla -- con mala señal, corregir un numero de camiseta no
+// mostraba ningun cambio hasta que volviera la conexion. Mismo criterio que el resto: actualiza
+// ya, guarda atras.
+const CACHE = 'ligaf5-v35';
 const ASSETS = [
   './index.html',
   './planilla.html',
