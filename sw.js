@@ -13,7 +13,10 @@
 // v17: se saca el overlay de "girá la tablet a vertical" de planilla.html -- bloqueaba abrir
 // la app desde una computadora (pantalla horizontal). El bloqueo de rotación queda a cargo del
 // sistema operativo de cada tablet en vez de la app.
-const CACHE = 'ligaf5-v17';
+// v18: fix en cargarDivisionesCanchas() -- mostraba division/zona mezclando TODAS las fechas
+// futuras para una misma cancha (la cancha de Primera y las zonas de Segunda rotan fecha a
+// fecha), ahora se acota a la fecha activa (la más baja con partidos sin jugar).
+const CACHE = 'ligaf5-v18';
 const ASSETS = [
   './index.html',
   './planilla.html',

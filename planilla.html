@@ -1093,9 +1093,18 @@ async function cargarDivisionesCanchas(){
     // el fixture ya cargado. 'jugado' en cambio siempre existe (default false desde que se crea
     // el partido), así que es el chequeo correcto para "todavía no se jugó/cerró".
     const snap=await db.collection('partidos').where('jugado','==',false).get();
+    const todos=[];snap.forEach(doc=>todos.push(doc.data()));
+    // La cancha de Primera y las zonas de Segunda ROTAN fecha a fecha (canchasFecha() en el
+    // fixture) -- si acá se mira TODO lo que todavía no se jugó, sin importar la fecha, se
+    // mezclan divisiones/zonas de fechas futuras con las de hoy en la misma cancha (ej. cancha 1
+    // es Primera en una fecha impar pero Segunda Zona B+Interzonal en la siguiente par). Hay que
+    // acotar esto a la fecha activa (la más baja con partidos sin jugar), igual que cargarLista().
+    const fechasPend=[...new Set(todos.map(p=>Number(p.numeroFecha)).filter(f=>!isNaN(f)))].sort((a,b)=>a-b);
+    const fechaActiva=fechasPend.length?fechasPend[0]:null;
+    const deHoy=fechaActiva!=null?todos.filter(p=>Number(p.numeroFecha)===fechaActiva):todos;
     const byCancha={};
-    snap.forEach(doc=>{
-      const p=doc.data();const c=Number(p.cancha);
+    deHoy.forEach(p=>{
+      const c=Number(p.cancha);
       if(!c||!p.division)return;
       if(!byCancha[c])byCancha[c]={div:p.division,zonas:[]};
       if(p.zona&&!byCancha[c].zonas.includes(p.zona))byCancha[c].zonas.push(p.zona);
