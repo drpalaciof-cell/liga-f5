@@ -861,6 +861,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <span class="ph-div-nombre" id="ph-division-nombre"></span>
       </div>
       <span class="ph-periodo" id="ph-periodo">1° TIEMPO</span>
+      <span id="ph-crono" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:15px;color:var(--orange);letter-spacing:.5px;"></span>
       <button onclick="actualizarApp()" title="Buscar actualización" style="background:none;border:none;color:rgba(255,255,255,0.35);font-size:15px;cursor:pointer;padding:4px 6px;">🔄</button>
     </div>
   </div>
@@ -1667,7 +1668,30 @@ function cambiarFalta(equipo,delta){
 // la planilla (mismo lugar que "FIN DEL 1° TIEMPO"/"FIN DEL PARTIDO"), para poder seguir viendo
 // y tocando el resto de la planilla mientras se espera el pitazo del árbitro.
 function actualizarBotonestiempo(){ actualizarGateArranque(); }
+// Cronómetro visible para el propio planillero (arriba, al lado de "1° TIEMPO"/"2° TIEMPO") --
+// mismo criterio que el de "En vivo" del admin: NO es el reloj oficial del partido (eso lo
+// lleva el árbitro), es de referencia, arranca desde horaArranque/horaInicio2T y se reinicia en
+// cada tiempo. El setInterval de más abajo lo tickea cada segundo; acá solo se decide si se
+// muestra y desde cuándo, cada vez que cambia el estado del partido.
+function actualizarCronoPartido(){
+  const el=document.getElementById('ph-crono');
+  if(!el)return;
+  const p=st.partido;
+  let desde=null;
+  if(p&&p.estado==='primer_tiempo'&&p.horaArranque)desde=p.horaArranque;
+  else if(p&&p.estado==='segundo_tiempo'&&p.horaInicio2T)desde=p.horaInicio2T;
+  if(!desde){el.style.display='none';el.dataset.desde='';return;}
+  el.dataset.desde=desde;
+  el.style.display='';
+}
+setInterval(()=>{
+  const el=document.getElementById('ph-crono');
+  if(!el||!el.dataset.desde)return;
+  const totalSeg=Math.max(0,Math.floor((Date.now()-new Date(el.dataset.desde).getTime())/1000));
+  el.textContent=String(Math.floor(totalSeg/60)).padStart(2,'0')+':'+String(totalSeg%60).padStart(2,'0');
+},1000);
 function actualizarGateArranque(){
+  actualizarCronoPartido();
   const btnArr=document.getElementById('btn-arranque');
   const btnHalf=document.getElementById('btn-halftime');
   const btnFin=document.getElementById('btn-fin');

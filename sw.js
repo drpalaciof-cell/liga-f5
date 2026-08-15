@@ -43,7 +43,12 @@
 // confirmarAlineacion(). Las tres ahora actualizan el estado local y avisan al toque, guardando
 // en Firestore en segundo plano. Ya no deberia haber ninguna accion del planillero que quede
 // colgada esperando señal -- todo se guarda local y sincroniza solo cuando vuelve la conexion.
-const CACHE = 'ligaf5-v24';
+// v25: (1) index.html -- pestaña pública "🔴 En vivo" en la home (sin login), misma tarjeta por
+// cancha que ya tenía el panel admin, para que el público siga el resultado en tiempo real.
+// (2) planilla.html -- cronómetro visible para el propio planillero (al lado de "1° TIEMPO"/
+// "2° TIEMPO" en el header del partido), mismo criterio que el de "En vivo": de referencia, no
+// es el reloj oficial que lleva el árbitro.
+const CACHE = 'ligaf5-v25';
 const ASSETS = [
   './index.html',
   './planilla.html',
