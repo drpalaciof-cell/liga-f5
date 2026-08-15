@@ -37,7 +37,13 @@
 // v23: el gate de "esperando arranque"/"entretiempo" tapaba TODA la pantalla del partido -- a
 // pedido del usuario, ahora es un botón más dentro de la planilla (mismo lugar que "FIN DEL
 // 1° TIEMPO"), para poder seguir viendo y tocando el resto de la planilla mientras se espera.
-const CACHE = 'ligaf5-v23';
+// v24: auditoria completa de "necesita internet" en planilla.html. cerrarPlanilla(),
+// confirmarAgregarJugador() y agregarJugadorManual() esperaban (await) el ack del servidor
+// antes de dar cualquier feedback -- mismo bug que ya se habia corregido en
+// confirmarAlineacion(). Las tres ahora actualizan el estado local y avisan al toque, guardando
+// en Firestore en segundo plano. Ya no deberia haber ninguna accion del planillero que quede
+// colgada esperando señal -- todo se guarda local y sincroniza solo cuando vuelve la conexion.
+const CACHE = 'ligaf5-v24';
 const ASSETS = [
   './index.html',
   './planilla.html',

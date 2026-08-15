@@ -2051,25 +2051,32 @@ function firmarCapitan(equipo){
   guardarPartido();
 }
 
-async function cerrarPlanilla(){
+function cerrarPlanilla(){
   if(!st.firmas.local||!st.firmas.visitante){toast('Ambos capitanes deben confirmar.',3000);return;}
   if(!confirm('¿Cerrar la planilla definitivamente?'))return;
   const obs=document.getElementById('obs-text').value.trim();
   const p=st.partido;
   const gL=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoLocalId).length;
   const gV=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoVisitanteId).length;
-  try{
-    await guardarPartido();
-    await db.collection('partidos').doc(st.partidoId).update({estado:'cerrado',jugado:true,observaciones:obs,golesLocal:gL,golesVisitante:gV,horaFin:new Date().toISOString()});
-    if(st.unsub){st.unsub();st.unsub=null;}
-    toast('Planilla cerrada ✓',3000);
-    // BUG: antes esto era goScreen('screen-lista'), que solo muestra de nuevo la pantalla con
-    // el HTML viejo (el de ANTES de abrir este partido) — el partido recién cerrado seguía
-    // apareciendo con su estado viejo y el siguiente de la cancha seguía viéndose bloqueado,
-    // aunque en la base ya estaba todo bien. cargarLista() vuelve a consultar y arma la lista
-    // de nuevo con el estado real (además ya llama a goScreen('screen-lista') internamente).
-    setTimeout(()=>cargarLista(),1500);
-  }catch(e){toast('Error. Se sincronizará con conexión.');}
+  const horaFin=new Date().toISOString();
+  // Antes esto esperaba (await) el ack del servidor en DOS escrituras seguidas antes de avanzar
+  // -- con mala señal, "Planilla cerrada ✓" podía tardar minutos (o nunca aparecer) aunque el
+  // partido ya estuviera terminado. Mismo criterio que el resto de la app: actualiza el estado
+  // local YA, deja de escuchar cambios remotos y guarda en segundo plano. La escritura local de
+  // Firestore queda visible al toque para cualquier lectura posterior (como la de cargarLista()
+  // más abajo), aunque el ack del servidor tarde en llegar.
+  st.partido.estado='cerrado';st.partido.jugado=true;
+  if(st.unsub){st.unsub();st.unsub=null;}
+  toast('Planilla cerrada ✓',3000);
+  // BUG: antes esto era goScreen('screen-lista'), que solo muestra de nuevo la pantalla con
+  // el HTML viejo (el de ANTES de abrir este partido) — el partido recién cerrado seguía
+  // apareciendo con su estado viejo y el siguiente de la cancha seguía viéndose bloqueado,
+  // aunque en la base ya estaba todo bien. cargarLista() vuelve a consultar y arma la lista
+  // de nuevo con el estado real (además ya llama a goScreen('screen-lista') internamente).
+  setTimeout(()=>cargarLista(),1500);
+  guardarPartido();
+  db.collection('partidos').doc(st.partidoId).update({estado:'cerrado',jugado:true,observaciones:obs,golesLocal:gL,golesVisitante:gV,horaFin})
+    .catch(e=>{ console.error('cerrarPlanilla:',e); if(navigator.onLine)toast('⚠ No se guardó el cierre — reintentá con señal.',6000); });
 }
 
 function abrirModal(id){document.getElementById(id).classList.add('open');}
@@ -2502,12 +2509,13 @@ async function agregarJugadorManual(equipo,dniSale){
   alin.push(nuevoJug);
   if(equipo==='local')st.alineacionLocal=alin;else st.alineacionVisitante=alin;
   const campo=equipo==='local'?'alineacionLocal':'alineacionVisitante';
-  try{
-    await db.collection('partidos').doc(st.partidoId).update({[campo]:alin});
-    renderListasPartido();
-    actualizarBotonesUndo();
-    toast('✓ '+(dniSale?'Reemplazo':'Jugador')+' cargado a mano');
-  }catch(e){toast('Error al guardar.');}
+  // Guarda en segundo plano -- no espera el ack del servidor (mismo criterio que goles,
+  // tarjetas y alineación: con mala señal, un await acá dejaba el modal como colgado).
+  renderListasPartido();
+  actualizarBotonesUndo();
+  toast('✓ '+(dniSale?'Reemplazo':'Jugador')+' cargado a mano');
+  db.collection('partidos').doc(st.partidoId).update({[campo]:alin})
+    .catch(e=>{ console.error('agregarJugadorManual:',e); if(navigator.onLine)toast('⚠ No se guardó — reintentá con señal.',6000); });
 }
 
 async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
@@ -2539,12 +2547,13 @@ async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
   alin.push(nuevoJug);
   if(equipo==='local')st.alineacionLocal=alin;else st.alineacionVisitante=alin;
   const campo=equipo==='local'?'alineacionLocal':'alineacionVisitante';
-  try{
-    await db.collection('partidos').doc(st.partidoId).update({[campo]:alin});
-    renderListasPartido();
-    actualizarBotonesUndo();
-    toast('✓ '+(dniSale?'Reemplazo':'Jugador')+' registrado');
-  }catch(e){toast('Error al guardar.');}
+  // Guarda en segundo plano -- no espera el ack del servidor (mismo criterio que goles,
+  // tarjetas y alineación: con mala señal, un await acá dejaba el modal como colgado).
+  renderListasPartido();
+  actualizarBotonesUndo();
+  toast('✓ '+(dniSale?'Reemplazo':'Jugador')+' registrado');
+  db.collection('partidos').doc(st.partidoId).update({[campo]:alin})
+    .catch(e=>{ console.error('confirmarAgregarJugador:',e); if(navigator.onLine)toast('⚠ No se guardó — reintentá con señal.',6000); });
 }
 
 // Botón manual "🔄 Actualizar" (pantalla de elegir cancha). El chequeo automático de abajo
