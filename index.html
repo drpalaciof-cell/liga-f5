@@ -6082,7 +6082,16 @@ function renderEnVivoCards(contId, isAdmin) {
         <div style="flex:1;">${eventosLocalHtml}</div>
         <div style="flex:1;text-align:right;">${eventosVisitanteHtml}</div>
       </div>
-      ${(isAdmin && !p.jugado && (!(p.alineacionLocal || []).length || !(p.alineacionVisitante || []).length)) ? `<button class="btn btn-sm" style="width:100%;margin-top:10px;" onclick="abrirModalAlineacionAdmin('${p.id}')">📋 Cargar alineación por adelantado</button>` : ''}
+      ${(() => {
+        if (!isAdmin) return '';
+        // No depende de qué partido está en curso ahora mismo -- busca el próximo de la cancha
+        // (en orden de horario) al que todavía le falte alguna alineación, aunque el anterior
+        // siga jugándose. Antes esto solo miraba el partido "actual" de la tarjeta, así que si
+        // ya había uno en curso no se podía precargar el siguiente hasta que cerrara.
+        const proximoSinAlineacion = deCancha.find(x => !x.jugado && (!(x.alineacionLocal || []).length || !(x.alineacionVisitante || []).length));
+        if (!proximoSinAlineacion) return '';
+        return `<button class="btn btn-sm" style="width:100%;margin-top:10px;" onclick="abrirModalAlineacionAdmin('${proximoSinAlineacion.id}')">📋 Cargar alineación · ${proximoSinAlineacion.horario || ''}</button>`;
+      })()}
       ${isAdmin ? (() => {
         const av = avisosPlanillaCache[String(cancha)] || {};
         const quienResp = (av.msgRespuestaDe || '').trim();

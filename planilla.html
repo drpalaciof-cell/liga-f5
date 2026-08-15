@@ -765,10 +765,10 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- ══ SCREEN: CANCHA ══ -->
 <div class="screen" id="screen-cancha">
   <div class="scroll">
-    <div style="display:flex;justify-content:space-between;padding:8px 12px 0;">
-      <button onclick="abrirHistorial()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;font-family:'Manrope',sans-serif;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px;letter-spacing:.3px;">📄 Historial</button>
-      <button onclick="actualizarApp()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;font-family:'Manrope',sans-serif;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px;letter-spacing:.3px;">🔄 Actualizar</button>
-      <button onclick="irAlInicio()" style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:11px;font-family:'Manrope',sans-serif;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px;letter-spacing:.3px;">⟵ Cambiar planillero</button>
+    <div style="display:flex;gap:8px;padding:12px 12px 0;">
+      <button onclick="abrirHistorial()" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:12.5px;font-family:'Manrope',sans-serif;font-weight:700;cursor:pointer;padding:12px 4px;border-radius:10px;">📄 Historial</button>
+      <button onclick="actualizarApp()" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:12.5px;font-family:'Manrope',sans-serif;font-weight:700;cursor:pointer;padding:12px 4px;border-radius:10px;">🔄 Actualizar</button>
+      <button onclick="irAlInicio()" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:12.5px;font-family:'Manrope',sans-serif;font-weight:700;cursor:pointer;padding:12px 4px;border-radius:10px;">⟵ Cambiar</button>
     </div>
     <div class="cancha-logo">
       <img src="assets/logo-clausura.png" onerror="this.style.display='none'" style="width:150px;height:auto;object-fit:contain;display:block;margin:0 auto;filter:drop-shadow(0 0 16px rgba(100,180,255,0.3));">
@@ -814,9 +814,11 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
   <div class="topbar">
     <button class="topbar-back" onclick="goScreen('screen-cancha')">←</button>
     <div><div class="topbar-title" id="lista-title">Cancha 1</div><div class="topbar-sub">Seleccioná un partido</div></div>
-    <button class="btn-notif-planillero" onclick="activarNotificacionesPlanillero()" title="Activar notificaciones" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:16px;padding:4px 6px;cursor:pointer;">🔔</button>
-    <button class="btn-llamar-organizador" data-variant="texto" onclick="llamarOrganizador()" style="background:none;border:none;color:var(--orange);font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer;white-space:nowrap;">📣 Organizador</button>
-    <button onclick="cargarLista()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;padding:4px 8px;cursor:pointer;line-height:1;" title="Recargar">↺</button>
+    <button onclick="cargarLista()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;padding:8px 10px;cursor:pointer;line-height:1;" title="Recargar">↺</button>
+  </div>
+  <div style="display:flex;gap:8px;padding:10px 14px 4px;">
+    <button class="btn-notif-planillero" onclick="activarNotificacionesPlanillero()" style="flex:1;padding:12px 6px;font-size:13px;font-weight:700;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.75);cursor:pointer;">🔔 Notificaciones</button>
+    <button class="btn-llamar-organizador" data-variant="texto" onclick="llamarOrganizador()" style="flex:1;padding:12px 6px;font-size:13px;font-weight:700;border-radius:10px;background:rgba(255,112,0,.09);border:1px solid rgba(255,112,0,.32);color:var(--orange);cursor:pointer;">📣 Organizador</button>
   </div>
   <div class="scroll" id="lista-body"></div>
 </div>
@@ -877,10 +879,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <span class="ph-div-nombre" id="ph-division-nombre"></span>
       </div>
       <span class="ph-periodo" id="ph-periodo">1° TIEMPO</span>
-      <span id="ph-crono" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:15px;color:var(--orange);letter-spacing:.5px;"></span>
-      <button id="btn-pausa-crono" onclick="togglePausaCronometro()" title="Pausar/reanudar por lesión u otro corte del árbitro" style="display:none;background:none;border:none;color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;padding:4px 6px;cursor:pointer;white-space:nowrap;">⏸ Pausar</button>
-      <button class="btn-llamar-organizador" data-variant="icono" onclick="llamarOrganizador()" style="background:none;border:none;color:var(--orange);font-size:11px;font-weight:700;padding:4px 6px;cursor:pointer;white-space:nowrap;">📣</button>
-      <button onclick="actualizarApp()" title="Buscar actualización" style="background:none;border:none;color:rgba(255,255,255,0.35);font-size:15px;cursor:pointer;padding:4px 6px;">🔄</button>
+      <span id="ph-crono" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:17px;color:var(--orange);letter-spacing:.5px;"></span>
     </div>
   </div>
 
@@ -955,6 +954,11 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 
   <!-- FOOTER: control de tiempo + agregar jugador + historial/imprimir -->
   <div class="partido-footer">
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button id="btn-pausa-crono" onclick="togglePausaCronometro()" title="Pausar/reanudar por lesión u otro corte del árbitro" style="display:none;flex:1;padding:13px 6px;font-size:13px;font-weight:700;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.75);cursor:pointer;">⏸ Pausar</button>
+      <button class="btn-llamar-organizador" data-variant="texto" onclick="llamarOrganizador()" style="flex:1;padding:13px 6px;font-size:13px;font-weight:700;border-radius:10px;background:rgba(255,112,0,.09);border:1px solid rgba(255,112,0,.32);color:var(--orange);cursor:pointer;">📣 Organizador</button>
+      <button onclick="actualizarApp()" title="Buscar actualización" style="flex:1;padding:13px 6px;font-size:13px;font-weight:700;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);cursor:pointer;">🔄 Actualizar</button>
+    </div>
     <div class="footer-top-row">
       <button class="btn-add-eq" id="footer-add-local" onclick="abrirModalAgregarJugador('local')" style="display:none;">
         <span class="add-ico">➕</span>LOCAL
@@ -2838,7 +2842,7 @@ async function activarNotificacionesPlanillero(silent){
       subscription:JSON.parse(JSON.stringify(sub)),rol:'planilla',cancha:st.cancha,
       updatedAt:new Date().toISOString()
     });
-    document.querySelectorAll('.btn-notif-planillero').forEach(b=>b.textContent='🔔✓');
+    document.querySelectorAll('.btn-notif-planillero').forEach(b=>{b.textContent='🔔✓ Activadas';b.style.color='var(--green)';b.style.borderColor='rgba(0,230,118,.35)';});
     if(!silent)toast('Notificaciones activadas para esta cancha ✓',3000);
   }catch(e){console.error(e);if(!silent)toast('Error al activar notificaciones.',3000);}
 }

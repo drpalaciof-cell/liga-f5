@@ -89,7 +89,15 @@
 // v33: en los avisos admin<->planillero, ahora se ve el NOMBRE del planillero ademas de la
 // cancha (banner, tarjeta "En vivo" y notificacion push) -- el dato ya se guardaba, solo
 // faltaba mostrarlo.
-const CACHE = 'ligaf5-v33';
+// v34: 2 pedidos del usuario --
+// (1) botones del planillero mas grandes y separados (estaban chicos y pegados, se tocaban por
+// error) -- 🔔/📣 movidos a una fila propia debajo del topbar de "Ver partidos", y ⏸ Pausar /
+// 📣 Organizador / 🔄 Actualizar movidos del header apretado del partido a una fila nueva en el
+// footer, mas grandes y con fondo/borde propios.
+// (2) admin: "Cargar alineacion por adelantado" ya no espera a que cierre el partido en curso --
+// busca el proximo partido de la cancha (por horario) al que le falte alineacion, sin importar
+// si el anterior sigue jugandose.
+const CACHE = 'ligaf5-v34';
 const ASSETS = [
   './index.html',
   './planilla.html',
