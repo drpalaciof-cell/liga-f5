@@ -152,12 +152,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .c-lbl{font-size:9px;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:1px;margin-top:5px;position:relative;z-index:1;}
 .c-div{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;min-height:12px;position:relative;z-index:1;transition:.2s;}
 .cancha-ir-wrap{padding:16px 14px 8px;}
-.sim-wrap{
-  margin:14px 14px 0;padding:14px;
-  background:rgba(255,255,255,0.03);
-  border:1px solid rgba(255,255,255,0.06);border-radius:14px;
-}
-.sim-label{font-size:9px;color:rgba(255,255,255,0.2);text-align:center;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;}
 
 /* ── MATCH CARDS ── */
 .match-card{
@@ -787,12 +781,6 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
       <button class="btn btn-primary" onclick="irALista()">Ver partidos →</button>
       <div id="cancha-err" style="text-align:center;color:var(--red);font-size:12px;padding:8px 0;display:none;">Seleccioná una cancha primero.</div>
     </div>
-    <div class="sim-wrap">
-      <div class="sim-label">— Modo prueba —</div>
-      <button class="btn btn-ghost btn-sm" onclick="simCrearPartido(true)">🧪 Simular desde cero (con alineación)</button>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="simCrearPartido(false)">🧪 Simular ya armado (directo al partido)</button>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px;color:var(--red);" onclick="simBorrarPartido()">🗑 Borrar partido simulado</button>
-    </div>
   </div>
 </div>
 
@@ -1109,7 +1097,13 @@ function goScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classLis
 
 async function cargarDivisionesCanchas(){
   try{
-    const snap=await db.collection('partidos').where('estado','in',['pendiente','alineacion','primer_tiempo','segundo_tiempo']).get();
+    // OJO: NO filtrar por 'estado' acá — un partido recién generado por el fixture no tiene
+    // ese campo hasta que el planillero lo abre por primera vez (basePartido() nunca lo setea),
+    // y where('estado','in',[...]) de Firestore no matchea documentos donde el campo no existe.
+    // Eso hacía que TODAS las canchas mostraran "Sin partidos" el primer día de cada fecha, con
+    // el fixture ya cargado. 'jugado' en cambio siempre existe (default false desde que se crea
+    // el partido), así que es el chequeo correcto para "todavía no se jugó/cerró".
+    const snap=await db.collection('partidos').where('jugado','==',false).get();
     const byCancha={};
     snap.forEach(doc=>{
       const p=doc.data();const c=Number(p.cancha);
@@ -1244,8 +1238,8 @@ async function cargarLista(){
   try{
     const snap=await db.collection('partidos').where('cancha','==',st.cancha).get();
     let todos=[];
-    // Los partidos de prueba (_sim, creados con "Crear partido de prueba" para testear la app)
-    // nunca deben aparecer ni bloquear una cancha real — solo se abren a mano desde ese botón.
+    // El modo prueba (que creaba partidos con _sim:true) ya no existe en la app, pero se
+    // mantiene este filtro por si queda algún documento viejo de antes en la base.
     snap.forEach(doc=>{const d={id:doc.id,...doc.data()};if(d._sim)return;_pCache[doc.id]=d;todos.push(d);});
     body.innerHTML='';
     if(!todos.length){
@@ -2010,50 +2004,6 @@ async function cerrarPlanilla(){
 function abrirModal(id){document.getElementById(id).classList.add('open');}
 function cerrarModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
-
-// Antes SIM_PARTIDO_ID era un id fijo ('sim_planilla') que se reciclaba con .set() en cada
-// prueba. Problema real: una vez que ese partido de prueba se CERRABA (parte normal de probar
-// el circuito completo), la regla de Firestore que protege los partidos cerrados de cualquier
-// sesión no-admin (a propósito, para que nadie toque un resultado real ya cerrado) bloqueaba
-// también CUALQUIER intento de recrearlo o resetearlo — "Simular partido de prueba" y "Borrar
-// partido simulado" quedaban trabados los dos, justo por la misma protección que los hace
-// seguros. Ahora cada simulación crea un documento NUEVO (id con timestamp) — un `create` nunca
-// choca con esa regla, sin importar en qué estado haya quedado el anterior. Los viejos quedan
-// huérfanos pero inofensivos: _sim:true los excluye de cargarLista() en todos lados.
-function nuevoSimPartidoId(){ return 'sim_'+Date.now(); }
-// desdeCero=true: arranca en 'pendiente' con las dos alineaciones vacías — para probar el
-// circuito completo (armar alineación, chequeos de seguro/sanciones, designar capitán, etc.).
-// desdeCero=false: arranca ya con las alineaciones armadas, directo al partido en vivo — para
-// probar rápido goles/tarjetas/faltas/cierre sin tener que volver a cargar 20 jugadores cada vez.
-async function simCrearPartido(desdeCero){
-  toast('Creando partido de prueba...',4000);
-  try{
-    const snap=await db.collection('equipos').limit(4).get();
-    const equipos=[];snap.forEach(doc=>{if(!doc.id.startsWith('sim_'))equipos.push({id:doc.id,...doc.data()});});
-    if(equipos.length<2){toast('Necesitás al menos 2 equipos.',3000);return;}
-    const eqL=equipos[0],eqV=equipos[1];
-    const mkAlin=(jugs,offset)=>jugs.filter(j=>j.apellido||j.nombre).slice(0,15).map((j,i)=>({dni:j.dni||'SIM'+i,nombre:((j.apellido||'').toUpperCase()+', '+(j.nombre||'')).trim(),numero:String(i+1+offset).padStart(2,'0')}));
-    const alinL=desdeCero?[]:mkAlin(eqL.jugadores||[],0);
-    const alinV=desdeCero?[]:mkAlin(eqV.jugadores||[],0);
-    const simId=nuevoSimPartidoId();
-    await db.collection('partidos').doc(simId).set({equipoLocalId:eqL.id,equipoLocalNombre:eqL.nombre||'Local',equipoVisitanteId:eqV.id,equipoVisitanteNombre:eqV.nombre||'Visitante',division:eqL.division||'Primera',zona:eqL.zona||'A',numeroFecha:99,cancha:Number(st.cancha||1),horario:'10:00',estado:desdeCero?'pendiente':'alineacion',jugado:false,alineacionLocal:alinL,alineacionVisitante:alinV,capitanLocalDni:alinL[0]?.dni||'',capitanVisitanteDni:alinV[0]?.dni||'',faltas:{local:{t1:0,t2:0},visitante:{t1:0,t2:0}},tiempoActual:1,eventos:[],firmas:{local:false,visitante:false},golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],_sim:true});
-    localStorage.setItem('ligaf5_sim_id',simId);
-    toast('Partido creado ✓',2000);setTimeout(()=>abrirPartido(simId),800);
-  }catch(e){toast('Error: '+e.message,4000);}
-}
-async function simBorrarPartido(){
-  const simId=localStorage.getItem('ligaf5_sim_id');
-  if(!simId){toast('No hay ninguna simulación activa en este tablet.',3000);return;}
-  if(!confirm('¿Reiniciar el partido simulado?'))return;
-  try{
-    // Best-effort: si ya se cerró, esto va a fallar por la regla de partidos cerrados —
-    // y está bien que falle así, no hace falta mostrarlo como error. La próxima simulación
-    // de todos modos va a crear un documento nuevo, no depende de que esto funcione.
-    await db.collection('partidos').doc(simId).update({estado:'pendiente',jugado:false,alineacionLocal:[],alineacionVisitante:[],eventos:[],golesLocal:0,golesVisitante:0,goleadores:[],tarjetas:[],firmas:{local:false,visitante:false}});
-    toast('Reiniciado.',2000);
-  }catch(e){toast('Listo — la próxima simulación va a arrancar de cero igual.',2500);}
-  localStorage.removeItem('ligaf5_sim_id');
-}
 
 // iOS Safari no soporta overscroll-behavior — este fix evita el rubber-band
 // manteniendo el scroll siempre 1px alejado de los límites absolutos
