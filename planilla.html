@@ -718,6 +718,19 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <body>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
+<!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
+     (no es un alert/confirm nativo, que congela todo). Se muestra solo cuando hay un mensaje sin
+     responder para esta cancha; al responder (texto libre o el atajo "OK") se cierra sola. -->
+<div id="aviso-banner" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:900;background:#0d2a10;border-top:2px solid var(--green);padding:14px 16px;box-shadow:0 -6px 24px rgba(0,0,0,.45);">
+  <div style="font-size:11px;font-weight:800;color:var(--green);letter-spacing:.5px;margin-bottom:6px;">📣 AVISO DE LA ORGANIZACIÓN</div>
+  <div id="aviso-banner-texto" style="font-size:14.5px;font-weight:600;margin-bottom:10px;"></div>
+  <div style="display:flex;gap:8px;">
+    <input id="aviso-banner-input" type="text" placeholder="Responder..." autocomplete="off" style="flex:1;padding:11px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:14px;">
+    <button class="btn btn-sm" onclick="responderAviso('OK')" style="background:rgba(255,255,255,.1);">👍 OK</button>
+    <button class="btn btn-primary btn-sm" onclick="responderAviso()">Enviar</button>
+  </div>
+</div>
+
 <!-- AMBIENT BLOBS -->
 <div class="ambient" aria-hidden="true">
   <div class="blob blob-1"></div>
@@ -801,6 +814,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
   <div class="topbar">
     <button class="topbar-back" onclick="goScreen('screen-cancha')">←</button>
     <div><div class="topbar-title" id="lista-title">Cancha 1</div><div class="topbar-sub">Seleccioná un partido</div></div>
+    <button class="btn-llamar-organizador" data-variant="texto" onclick="llamarOrganizador()" style="background:none;border:none;color:var(--orange);font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer;white-space:nowrap;">📣 Organizador</button>
     <button onclick="cargarLista()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;padding:4px 8px;cursor:pointer;line-height:1;" title="Recargar">↺</button>
   </div>
   <div class="scroll" id="lista-body"></div>
@@ -863,6 +877,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
       </div>
       <span class="ph-periodo" id="ph-periodo">1° TIEMPO</span>
       <span id="ph-crono" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:15px;color:var(--orange);letter-spacing:.5px;"></span>
+      <button class="btn-llamar-organizador" data-variant="icono" onclick="llamarOrganizador()" style="background:none;border:none;color:var(--orange);font-size:11px;font-weight:700;padding:4px 6px;cursor:pointer;white-space:nowrap;">📣</button>
       <button onclick="actualizarApp()" title="Buscar actualización" style="background:none;border:none;color:rgba(255,255,255,0.35);font-size:15px;cursor:pointer;padding:4px 6px;">🔄</button>
     </div>
   </div>
@@ -1232,6 +1247,7 @@ function getSancionesActivas(counts, eq){
 
 async function cargarLista(){
   if(st.unsub){st.unsub();st.unsub=null;}
+  iniciarSyncAvisos();
   sessionStorage.setItem('ligaf5_screen','lista');sessionStorage.removeItem('ligaf5_pid');
   document.getElementById('lista-title').textContent='Cancha '+st.cancha;
   const body=document.getElementById('lista-body');
@@ -2667,6 +2683,59 @@ async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
   toast('✓ '+(dniSale?'Reemplazo':'Jugador')+' registrado');
   db.collection('partidos').doc(st.partidoId).update({[campo]:alin})
     .catch(e=>{ console.error('confirmarAgregarJugador:',e); if(navigator.onLine)toast('⚠ No se guardó — reintentá con señal.',6000); });
+}
+
+// Aviso rápido admin <-> planillero, por cancha (no es un chat con historial, 1 solo documento
+// por cancha en avisosPlanilla/{cancha}). Se escucha en vivo desde que se elige la cancha, así
+// llega el aviso esté en la pantalla que esté el planillero (lista, alineación o partido).
+let _avisosUnsub=null,_avisosData=null;
+function iniciarSyncAvisos(){
+  if(_avisosUnsub||!st.cancha)return;
+  _avisosUnsub=db.collection('avisosPlanilla').doc(String(st.cancha)).onSnapshot(snap=>{
+    _avisosData=snap.exists?snap.data():{};
+    actualizarAvisoBanner();
+    actualizarBotonLlamarOrganizador();
+  },e=>console.error('avisos:',e));
+}
+function actualizarAvisoBanner(){
+  const el=document.getElementById('aviso-banner');
+  if(!el)return;
+  const a=_avisosData;
+  const hayMensajeSinResponder=a&&a.msgTexto&&!a.msgRespuesta;
+  el.style.display=hayMensajeSinResponder?'block':'none';
+  if(hayMensajeSinResponder)document.getElementById('aviso-banner-texto').textContent=a.msgTexto;
+}
+function responderAviso(textoFijo){
+  const input=document.getElementById('aviso-banner-input');
+  const texto=(textoFijo||(input&&input.value)||'').trim();
+  if(!texto){toast('Escribí algo o tocá "OK".',2500);return;}
+  document.getElementById('aviso-banner').style.display='none';
+  if(input)input.value='';
+  toast('Respuesta enviada ✓');
+  db.collection('avisosPlanilla').doc(String(st.cancha))
+    .set({msgRespuesta:texto,msgRespuestaHora:new Date().toISOString(),msgRespuestaDe:st.planillero||''},{merge:true})
+    .catch(e=>console.error('responderAviso:',e));
+}
+// "Llamar al organizador" -- un toque, sin confirm() (tiene que ser rápido en pleno partido).
+// Se banca solo mientras no lo atendieron: si ya está activo, avisa que no hace falta tocar de
+// nuevo. actualizarBotonLlamarOrganizador() lo refleja en los dos botones de la app (pantalla de
+// lista y header del partido) apenas el admin lo marca como atendido del otro lado.
+function llamarOrganizador(){
+  if(!st.cancha){toast('Elegí una cancha primero.',2500);return;}
+  if(_avisosData&&_avisosData.llamada){toast('Ya avisaste — esperando que te atiendan.',3000);return;}
+  toast('📣 Aviso enviado a la organización',3000);
+  db.collection('avisosPlanilla').doc(String(st.cancha))
+    .set({llamada:true,llamadaHora:new Date().toISOString(),llamadaPlanillero:st.planillero||''},{merge:true})
+    .catch(e=>console.error('llamarOrganizador:',e));
+}
+function actualizarBotonLlamarOrganizador(){
+  const activa=!!(_avisosData&&_avisosData.llamada);
+  document.querySelectorAll('.btn-llamar-organizador').forEach(btn=>{
+    btn.textContent=btn.dataset.variant==='icono'
+      ?(activa?'🚨':'📣')
+      :(activa?'🚨 Esperando...':'📣 Organizador');
+    btn.style.color=activa?'#ff6b6b':'var(--orange)';
+  });
 }
 
 // Botón manual "🔄 Actualizar" (pantalla de elegir cancha). El chequeo automático de abajo

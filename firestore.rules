@@ -110,6 +110,12 @@ service cloud.firestore {
         allow read, write: if autenticado();
       }
     }
+    // Aviso rápido admin <-> planillero por cancha (1 doc por cancha, no es un chat con
+    // historial) y botón de "llamar al organizador". Sin datos sensibles, cualquier
+    // autenticado (incluida la sesión anónima del planillero) puede leer y escribir.
+    match /avisosPlanilla/{cancha} {
+      allow read, write: if autenticado();
+    }
     // Marca puramente organizativa de "esta fecha ya terminó" — no bloquea
     // nada por sí sola, cualquier planillero o admin puede tocarla.
     match /fechasCerradas/{id} {

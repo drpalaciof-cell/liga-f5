@@ -66,7 +66,14 @@
 // partido ya tiene que arrancar. Escribe los mismos campos que usa planilla.html
 // (alineacionLocal/Visitante, capitanLocalDni/VisitanteDni) -- iniciarAlineacion() detecta que
 // ya estan cargadas y salta derecho a la pantalla del partido.
-const CACHE = 'ligaf5-v28';
+// v29: sistema de avisos rapidos admin <-> planillero, por cancha (coleccion avisosPlanilla,
+// 1 doc por cancha, no un chat con historial). Planillero: franja fija abajo de la pantalla
+// (no bloquea nada, no es alert/confirm nativo) con el mensaje del admin y una respuesta rapida
+// ("OK" o texto libre) -- se cierra sola al responder. Nuevo boton "📣 Llamar al organizador"
+// (pantalla de lista y header del partido). Admin: banner siempre visible (en cualquier pestana)
+// cuando alguna cancha esta llamando, con boton "Atendi", y boton "✉️ Mandar aviso" +
+// respuesta del planillero en cada tarjeta de "En vivo".
+const CACHE = 'ligaf5-v29';
 const ASSETS = [
   './index.html',
   './planilla.html',
