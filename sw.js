@@ -145,7 +145,17 @@
 // las solapas, y cada fecha lleva su etiqueta de zona). Además las tarjetas
 // eran innecesariamente grandes: menos padding y tipografías más chicas para
 // que entren más partidos sin scrollear.
-const CACHE = 'ligaf5-v39';
+// v40: "Panel de Control" para los 4 organizadores que van de veedores a la
+// cancha. Entran con su propio usuario y ven un panel recortado: solo
+// 🔴 En vivo (las 3 canchas en tiempo real, avisos con los planilleros,
+// llamada al organizador, cargar alineación por adelantado) y 📋 Planillas
+// (ver/descargar/compartir el PDF, corregir resultado y goleadores, cerrar
+// fecha). Sin datos de la temporada, pagos, aranceles, fixture, sanciones,
+// mensajes ni administradores. Quién es organizador sale de config/panelControl
+// (se tilda desde la solapa Administradores) -- no de un custom claim, para no
+// tener que redeployar las Cloud Functions. Es separación de INTERFAZ, no de
+// seguridad: el claim sigue siendo role:'admin'.
+const CACHE = 'ligaf5-v40';
 const ASSETS = [
   './index.html',
   './planilla.html',
