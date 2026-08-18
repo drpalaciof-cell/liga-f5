@@ -134,7 +134,18 @@
 // se jugo, alcanza con confirmar; si hay jugados, se listan uno por uno, se
 // avisa cuantos pierden la planilla firmada y hay que ESCRIBIR el numero de
 // fecha para que no se borre una fecha real de un clic distraido.
-const CACHE = 'ligaf5-v38';
+// v39: fixture público de Segunda -- se leía todo mezclado. Cada zona era una
+// columna independiente que renderizaba TODAS sus fechas, así que bastaba con
+// que una zona tuviera un partido más en una fecha (6 vs 5, por el interzonal)
+// para que de ahí para abajo los encabezados "FECHA N" de las dos columnas
+// quedaran a distinta altura. Ahora se agrupa por FECHA primero (título a todo
+// el ancho) y adentro van las dos zonas, así cada fecha arranca siempre pareja
+// y el hueco de la zona con un partido menos queda contenido en su fecha. Los
+// títulos "Zona A/Zona B" van una sola vez arriba (en celular se ocultan: están
+// las solapas, y cada fecha lleva su etiqueta de zona). Además las tarjetas
+// eran innecesariamente grandes: menos padding y tipografías más chicas para
+// que entren más partidos sin scrollear.
+const CACHE = 'ligaf5-v39';
 const ASSETS = [
   './index.html',
   './planilla.html',
