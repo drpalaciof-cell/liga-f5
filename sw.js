@@ -102,7 +102,21 @@
 // recien ahi actualizar la pantalla -- con mala señal, corregir un numero de camiseta no
 // mostraba ningun cambio hasta que volviera la conexion. Mismo criterio que el resto: actualiza
 // ya, guarda atras.
-const CACHE = 'ligaf5-v35';
+// v36: corregir el resultado de un partido YA CERRADO, desde el admin --
+// (1) el editor de resultado ahora también está en la pantalla "Planillas"
+// (antes solo en el fixture), que es donde uno busca una planilla ya cerrada.
+// (2) BUG: el editor colapsaba las tarjetas de cada jugador en un solo select,
+// así que corregir un gol le borraba la 2ª amarilla a quien la tuviera y le
+// cambiaba la sanción sin avisar -- ahora son contador de amarillas + doble +
+// roja, una entrada por tarjeta, igual que las que genera el planillero.
+// (3) la planilla firmada (`eventos`, lo que arma el PDF) NO se toca: se
+// conserva el documento tal cual lo firmaron los capitanes. La corrección
+// guarda `planillaOriginal` + `rectificaciones[]` (fecha y motivo obligatorio)
+// y marca el partido como rectificado, y tanto el fixture como Planillas
+// muestran qué decía la planilla firmada para que la diferencia no sea
+// silenciosa. Posiciones, goleadores y sanciones toman el valor corregido y se
+// actualizan solos en las pantallas públicas (ya había onSnapshot).
+const CACHE = 'ligaf5-v36';
 const ASSETS = [
   './index.html',
   './planilla.html',
