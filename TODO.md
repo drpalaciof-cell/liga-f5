@@ -2,6 +2,18 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-18 (cont.) — Panel de Control para los organizadores (sw v40)
+
+- **Contexto**: son 5 organizadores y cada sábado va uno de veedor a la cancha. Solo el usuario tenía panel, así que los otros 4 no podían seguir los resultados en vivo ni hablar con los planilleros.
+- **Alcance elegido por el usuario** (de un inventario de todas las funciones existentes): **solo A1–A5 y C1–C3**, o sea 🔴 En vivo completo (3 canchas en tiempo real, aviso a una cancha y a las 3, banner de llamada al organizador, cargar alineación por adelantado) y 📋 Planillas (ver/descargar/compartir PDF, corregir resultado y goleadores, cerrar/reabrir fecha). Nada más.
+- **Implementación**: no es una pantalla nueva sino el mismo panel con las solapas filtradas — mucho menos código y menos riesgo. `esPanelControl()`, `aplicarModoPanelControl()`, `PC_TABS_PERMITIDAS`/`PC_SUBTABS_PERMITIDAS`. Además de ocultar, `switchAdminTab`/`switchDivisionAdminTab`/`abrirDatosTemporada` **redirigen**, y un organizador no dispara `cargarPagosAdmin`/`cargarAdminsList`/`cargarAranceles` (esos datos ni se traen al navegador). `logout()` limpia el modo para que no lo herede el siguiente que entre en ese dispositivo.
+- **Dónde se define quién es organizador**: documento `config/panelControl` → `{ usuarios: [...] }`, con un tilde "Panel de Control" por usuario en la solapa Administradores (`marcarPanelControl`). El match ignora mayúsculas. **A propósito NO se usó un custom claim**: eso obligaría a redeployar Cloud Functions (ver limitación abajo).
+- **LIMITACIÓN, avisada al usuario**: es separación de **interfaz**, no de seguridad. El claim sigue siendo `role:'admin'`, así que `firestore.rules` no distingue. Y peor: hoy `/equipos` tiene `allow read: if autenticado()`, y la sesión anónima de cualquier visitante cuenta — o sea que montos y comprobantes **ya** son legibles por cualquiera. **Pendiente aparte**: mover la parte financiera de `/equipos` a una colección propia restringida por rol.
+- Probado con las funciones reales extraídas de `index.html`: 15 verificaciones.
+
+## ⚠️ NO DEPLOYAR CLOUD FUNCTIONS DESDE LA PC DE LA ATP
+`functions/.env` está en el `.gitignore` y **no existe en esa máquina** — las claves `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` que usa `ensureVapid()` viven solo en la computadora personal y en la config de las functions ya desplegadas. Un `firebase deploy --only functions` desde la PC de la ATP las dejaría vacías y **romperían todas las notificaciones push** (avisos admin⇄planillero y mensajes de equipos). Desde ahí, solo `--only hosting`.
+
 ## ✅ Sesión 2026-08-18 — corregir el resultado de un partido ya cerrado (sw v36)
 
 - **Problema real del usuario**: un planillero cerró mal una planilla y dejó como **empate** un partido que en realidad había terminado con **2 goles de diferencia**. Pidió poder editar el resultado y cargar los goles del jugador, "conectando todo" para que se refleje en la página (goleadores, etc.).
