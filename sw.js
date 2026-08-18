@@ -155,7 +155,28 @@
 // (se tilda desde la solapa Administradores) -- no de un custom claim, para no
 // tener que redeployar las Cloud Functions. Es separación de INTERFAZ, no de
 // seguridad: el claim sigue siendo role:'admin'.
-const CACHE = 'ligaf5-v40';
+// v41: tres cosas que rompieron la fecha del sábado.
+// (1) BUG GRAVE del planillero: "FIN DEL PARTIDO" no hacía NADA a partir del
+// segundo partido de la sesión, y había que reiniciar la app. Causa:
+// firmarCapitan() pisaba el innerHTML de la caja de firma y borraba el
+// <h3 id="firma-local-nombre">; en el partido siguiente finPartido() hacía
+// getElementById('firma-local-nombre').textContent -> TypeError -> se cortaba
+// antes del goScreen('screen-cierre'). Ahora las cajas se redibujan siempre
+// desde st.firmas (renderFirmasCierre), también al sincronizar con otro
+// dispositivo. Y si falta una firma, se resalta en rojo la caja que falta y la
+// pantalla salta hasta ahí, en vez de un toast chico que se perdía.
+// (2) Alineación: el planillero ahora marca en rojo AL JUGADOR que tiene el
+// número repetido o sin cargar, con nombre y motivo, y salta hasta él. Además
+// se comparaba "7" contra "07" como distintos y después los dos se guardaban
+// como "07": entraban dos jugadores con el mismo número. Ahora se normaliza
+// antes de comparar.
+// (3) "Cargar alineación del próximo partido" (admin) era inusable en celular:
+// dos columnas lado a lado y cada lista con su propio scroll dentro del scroll
+// del modal, así que al arrastrar se perdía la vista. Ahora es un equipo por
+// vez con solapas y contador, buscador por apellido/DNI, sin scroll anidado,
+// checkbox y campo de número grandes, tocar el nombre tilda, y escribir el
+// número tilda solo. Al guardar también marca al jugador con problema.
+const CACHE = 'ligaf5-v41';
 const ASSETS = [
   './index.html',
   './planilla.html',

@@ -491,6 +491,26 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 /* ===== modal ===== */
 #modal-overlay{position:fixed;inset:0;background:rgba(2,6,10,.7);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;}
 #modal-content{max-width:520px;width:100%;max-height:88vh;overflow-y:auto;padding:28px;position:relative;color:var(--text);}
+/* ── Cargar alineación: pensado para el celular ──
+   Un equipo por vez, sin scroll anidado (el del modal alcanza) y con blancos de
+   toque grandes: en la cancha esto se usa con el pulgar y apurado. */
+.ali-adm-tabs{display:flex;gap:8px;margin-bottom:12px;}
+.ali-adm-tab{flex:1;min-width:0;padding:11px 8px;border-radius:10px;border:1px solid var(--glass-border);background:var(--surface3,rgba(255,255,255,.04));color:var(--text-dim);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ali-adm-tab.activa{border-color:var(--cyan);color:var(--text);background:rgba(34,211,238,.10);}
+.ali-adm-badge{background:rgba(255,255,255,.12);border-radius:20px;padding:1px 8px;font-size:11px;flex-shrink:0;}
+.ali-adm-tab.activa .ali-adm-badge{background:var(--cyan);color:#04212a;}
+.ali-adm-buscar{width:100%;padding:11px 12px;border-radius:10px;margin-bottom:8px;font-size:15px;}
+.ali-adm-row{display:flex;align-items:center;gap:11px;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.07);border-radius:9px;}
+.ali-adm-row.sel{background:rgba(34,211,238,.08);}
+.ali-adm-row.error{background:rgba(248,113,113,.15);box-shadow:inset 0 0 0 1px rgba(248,113,113,.65);}
+.ali-adm-chk{width:23px;height:23px;flex-shrink:0;accent-color:var(--cyan);}
+.ali-adm-nombre{flex:1;min-width:0;font-size:13.5px;line-height:1.3;cursor:pointer;-webkit-user-select:none;user-select:none;}
+.ali-adm-num{width:58px;flex-shrink:0;padding:10px 4px;border-radius:9px;text-align:center;font-size:16px;font-weight:800;}
+.ali-adm-cap{width:100%;padding:11px;border-radius:10px;margin-top:4px;font-size:15px;}
+@media(max-width:600px){
+  #modal-content{padding:18px 14px;max-height:93vh;}
+  .ali-adm-nombre{font-size:13px;}
+}
 .modal-close{position:absolute;top:18px;right:18px;cursor:pointer;color:var(--text-dim);font-size:20px;background:none;border:none;}
 .modal-close:hover{color:var(--text);}
 
@@ -6197,7 +6217,7 @@ function renderEnVivoCards(contId, isAdmin) {
         // ya había uno en curso no se podía precargar el siguiente hasta que cerrara.
         const proximoSinAlineacion = deCancha.find(x => !x.jugado && (!(x.alineacionLocal || []).length || !(x.alineacionVisitante || []).length));
         if (!proximoSinAlineacion) return '';
-        return `<button class="btn btn-sm" style="width:100%;margin-top:10px;" onclick="abrirModalAlineacionAdmin('${proximoSinAlineacion.id}')">📋 Cargar alineación · ${proximoSinAlineacion.horario || ''}</button>`;
+        return `<button class="btn btn-sm" style="width:100%;margin-top:10px;" onclick="abrirModalAlineacionAdmin('${proximoSinAlineacion.id}')">📋 Cargar alineación del próximo partido${proximoSinAlineacion.horario ? ` · ${proximoSinAlineacion.horario}` : ''}</button>`;
       })()}
       ${isAdmin ? (() => {
         const av = avisosPlanillaCache[String(cancha)] || {};
@@ -6223,40 +6243,92 @@ function abrirModalAlineacionAdmin(partidoId) {
   if (!p) { showToast('Partido no encontrado.', 'error'); return; }
   const eqL = equiposCacheAdmin.find(e => e.id === p.equipoLocalId) || {};
   const eqV = equiposCacheAdmin.find(e => e.id === p.equipoVisitanteId) || {};
+  // Un equipo por vez (solapas) en vez de dos columnas lado a lado, y SIN scroll
+  // propio en la lista: el modal ya tiene el suyo, y dos scrolls anidados en un
+  // celular hacen que al arrastrar se pierda la vista. Los dos equipos quedan
+  // siempre en el DOM (el que no se ve va con display:none), así
+  // guardarAlineacionAdmin los sigue encontrando con querySelectorAll.
   const col = (equipo, jugadores, alinExistente, capDni) => {
     const numByDni = {}; (alinExistente || []).forEach(j => numByDni[j.dni] = j.numero);
     const selDnis = new Set((alinExistente || []).map(j => j.dni));
-    const rows = (jugadores || []).filter(j => j.dni).slice()
-      .sort((a, b) => (a.apellido || '').localeCompare(b.apellido || '', 'es'))
-      .map(j => {
-        const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
-        return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);">
-          <input type="checkbox" class="ali-adm-chk" data-equipo="${equipo}" data-dni="${j.dni}" ${selDnis.has(j.dni) ? 'checked' : ''}>
-          <span style="flex:1;font-size:12.5px;">${escapeHtml(nombre)} <span class="muted" style="font-size:10.5px;">DNI ${escapeHtml(j.dni)}</span></span>
-          <input type="text" inputmode="numeric" maxlength="2" placeholder="N°" value="${escapeHtml(numByDni[j.dni] || '')}" class="ali-adm-num" data-equipo="${equipo}" data-dni="${j.dni}" style="width:42px;padding:5px;border-radius:6px;text-align:center;">
-        </label>`;
-      }).join('');
-    const capOptions = (jugadores || []).filter(j => j.dni).map(j => {
+    const lista = (jugadores || []).filter(j => j.dni).slice()
+      .sort((a, b) => (a.apellido || '').localeCompare(b.apellido || '', 'es'));
+    const rows = lista.map(j => {
+      const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
+      const sel = selDnis.has(j.dni);
+      return `<div class="ali-adm-row${sel ? ' sel' : ''}" id="ali-row-${equipo}-${escapeHtml(j.dni)}" data-buscar="${escapeHtml(nombre.toLowerCase())} ${escapeHtml(j.dni)}">
+        <input type="checkbox" class="ali-adm-chk" data-equipo="${equipo}" data-dni="${escapeHtml(j.dni)}" ${sel ? 'checked' : ''} onchange="_aliAdmToggle('${equipo}','${escapeHtml(j.dni)}')">
+        <span class="ali-adm-nombre" onclick="_aliAdmClickNombre('${equipo}','${escapeHtml(j.dni)}')">${escapeHtml(nombre)}<br><span class="muted" style="font-size:10.5px;">DNI ${escapeHtml(j.dni)}</span></span>
+        <input type="text" inputmode="numeric" maxlength="2" placeholder="N°" value="${escapeHtml(numByDni[j.dni] || '')}" class="ali-adm-num" data-equipo="${equipo}" data-dni="${escapeHtml(j.dni)}" oninput="_aliAdmNumero('${equipo}','${escapeHtml(j.dni)}')">
+      </div>`;
+    }).join('');
+    const capOptions = lista.map(j => {
       const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
       return `<option value="${j.dni}" ${j.dni === capDni ? 'selected' : ''}>${escapeHtml(nombre)}</option>`;
     }).join('');
-    const nombreEq = equipo === 'local' ? p.equipoLocalNombre : p.equipoVisitanteNombre;
-    return `<div style="flex:1;min-width:230px;">
-      <h4 style="margin:0 0 8px;">${escapeHtml(nombreEq || '')}</h4>
-      <div style="max-height:280px;overflow-y:auto;margin-bottom:10px;">${rows || '<p class="muted" style="font-size:12px;">Sin jugadores cargados en el plantel.</p>'}</div>
-      <label style="font-size:11px;color:var(--text-dim);">Capitán</label>
-      <select id="ali-adm-cap-${equipo}" style="width:100%;padding:6px;border-radius:8px;margin-top:4px;"><option value="">—</option>${capOptions}</select>
+    return `<div class="ali-adm-panel" id="ali-adm-panel-${equipo}" ${equipo === 'visitante' ? 'style="display:none;"' : ''}>
+      <input type="text" class="ali-adm-buscar" id="ali-adm-buscar-${equipo}" placeholder="🔎 Buscar por apellido o DNI..." oninput="_aliAdmFiltrar('${equipo}')">
+      <div id="ali-adm-lista-${equipo}">${rows || '<p class="muted" style="font-size:12.5px;">Sin jugadores cargados en el plantel.</p>'}</div>
+      <label style="font-size:11.5px;color:var(--text-dim);display:block;margin-top:12px;">Capitán</label>
+      <select id="ali-adm-cap-${equipo}" class="ali-adm-cap"><option value="">—</option>${capOptions}</select>
     </div>`;
   };
-  openModal(`<h3>📋 Cargar alineación por adelantado</h3>
-    <p class="wizard-help" style="margin-bottom:14px;">${escapeHtml(p.equipoLocalNombre || '')} vs ${escapeHtml(p.equipoVisitanteNombre || '')} · Cancha ${p.cancha || '—'} · ${p.horario || ''}<br>Tildá los jugadores que van a jugar, ponele el número y elegí el capitán. Se guarda directo en el partido — cuando el planillero lo abra, ya la va a encontrar cargada.</p>
-    <div style="display:flex;gap:20px;flex-wrap:wrap;">
-      ${col('local', eqL.jugadores, p.alineacionLocal || [], p.capitanLocalDni || '')}
-      ${col('visitante', eqV.jugadores, p.alineacionVisitante || [], p.capitanVisitanteDni || '')}
-    </div>
+  const tab = (equipo, nombreEq) => `<button type="button" class="ali-adm-tab${equipo === 'local' ? ' activa' : ''}" id="ali-adm-tab-${equipo}" onclick="_aliAdmSolapa('${equipo}')">${escapeHtml(nombreEq || equipo)} <span class="ali-adm-badge" id="ali-adm-cont-${equipo}">0</span></button>`;
+
+  openModal(`<h3 style="margin-bottom:4px;">📋 Cargar alineación del próximo partido</h3>
+    <p class="wizard-help" style="margin-bottom:12px;">${escapeHtml(p.equipoLocalNombre || '')} vs ${escapeHtml(p.equipoVisitanteNombre || '')} · Cancha ${p.cancha || '—'} · ${p.horario || ''}<br>Tildá quién juega y ponele el número. Escribir el número tilda al jugador solo.</p>
+    <div class="ali-adm-tabs">${tab('local', p.equipoLocalNombre)}${tab('visitante', p.equipoVisitanteNombre)}</div>
+    ${col('local', eqL.jugadores, p.alineacionLocal || [], p.capitanLocalDni || '')}
+    ${col('visitante', eqV.jugadores, p.alineacionVisitante || [], p.capitanVisitanteDni || '')}
     <div class="section-actions" style="margin-top:16px;">
-      <button class="btn btn-primary" onclick="guardarAlineacionAdmin('${p.id}')">💾 Guardar alineación</button>
+      <button class="btn btn-primary" style="width:100%;padding:13px;" onclick="guardarAlineacionAdmin('${p.id}')">💾 Guardar alineación</button>
     </div>`);
+  _aliAdmContar('local'); _aliAdmContar('visitante');
+}
+function _aliAdmSolapa(equipo) {
+  ['local', 'visitante'].forEach(e => {
+    const panel = document.getElementById('ali-adm-panel-' + e);
+    const tab = document.getElementById('ali-adm-tab-' + e);
+    if (panel) panel.style.display = e === equipo ? '' : 'none';
+    if (tab) tab.classList.toggle('activa', e === equipo);
+  });
+}
+function _aliAdmFila(equipo, dni) { return document.getElementById(`ali-row-${equipo}-${dni}`); }
+function _aliAdmChk(equipo, dni) { return document.querySelector(`.ali-adm-chk[data-equipo="${equipo}"][data-dni="${dni}"]`); }
+function _aliAdmToggle(equipo, dni) {
+  const fila = _aliAdmFila(equipo, dni), chk = _aliAdmChk(equipo, dni);
+  if (fila && chk) { fila.classList.toggle('sel', chk.checked); fila.classList.remove('error'); }
+  _aliAdmContar(equipo);
+}
+// Tocar el nombre tilda/destilda: en un celular el checkbox solo es un blanco
+// muy chico. No se usa <label> envolviendo todo porque entonces tocar el campo
+// del número también tildaría al jugador.
+function _aliAdmClickNombre(equipo, dni) {
+  const chk = _aliAdmChk(equipo, dni);
+  if (!chk) return;
+  chk.checked = !chk.checked;
+  _aliAdmToggle(equipo, dni);
+}
+// Escribir un número tilda al jugador solo (y borrarlo no lo destilda, para no
+// destildar sin querer mientras se corrige un número).
+function _aliAdmNumero(equipo, dni) {
+  const inp = document.querySelector(`.ali-adm-num[data-equipo="${equipo}"][data-dni="${dni}"]`);
+  if (!inp) return;
+  inp.value = inp.value.replace(/\D/g, '').slice(0, 2);
+  const chk = _aliAdmChk(equipo, dni);
+  if (inp.value && chk && !chk.checked) { chk.checked = true; }
+  _aliAdmToggle(equipo, dni);
+}
+function _aliAdmFiltrar(equipo) {
+  const q = (document.getElementById('ali-adm-buscar-' + equipo).value || '').toLowerCase().trim();
+  document.querySelectorAll(`#ali-adm-lista-${equipo} .ali-adm-row`).forEach(f => {
+    f.style.display = (!q || (f.dataset.buscar || '').includes(q)) ? '' : 'none';
+  });
+}
+function _aliAdmContar(equipo) {
+  const n = document.querySelectorAll(`.ali-adm-chk[data-equipo="${equipo}"]:checked`).length;
+  const badge = document.getElementById('ali-adm-cont-' + equipo);
+  if (badge) badge.textContent = n;
 }
 function guardarAlineacionAdmin(partidoId) {
   const p = buscarPartidoAdmin(partidoId);
@@ -6265,24 +6337,35 @@ function guardarAlineacionAdmin(partidoId) {
     const roster = (equiposCacheAdmin.find(e => e.id === equipoId) || {}).jugadores || [];
     const byDni = {}; roster.forEach(j => { if (j.dni) byDni[j.dni] = j; });
     const checks = [...document.querySelectorAll(`.ali-adm-chk[data-equipo="${equipo}"]:checked`)];
-    const alin = []; const usados = new Set(); let faltaNum = false, numRepe = false;
+    const alin = []; const usados = new Map(); const problemas = [];
+    document.querySelectorAll(`#ali-adm-panel-${equipo} .ali-adm-row`).forEach(f => f.classList.remove('error'));
     checks.forEach(chk => {
       const dni = chk.dataset.dni;
       const numInput = document.querySelector(`.ali-adm-num[data-equipo="${equipo}"][data-dni="${dni}"]`);
-      const num = (numInput.value || '').trim();
-      if (!num) { faltaNum = true; return; }
-      const numPad = num.padStart(2, '0');
-      if (usados.has(numPad)) { numRepe = true; return; }
-      usados.add(numPad);
+      const num = ((numInput && numInput.value) || '').trim();
       const j = byDni[dni] || {};
       const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
+      // Se marca al jugador concreto en vez de avisar "hay un problema" y que
+      // haya que buscarlo a ojo entre 23 nombres.
+      if (!num) { problemas.push({ equipo, dni, nombre, motivo: 'sin número' }); return; }
+      const numPad = num.padStart(2, '0');
+      if (usados.has(numPad)) { problemas.push({ equipo, dni, nombre, motivo: `número ${numPad} repetido (ya lo tiene ${usados.get(numPad)})` }); return; }
+      usados.set(numPad, nombre);
       alin.push({ dni, numero: numPad, nombre });
     });
-    return { alin, faltaNum, numRepe };
+    return { alin, problemas };
   };
   const rLocal = armar('local', p.equipoLocalId), rVis = armar('visitante', p.equipoVisitanteId);
-  if (rLocal.faltaNum || rVis.faltaNum) { showToast('Todos los jugadores tildados necesitan número de camiseta.', 'error'); return; }
-  if (rLocal.numRepe || rVis.numRepe) { showToast('Hay números de camiseta repetidos dentro de un mismo equipo.', 'error'); return; }
+  const problemas = [...rLocal.problemas, ...rVis.problemas];
+  if (problemas.length) {
+    problemas.forEach(pr => { const f = _aliAdmFila(pr.equipo, pr.dni); if (f) f.classList.add('error'); });
+    const primero = problemas[0];
+    _aliAdmSolapa(primero.equipo);
+    const fila = _aliAdmFila(primero.equipo, primero.dni);
+    if (fila) fila.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    showToast(`${primero.nombre}: ${primero.motivo}${problemas.length > 1 ? ` (y ${problemas.length - 1} más marcado(s) en rojo)` : ''}`, 'error');
+    return;
+  }
   if (!rLocal.alin.length && !rVis.alin.length) { showToast('Tildá al menos un jugador de algún equipo.', 'error'); return; }
   const updates = {};
   if (rLocal.alin.length) { updates.alineacionLocal = rLocal.alin; const capL = document.getElementById('ali-adm-cap-local').value; if (capL) updates.capitanLocalDni = capL; }

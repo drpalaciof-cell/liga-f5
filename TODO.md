@@ -2,6 +2,27 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-18 (cont. 2) — los 3 problemas de la fecha del sábado (sw v41)
+
+### 🔴 BUG GRAVE: "FIN DEL PARTIDO" no hacía nada y había que reiniciar la app
+- **Reportado**: *"hubo varias bugs en el planillero al querer cerrar planilla no cerraba, tuve que cerrar toda la app varias veces, por eso hubo errores por parte de los planilleros"*.
+- **Causa raíz**: `firmarCapitan()` pisaba el `innerHTML` de la caja de firma con `<h3>${nombre}</h3>…` y con eso **borraba el `<h3 id="firma-local-nombre">`**. En el **segundo partido de la misma sesión**, `finPartido()` hacía `getElementById('firma-local-nombre').textContent = …` sobre un elemento inexistente → **TypeError** → la función se cortaba **antes** de `goScreen('screen-cierre')`. O sea: se tocaba "FIN DEL PARTIDO" y no pasaba absolutamente nada. Reiniciar la app lo "arreglaba" porque el DOM volvía del HTML original.
+- Efecto secundario del mismo bug: si se llegaba a la pantalla, las cajas mostraban "✓ Confirmado" heredado del partido anterior **y sin el botón para firmar**, con `st.firmas` ya en `false` → imposible cerrar.
+- **Fix**: `renderFirmaBox()`/`renderFirmasCierre()` redibujan siempre desde `st.firmas`; `finPartido()` las llama en vez de tocar ids sueltos; también se redibujan al fusionar cambios de otro dispositivo. Y si falta una firma, se **resalta en rojo la caja que falta y la pantalla salta hasta ahí** (antes era un toast chico que se perdía y parecía que la app estaba colgada).
+
+### Alineación del planillero: se marca AL JUGADOR con problema
+- Antes: *"Todos deben tener número"* / *"Hay números repetidos"*, sin decir quién — había que buscarlo a ojo entre 20 nombres con el partido por arrancar.
+- Ahora se marca la fila en rojo (con pulso), la pantalla salta al primero, y el aviso dice nombre y motivo (*"GOMEZ, Luis tiene el número 07, igual que PEREZ, Juan"*). Al corregir el número se le saca el rojo solo.
+- **Bug encontrado de paso**: la comparación de repetidos usaba el valor crudo, así que **"7" y "07" pasaban como distintos** y después los dos se guardaban con `padStart(2,'0')` → entraban dos jugadores con el mismo número. Ahora se normaliza antes de comparar.
+
+### "Cargar alineación del próximo partido" (admin) era inusable en celular
+- **Reportado**: *"es imposible, el scroll es muy grande de ancho, al arrastrar o seleccionar se pierde vista"*.
+- **Causa**: dos columnas lado a lado (`min-width:230px`) y **cada lista con su propio `max-height:280px;overflow-y:auto` dentro del scroll del modal** (`#modal-content` ya es `max-height:88vh;overflow-y:auto`). Scroll anidado en un celular = se pierde la posición al arrastrar.
+- **Ahora**: un equipo por vez con solapas y contador de tildados, **sin scroll anidado**, buscador por apellido/DNI, filas altas con checkbox de 23px y campo de número de 58px, tocar el nombre tilda (no se usa `<label>` envolviendo todo porque entonces tocar el número también tildaría), escribir el número tilda solo, y botón de guardar a todo el ancho. Al guardar, si falta un número o hay uno repetido, **marca al jugador, salta a su solapa y lo nombra**.
+- Título cambiado a **"Cargar alineación del próximo partido"** (a pedido), tanto en el botón de En vivo como en el modal.
+- **Verificado en el navegador** a 390px con planteles de 23 y 22: buscador, tilde automático al escribir el número y contador de solapa.
+- 23 verificaciones automáticas sobre el código real (`test_planilla_fixes.js`).
+
 ## ✅ Sesión 2026-08-18 (cont.) — Panel de Control para los organizadores (sw v40)
 
 - **Contexto**: son 5 organizadores y cada sábado va uno de veedor a la cancha. Solo el usuario tenía panel, así que los otros 4 no podían seguir los resultados en vivo ni hablar con los planilleros.

@@ -224,6 +224,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   box-shadow:0 0 24px rgba(0,230,118,0.06);
 }
 .player-row.blocked{opacity:.28;cursor:not-allowed;}
+/* Marca al jugador concreto que tiene el número repetido o sin cargar, en vez
+   de avisar "hay un problema" y que el planillero lo busque a ojo. */
+.player-row.ali-error{border-color:#ff3d3d!important;background:rgba(255,61,61,.12)!important;animation:aliErr .5s ease 3;}
+.player-row.ali-error .num-input{border-color:#ff3d3d;background:rgba(255,61,61,.14);}
+@keyframes aliErr{0%,100%{box-shadow:0 0 0 0 rgba(255,61,61,0);}50%{box-shadow:0 0 0 4px rgba(255,61,61,.3);}}
 .player-row.no-habilitado,.modal-player.no-habilitado{border-color:rgba(255,61,61,.35);background:rgba(255,61,61,.06);cursor:not-allowed;}
 .player-warn{font-size:10px;font-weight:700;color:var(--red);margin-top:2px;}
 .player-check{
@@ -605,6 +610,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 .firma-box h3{font-size:12px;font-weight:700;margin-bottom:10px;color:var(--muted);}
 .firma-box.firmado{border-color:rgba(0,230,118,0.35);background:rgba(0,230,118,0.06);}
+/* Resalta la firma que falta cuando se intenta cerrar la planilla sin ella. */
+.firma-box.firma-falta{border-color:#ff5252;background:rgba(255,82,82,.10);animation:firmaFalta .5s ease 3;}
+@keyframes firmaFalta{0%,100%{box-shadow:0 0 0 0 rgba(255,82,82,0);}50%{box-shadow:0 0 0 4px rgba(255,82,82,.28);}}
 .firma-confirmado{font-size:13px;color:var(--green);font-weight:700;display:flex;align-items:center;gap:6px;}
 textarea.obs{
   width:100%;
@@ -1483,7 +1491,13 @@ function renderAlineacion(jugadores,seleccionados,equipo,venciSeguro,habilitados
   actualizarContador(seleccionados.size,equipo);
 }
 
-function validarNumero(input){input.value=input.value.replace(/[^0-9]/g,'').slice(0,2);}
+function validarNumero(input){
+  input.value=input.value.replace(/[^0-9]/g,'').slice(0,2);
+  // Al corregir el número se le saca el rojo a esa fila, así el planillero ve
+  // que ya lo resolvió sin tener que volver a tocar "Confirmar".
+  const fila=input.closest('.player-row');
+  if(fila)fila.classList.remove('ali-error');
+}
 
 function toggleJugador(dni,equipo){
   const row=document.getElementById('prow-'+dni);
@@ -1550,10 +1564,31 @@ async function confirmarAlineacion(){
   if(btn)btn.disabled=true;
   const rows=document.querySelectorAll('#ali-lista .player-row.selected');
   if(!rows.length){toast('Seleccioná al menos 1 jugador.');if(btn)btn.disabled=false;return;}
-  let numeros=[],faltaNum=false,numRepetido=false;
-  rows.forEach(r=>{const v=document.getElementById('num-'+r.id.replace('prow-','')).value.trim();if(!v)faltaNum=true;if(numeros.includes(v))numRepetido=true;numeros.push(v);});
-  if(faltaNum){toast('Todos deben tener número de camiseta.');if(btn)btn.disabled=false;return;}
-  if(numRepetido){toast('Hay números repetidos.');if(btn)btn.disabled=false;return;}
+  // Se marca al jugador CONCRETO: antes el aviso era "hay números repetidos" y
+  // había que buscarlo a ojo entre 20 nombres, con el partido por arrancar.
+  // Además se compara el número YA normalizado a 2 dígitos: antes "7" y "07" se
+  // tomaban como distintos y después los dos se guardaban como "07", así que
+  // entraban a la planilla dos jugadores con el mismo número.
+  rows.forEach(r=>r.classList.remove('ali-error'));
+  const usados=new Map();const problemas=[];
+  rows.forEach(r=>{
+    const dni=r.id.replace('prow-','');
+    const inp=document.getElementById('num-'+dni);
+    const v=((inp&&inp.value)||'').trim();
+    const nombreEl=r.querySelector('.player-name');
+    const nombre=nombreEl?nombreEl.textContent.trim():dni;
+    if(!v){problemas.push({r,nombre,motivo:'no tiene número de camiseta'});return;}
+    const norm=v.padStart(2,'0');
+    if(usados.has(norm)){problemas.push({r,nombre,motivo:'tiene el número '+norm+', igual que '+usados.get(norm)});return;}
+    usados.set(norm,nombre);
+  });
+  if(problemas.length){
+    problemas.forEach(p=>p.r.classList.add('ali-error'));
+    const primero=problemas[0];
+    primero.r.scrollIntoView({block:'center',behavior:'smooth'});
+    toast(primero.nombre+' '+primero.motivo+(problemas.length>1?' (y '+(problemas.length-1)+' más en rojo)':''),6000);
+    if(btn)btn.disabled=false;return;
+  }
   const alineacion=[];
   rows.forEach(r=>{const dni=r.id.replace('prow-','');const val=document.getElementById('num-'+dni).value.trim().padStart(2,'0');alineacion.push({dni,numero:val,nombre:r.querySelector('.player-name').textContent});});
   const campo=st.equipo==='local'?'alineacionLocal':'alineacionVisitante';
@@ -1935,8 +1970,7 @@ function finPartido(){
   document.getElementById('cierre-local-nombre').textContent=p.equipoLocalNombre;
   document.getElementById('cierre-visitante-nombre').textContent=p.equipoVisitanteNombre;
   document.getElementById('cierre-sub').textContent=p.equipoLocalNombre+' vs '+p.equipoVisitanteNombre;
-  document.getElementById('firma-local-nombre').textContent='Capitán — '+p.equipoLocalNombre;
-  document.getElementById('firma-visitante-nombre').textContent='Capitán — '+p.equipoVisitanteNombre;
+  renderFirmasCierre();
   const gL=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoLocalId).length;
   const gV=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoVisitanteId).length;
   document.getElementById('cierre-local-goles').textContent=gL;
@@ -2215,7 +2249,7 @@ function iniciarSyncPartido(){
       return;
     }
     if(!fusionarRemoto(remote))return;
-    actualizarMarcador();actualizarFaltas();renderEventos();actualizarBotonesMinuto();actualizarBotonesUndo();actualizarBotonesAgregarJugador();
+    actualizarMarcador();actualizarFaltas();renderEventos();actualizarBotonesMinuto();actualizarBotonesUndo();actualizarBotonesAgregarJugador();renderFirmasCierre();
     toast('🔄 Sincronizado con otro dispositivo',2500);
     guardarPartido(); // persiste el resultado fusionado para que el otro dispositivo también converja
   },err=>{console.error('sync partido:',err);});
@@ -2240,18 +2274,59 @@ async function guardarPartido(){
   }
 }
 
+/* Las cajas de firma se REDIBUJAN siempre desde st.firmas.
+
+   BUG que esto arregla (reportado: "al querer cerrar planilla no cerraba, tuve
+   que cerrar toda la app varias veces"): firmarCapitan() pisaba el innerHTML de
+   la caja y con eso borraba el <h3 id="firma-local-nombre">. En el partido
+   SIGUIENTE de la misma sesión, finPartido() hacía
+   getElementById('firma-local-nombre').textContent=... sobre un elemento que ya
+   no existía -> TypeError -> la función se cortaba ANTES del
+   goScreen('screen-cierre'). O sea: tocabas "FIN DEL PARTIDO" y no pasaba
+   absolutamente nada, y la única salida era reiniciar la app (ahí el DOM vuelve
+   del HTML original). Encima, si llegaba a la pantalla, las cajas mostraban
+   "✓ Confirmado" heredado del partido anterior aunque st.firmas ya estaba en
+   false, y sin el botón para poder firmar. */
+function renderFirmaBox(equipo){
+  const p=st.partido;const box=document.getElementById('firma-'+equipo+'-box');
+  if(!p||!box)return;
+  const nombre=equipo==='local'?p.equipoLocalNombre:p.equipoVisitanteNombre;
+  const titulo=`<h3 id="firma-${equipo}-nombre">Capitán — ${esc(nombre||'')}</h3>`;
+  if(st.firmas&&st.firmas[equipo]){
+    box.classList.add('firmado');
+    box.innerHTML=titulo+`<div class="firma-confirmado">✓ Confirmado</div>`;
+  }else{
+    box.classList.remove('firmado');
+    box.innerHTML=titulo+`<button class="btn btn-ghost btn-sm" onclick="firmarCapitan('${equipo}')">✓ Confirmo los datos — Capitán ${equipo==='local'?'Local':'Visitante'}</button>`;
+  }
+}
+function renderFirmasCierre(){renderFirmaBox('local');renderFirmaBox('visitante');}
+
 function firmarCapitan(equipo){
   const nombre=equipo==='local'?st.partido.equipoLocalNombre:st.partido.equipoVisitanteNombre;
   if(!confirm('¿'+nombre+' confirma los datos?'))return;
   st.firmas[equipo]=true;
-  const box=document.getElementById('firma-'+equipo+'-box');
-  box.classList.add('firmado');
-  box.innerHTML=`<h3>${nombre}</h3><div class="firma-confirmado">✓ Confirmado</div>`;
+  renderFirmaBox(equipo);
   guardarPartido();
 }
 
 function cerrarPlanilla(){
-  if(!st.firmas.local||!st.firmas.visitante){toast('Ambos capitanes deben confirmar.',3000);return;}
+  // Antes esto era solo un toast chico que se perdía de vista, y el planillero
+  // no entendía por qué "no cerraba". Ahora se marca en rojo la caja que falta
+  // y se lleva la pantalla hasta ahí, que es donde está el botón para firmar.
+  if(!st.firmas||!st.firmas.local||!st.firmas.visitante){
+    const falta=!st.firmas||!st.firmas.local?'local':'visitante';
+    const p=st.partido||{};
+    const nombre=falta==='local'?p.equipoLocalNombre:p.equipoVisitanteNombre;
+    const box=document.getElementById('firma-'+falta+'-box');
+    if(box){
+      box.classList.add('firma-falta');
+      box.scrollIntoView({block:'center',behavior:'smooth'});
+      setTimeout(()=>box.classList.remove('firma-falta'),4000);
+    }
+    toast('Falta la confirmación del capitán de '+(nombre||falta)+' — tocá el botón resaltado.',5000);
+    return;
+  }
   if(!confirm('¿Cerrar la planilla definitivamente?'))return;
   const obs=document.getElementById('obs-text').value.trim();
   const p=st.partido;
