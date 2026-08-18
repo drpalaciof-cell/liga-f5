@@ -1105,8 +1105,43 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 firebase.initializeApp({apiKey:"AIzaSyDV75qM1_QrkIqCO403vq7GYSPiuDlnP9E",authDomain:"liga-f5-3d80c.firebaseapp.com",projectId:"liga-f5-3d80c"});
 const db=firebase.firestore();
 const auth=firebase.auth();
-const authReadyPromise = auth.signInAnonymously().catch(e => { console.error('Auth anónimo falló:', e); setTimeout(()=>toast('Error de autenticación: '+(e.message||e.code||e),6000),300); });
+// El login anónimo se hace igual, pero NO se espera para siempre: con señal
+// mala signInAnonymously() ni resuelve ni falla, se queda colgado, y como el
+// botón "Entrar" hacía `await authReadyPromise`, el planillero escribía su
+// nombre, tocaba Entrar y no pasaba nada. Firebase Auth guarda la sesión en el
+// dispositivo, así que después del primer uso con internet la sesión ya está;
+// y aunque no estuviera, Firestore lee de su caché local igual y encola las
+// escrituras hasta que vuelva la señal.
+const _authRealPromise = auth.signInAnonymously().catch(e => { console.error('Auth anónimo falló:', e); setTimeout(()=>toast('Sin conexión: se trabaja con los datos guardados.',5000),300); });
+const authReadyPromise = Promise.race([_authRealPromise, new Promise(r => setTimeout(r, 4000))]);
 db.enablePersistence({synchronizeTabs:false}).catch(()=>{});
+
+/* Lectura de Firestore que NUNCA se queda colgada.
+
+   Firestore con `get()` normal pregunta al servidor y, si el dispositivo está
+   OFFLINE del todo, responde desde el caché al toque. El problema es la cancha:
+   ahí hay señal, pero pésima. El dispositivo se cree online, así que get()
+   espera al servidor SIN límite de tiempo -- y la pantalla queda en
+   "Cargando..." para siempre.
+
+   Esto corre la lectura contra un reloj: si el servidor no contesta en unos
+   segundos, se resuelve con lo que haya en el caché local (que la app ya venía
+   guardando). Con buena señal no cambia nada. */
+async function getRapido(ref, ms=3500){
+  try{
+    return await Promise.race([
+      ref.get(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout-red')), ms))
+    ]);
+  }catch(e){
+    try{
+      const desdeCache = await ref.get({source:'cache'});
+      if(!_avisoOfflineMostrado){_avisoOfflineMostrado=true;setTimeout(()=>toast('📵 Señal mala: se muestran los datos guardados en el dispositivo.',5000),200);}
+      return desdeCache;
+    }catch(e2){ throw e; }
+  }
+}
+let _avisoOfflineMostrado=false;
 
 // Pre-cargar logo como base64 para embeber en print sin red
 let _printLogoDataUrl = null;
@@ -1126,7 +1161,7 @@ async function cargarDivisionesCanchas(){
     // Eso hacía que TODAS las canchas mostraran "Sin partidos" el primer día de cada fecha, con
     // el fixture ya cargado. 'jugado' en cambio siempre existe (default false desde que se crea
     // el partido), así que es el chequeo correcto para "todavía no se jugó/cerró".
-    const snap=await db.collection('partidos').where('jugado','==',false).get();
+    const snap=await getRapido(db.collection('partidos').where('jugado','==',false));
     const todos=[];snap.forEach(doc=>todos.push(doc.data()));
     // La cancha de Primera y las zonas de Segunda ROTAN fecha a fecha (canchasFecha() en el
     // fixture) -- si acá se mira TODO lo que todavía no se jugó, sin importar la fecha, se
@@ -1197,7 +1232,7 @@ let _eCache={}; // caché de equipos — pre-cargado en cargarLista para funcion
 let _cfgCache=null;
 async function getCfg(){
   if(_cfgCache)return _cfgCache;
-  try{const d=await db.collection('config').doc('general').get();_cfgCache=d.exists?d.data():{};}catch(e){_cfgCache={};}
+  try{const d=await getRapido(db.collection('config').doc('general'));_cfgCache=d.exists?d.data():{};}catch(e){_cfgCache={};}
   return _cfgCache;
 }
 let _abriendo=false; // BUG4: lock para evitar race condition con doble tap
@@ -1212,7 +1247,7 @@ async function cargarTarjetasDivision(division){
   if(!division) return {};
   if(_tarjetasCache[division]) return _tarjetasCache[division];
   try{
-    const snap=await db.collection('partidos').where('division','==',division).get();
+    const snap=await getRapido(db.collection('partidos').where('division','==',division));
     const map={};
     snap.forEach(doc=>{
       const p=doc.data();
@@ -1276,7 +1311,7 @@ async function cargarLista(){
   goScreen('screen-lista');
   _pCache={};_eCache={};
   try{
-    const snap=await db.collection('partidos').where('cancha','==',st.cancha).get();
+    const snap=await getRapido(db.collection('partidos').where('cancha','==',st.cancha));
     let todos=[];
     // El modo prueba (que creaba partidos con _sim:true) ya no existe en la app, pero se
     // mantiene este filtro por si queda algún documento viejo de antes en la base.
@@ -1290,7 +1325,7 @@ async function cargarLista(){
     const eqIds=[...new Set(todos.flatMap(p=>[p.equipoLocalId,p.equipoVisitanteId]).filter(Boolean))];
     await Promise.allSettled(eqIds.map(id=>{
       if(_eCache[id])return Promise.resolve();
-      return db.collection('equipos').doc(id).get().then(d=>{if(d.exists)_eCache[id]=d.data();}).catch(()=>{});
+      return getRapido(db.collection('equipos').doc(id)).then(d=>{if(d.exists)_eCache[id]=d.data();}).catch(()=>{});
     }));
     // Fecha activa: la más baja con partidos pendientes o en curso (no cerrados, no jugados en sim viejo)
     const activos=todos.filter(p=>p.estado!=='cerrado'&&!(p.jugado===true&&!p.estado));
@@ -1348,7 +1383,7 @@ async function abrirPartido(id,cardEl){
   try{
     // Usar caché si existe, sino fetch
     let data=_pCache[id];
-    if(!data){const doc=await db.collection('partidos').doc(id).get();if(!doc.exists){toast('Partido no encontrado.');return;}data={id:doc.id,...doc.data()};_pCache[id]=data;}
+    if(!data){const doc=await getRapido(db.collection('partidos').doc(id));if(!doc.exists){toast('Partido no encontrado.');return;}data={id:doc.id,...doc.data()};_pCache[id]=data;}
     st.partido=data;st.partidoId=id;
     st.alineacionLocal=st.partido.alineacionLocal||[];
     st.alineacionVisitante=st.partido.alineacionVisitante||[];
@@ -1364,7 +1399,7 @@ async function abrirPartido(id,cardEl){
     // Cargar AMBOS equipos — primero desde _eCache (disponible offline), sino Firestore
     const getEq=async id=>{
       if(_eCache[id])return _eCache[id];
-      const d=await db.collection('equipos').doc(id).get();
+      const d=await getRapido(db.collection('equipos').doc(id));
       if(d.exists){_eCache[id]=d.data();}
       return _eCache[id]||{};
     };
@@ -1430,7 +1465,7 @@ async function mostrarAlineacion(equipo){
   let jugadores=esLocal?(st.partido.jugadoresLocal||[]):(st.partido.jugadoresVisitante||[]);
   if(!jugadores.length){
     if(_eCache[equipoId]){jugadores=_eCache[equipoId].jugadores||[];}
-    else{try{const doc=await db.collection('equipos').doc(equipoId).get();if(doc.exists){_eCache[equipoId]=doc.data();jugadores=doc.data().jugadores||[];}}catch(e){}}
+    else{try{const doc=await getRapido(db.collection('equipos').doc(equipoId));if(doc.exists){_eCache[equipoId]=doc.data();jugadores=doc.data().jugadores||[];}}catch(e){}}
   }
   jugadores=jugadores.filter(j=>j.apellido||j.nombre||j.dni);
   const aliExistente=esLocal?st.alineacionLocal:st.alineacionVisitante;
@@ -2563,7 +2598,7 @@ async function cambiarDivisionHistorial(div){
   sel.innerHTML='<option value="">Cargando...</option>';
   document.getElementById('hist-lista').innerHTML='';
   try{
-    const snap=await db.collection('partidos').where('division','==',div).get();
+    const snap=await getRapido(db.collection('partidos').where('division','==',div));
     _histPartidos=[];
     snap.forEach(doc=>_histPartidos.push({id:doc.id,...doc.data()}));
     _histPartidos.sort((a,b)=>(a.cancha||0)-(b.cancha||0)||(a.horario||'').localeCompare(b.horario||''));
@@ -2623,7 +2658,7 @@ async function actualizarBotonCerrarFechaPlanillero(){
   if(!fecha){btn.style.display='none';return;}
   btn.style.display='';
   try{
-    const d=await db.collection('fechasCerradas').doc(`${_histDivision}_${fecha}`).get();
+    const d=await getRapido(db.collection('fechasCerradas').doc(`${_histDivision}_${fecha}`));
     btn.textContent=d.exists?'↺ Reabrir fecha':'✓ Cerrar fecha';
     btn.classList.toggle('btn-primary',d.exists);
   }catch(e){}

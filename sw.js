@@ -176,7 +176,23 @@
 // vez con solapas y contador, buscador por apellido/DNI, sin scroll anidado,
 // checkbox y campo de número grandes, tocar el nombre tilda, y escribir el
 // número tilda solo. Al guardar también marca al jugador con problema.
-const CACHE = 'ligaf5-v41';
+// v42: auditoría de "el planillero tiene que andar sin internet". Las
+// ESCRITURAS ya estaban bien (v22/v24/v35: nada espera el ack). El problema
+// estaba en el ARRANQUE y las LECTURAS, y no aparecía en modo avión sino con
+// señal mala, que es lo que hay en la cancha: el dispositivo se cree online y
+// todo espera al servidor SIN límite de tiempo.
+// (1) El SW respondía los .html con network-first sin timeout -> con señal mala
+// la app quedaba en blanco al abrir. Ahora responde la copia guardada al
+// instante y actualiza por atrás.
+// (2) El botón "Entrar" hacía `await` del login anónimo, que con señal mala ni
+// resuelve ni falla -> se escribía el nombre, se tocaba Entrar y no pasaba
+// nada. Ahora espera 4s como mucho y sigue.
+// (3) Todas las lecturas del circuito del partido (lista de canchas, partidos
+// de la cancha, el partido, los planteles, la config y las tarjetas para
+// sanciones) pasan por getRapido(): corren contra un reloj de 3,5s y si el
+// servidor no contesta resuelven con el caché local, avisando al planillero que
+// está viendo datos guardados.
+const CACHE = 'ligaf5-v42';
 const ASSETS = [
   './index.html',
   './planilla.html',
@@ -227,11 +243,30 @@ self.addEventListener('fetch', event => {
       url.hostname.includes('identitytoolkit.googleapis.com')) return;
   const isHTML = url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname === '';
   if (isHTML) {
+    // Antes esto era network-first SIN timeout: fetch() primero y recién al
+    // fallar se miraba el caché. Con señal mala (no ausente) ese fetch no
+    // falla -- se queda colgado esperando, y el planillero abre la app en la
+    // cancha y ve la pantalla en blanco indefinidamente. Solo caía al caché si
+    // la red fallaba del todo, que en una cancha casi nunca pasa: hay señal,
+    // pero pésima.
+    // Ahora se responde con la copia guardada AL INSTANTE y se actualiza por
+    // atrás. La versión nueva entra igual: cada deploy bumpea CACHE, el install
+    // precachea los HTML y activate limpia lo viejo.
     event.respondWith(
-      fetch(req).then(res => {
-        if (res && res.status === 200) caches.open(CACHE).then(c => c.put(req, res.clone()));
-        return res;
-      }).catch(() => caches.match(req))
+      caches.open(CACHE).then(async cache => {
+        const cached = await cache.match(req);
+        const red = fetch(req).then(res => {
+          if (res && res.status === 200) cache.put(req, res.clone());
+          return res;
+        }).catch(() => null);
+        if (cached) return cached;
+        const res = await red;
+        if (res) return res;
+        // Sin copia y sin red: se intenta el shell de la app antes de rendirse.
+        return (await cache.match('./planilla.html')) || (await cache.match('./index.html')) ||
+          new Response('<h1>Sin conexión</h1><p>Abrí la app una vez con internet para que quede guardada.</p>',
+            { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      })
     );
   } else {
     event.respondWith(
