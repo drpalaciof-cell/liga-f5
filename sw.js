@@ -116,7 +116,15 @@
 // muestran qué decía la planilla firmada para que la diferencia no sea
 // silenciosa. Posiciones, goleadores y sanciones toman el valor corregido y se
 // actualizan solos en las pantallas públicas (ya había onSnapshot).
-const CACHE = 'ligaf5-v36';
+// v37: FIX de v36. El aviso de "goles asignados vs marcador" estaba escrito
+// asumiendo que solo podían FALTAR goles; cuando SOBRABAN (imposible: no puede
+// haber más goleadores que goles) mostraba igual el texto de "puede ser un gol
+// en contra, se guarda igual" y dejaba guardar. Resultado real: un partido
+// quedó 7-5 con 12 goles cargados del lado local, y la tabla de goleadores
+// pública mostró a un jugador con 8 goles. Ahora el exceso es un error rojo,
+// nombra a los equipos, y `guardarResultadoPartido` NO guarda hasta corregirlo.
+// Que falten goles sigue siendo solo un aviso (puede ser un gol en contra).
+const CACHE = 'ligaf5-v37';
 const ASSETS = [
   './index.html',
   './planilla.html',

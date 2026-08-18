@@ -6546,6 +6546,8 @@ function abrirModalResultado(partidoId) {
   const yaCerrado = p.estado === 'cerrado' || p.jugado === true;
   const firmada = _resumenPlanillaFirmada(p);
   _resultadoEquipoLocalId = p.equipoLocalId;
+  _resultadoNombreLocal = p.equipoLocalNombre || 'local';
+  _resultadoNombreVisitante = p.equipoVisitanteNombre || 'visitante';
 
   function filaJugador(j, equipoId) {
     const goles = golesMap[j.dni] || 0;
@@ -6618,13 +6620,25 @@ function _avisoGolesResultado() {
     if (!n) return;
     if (i.dataset.equipo === _resultadoEquipoLocalId) sumaL += n; else sumaV += n;
   });
-  const dif = [];
-  if (sumaL !== gL) dif.push(`local: marcador ${gL}, asignados ${sumaL}`);
-  if (sumaV !== gV) dif.push(`visitante: marcador ${gV}, asignados ${sumaV}`);
-  el.innerHTML = dif.length
-    ? `<span style="color:#fbbf24;">⚠ Goles sin asignar a un jugador (${dif.join(' · ')}). Puede ser un gol en contra — se guarda igual.</span>`
-    : `<span style="color:#4ade80;">✓ Los goles asignados coinciden con el marcador.</span>`;
+  // Que SOBREN goles asignados es imposible: no puede haber más goleadores que
+  // goles en el marcador. Eso se bloquea. Que FALTEN sí es válido (gol en
+  // contra, o un gol que nadie pudo atribuir), así que solo se avisa.
+  const exceso = [], faltan = [];
+  if (sumaL > gL) exceso.push(`${_resultadoNombreLocal}: marcador ${gL} pero hay ${sumaL} goles cargados`);
+  else if (sumaL < gL) faltan.push(`${_resultadoNombreLocal}: ${gL - sumaL}`);
+  if (sumaV > gV) exceso.push(`${_resultadoNombreVisitante}: marcador ${gV} pero hay ${sumaV} goles cargados`);
+  else if (sumaV < gV) faltan.push(`${_resultadoNombreVisitante}: ${gV - sumaV}`);
+
+  if (exceso.length) {
+    el.innerHTML = `<span style="color:#f87171;font-weight:700;">✕ Hay más goles cargados que goles en el marcador (${exceso.join(' · ')}). Corregilo: no se puede guardar así.</span>`;
+  } else if (faltan.length) {
+    el.innerHTML = `<span style="color:#fbbf24;">⚠ Quedan goles sin asignar a un jugador (${faltan.join(' · ')}). Puede ser un gol en contra — se guarda igual.</span>`;
+  } else {
+    el.innerHTML = `<span style="color:#4ade80;">✓ Los goles asignados coinciden con el marcador.</span>`;
+  }
+  return { exceso: exceso.length > 0, detalle: exceso.join(' · ') };
 }
+let _resultadoNombreLocal = 'local', _resultadoNombreVisitante = 'visitante';
 let _resultadoEquipoLocalId = null;
 async function guardarResultadoPartido(partidoId) {
   const p = buscarPartidoAdmin(partidoId);
@@ -6633,6 +6647,15 @@ async function guardarResultadoPartido(partidoId) {
   const golesLocal = Number(inpL.value), golesVisitante = Number(inpV.value);
   if (isNaN(golesLocal) || isNaN(golesVisitante) || golesLocal < 0 || golesVisitante < 0 || inpL.value === '' || inpV.value === '') {
     showToast('Completá un resultado válido.', 'error'); return;
+  }
+  // No se puede guardar con más goleadores que goles: eso rompe la tabla de
+  // goleadores pública (un jugador con más goles de los que hizo su equipo).
+  const chequeo = _avisoGolesResultado();
+  if (chequeo && chequeo.exceso) {
+    showToast('Hay más goles cargados que goles en el marcador. Revisá la carga.', 'error');
+    const aviso = document.getElementById('res-aviso-goles');
+    if (aviso) aviso.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
   }
   const yaCerrado = p.estado === 'cerrado' || p.jugado === true;
   const motivoEl = document.getElementById('res-motivo');
