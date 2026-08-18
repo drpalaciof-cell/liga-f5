@@ -124,7 +124,17 @@
 // pública mostró a un jugador con 8 goles. Ahora el exceso es un error rojo,
 // nombra a los equipos, y `guardarResultadoPartido` NO guarda hasta corregirlo.
 // Que falten goles sigue siendo solo un aviso (puede ser un gol en contra).
-const CACHE = 'ligaf5-v37';
+// v38: boton "🗑 Eliminar fecha" en el encabezado de cada fecha del fixture del
+// admin -- borra TODOS los partidos de esa fecha de esa division (las dos zonas
+// y el interzonal, no solo lo que se ve en la solapa abierta). Nace para poder
+// sacar la "Fecha 999999" con dos partidos "Test Local vs Test Visitante" que
+// dejo un script de diagnostico el 15/08 y que se veian en el fixture publico
+// de Primera (no tienen _sim:true, asi que los filtros de la app no los
+// tapaban). La confirmacion escala con el daño: si ningun partido de la fecha
+// se jugo, alcanza con confirmar; si hay jugados, se listan uno por uno, se
+// avisa cuantos pierden la planilla firmada y hay que ESCRIBIR el numero de
+// fecha para que no se borre una fecha real de un clic distraido.
+const CACHE = 'ligaf5-v38';
 const ASSETS = [
   './index.html',
   './planilla.html',

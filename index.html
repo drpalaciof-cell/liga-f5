@@ -6408,14 +6408,60 @@ async function borrarPartidosDivisionCompleta(division) {
     await cargarPartidosAdmin(division);
   } catch (e) { console.error(e); showToast('No se pudieron borrar los partidos.', 'error'); }
 }
+// Borra TODOS los partidos de una fecha de una división (las dos zonas y el
+// interzonal incluidos, no solo lo que se ve en la solapa abierta). Es
+// irreversible y se lleva las planillas, así que la confirmación escala con el
+// daño: si hay partidos ya jugados, además de confirmar hay que escribir el
+// número de fecha, para que no se borre una fecha real de un clic distraído.
+async function borrarFechaFixture(numeroFecha, division) {
+  try {
+    const snap = await db.collection('partidos')
+      .where('division', '==', division).where('numeroFecha', '==', numeroFecha).get();
+    if (snap.empty) { showToast('Esa fecha ya no tiene partidos.', 'error'); return; }
+
+    const docs = [];
+    snap.forEach(d => docs.push({ ref: d.ref, ...d.data() }));
+    const jugados = docs.filter(p => p.jugado || p.estado === 'cerrado');
+    const conPlanilla = docs.filter(p => (p.eventos || []).length > 0);
+
+    if (jugados.length === 0) {
+      if (!confirm(`Borrar la Fecha ${numeroFecha} de ${division}: ${docs.length} partido(s), ninguno jugado todavía.\n\nEsta acción no se puede deshacer. ¿Continuar?`)) return;
+    } else {
+      const detalle = jugados.map(p => `  • ${p.equipoLocalNombre} ${p.golesLocal ?? '-'}:${p.golesVisitante ?? '-'} ${p.equipoVisitanteNombre}`).join('\n');
+      const resp = prompt(
+        `⚠ ATENCIÓN — la Fecha ${numeroFecha} de ${division} tiene ${docs.length} partido(s), y ${jugados.length} YA SE JUGARON:\n\n${detalle}\n\n` +
+        `${conPlanilla.length ? `${conPlanilla.length} tiene(n) planilla cargada por el planillero — se pierde el documento firmado.\n` : ''}` +
+        `Borrarlos cambia la tabla de posiciones, los goleadores y las sanciones. NO se puede deshacer.\n\n` +
+        `Si estás seguro, escribí el número de la fecha (${numeroFecha}) para confirmar:`
+      );
+      if (resp === null) return;
+      if (String(resp).trim() !== String(numeroFecha)) { showToast('No coincide el número de fecha. No se borró nada.', 'error'); return; }
+    }
+
+    await borrarEnLotes(docs.map(d => d.ref));
+    showToast(`Fecha ${numeroFecha} de ${division}: ${docs.length} partido(s) borrado(s).`, 'ok');
+    await cargarPartidosAdmin(state.adminDivisionActiva || division);
+    if (typeof cargarPartidosTotal === 'function' && document.getElementById('fixture-total-cont')) cargarPartidosTotal();
+  } catch (e) { console.error(e); showToast('No se pudo borrar la fecha.', 'error'); }
+}
 function renderFechasFixtureAdmin(partidosGrupo, equiposGrupo, fuenteTodos) {
   const todos = fuenteTodos || partidosCacheAdmin;
   const teamIds = equiposGrupo.map(eq => eq.id);
   const fechas = [...new Set(partidosGrupo.map(p => p.numeroFecha))].sort((a, b) => a - b);
   let html = '';
   fechas.forEach(nf => {
-    html += `<div class="fecha-group"><div class="fecha-group-title">Fecha ${nf}</div>`;
     const partidosFecha = ordenarPorHorario(partidosGrupo.filter(p => p.numeroFecha === nf));
+    // La división sale de los propios partidos: este render se usa tanto en el
+    // fixture por división como en el fixture TOTAL (donde la solapa manda).
+    const divFecha = (partidosFecha[0] || {}).division || state.adminDivisionActiva;
+    // Sin número de fecha válido no se puede armar la consulta de borrado, así
+    // que en ese caso la fecha se muestra pero sin botón.
+    const btnBorrar = Number.isFinite(Number(nf))
+      ? `<button class="btn btn-sm" style="background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.45);color:#f87171;font-size:11px;padding:3px 9px;" onclick="borrarFechaFixture(${Number(nf)}, '${divFecha}')" title="Borrar todos los partidos de esta fecha">🗑 Eliminar fecha</button>`
+      : '';
+    html += `<div class="fecha-group"><div class="fecha-group-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <span>Fecha ${nf}</span>${btnBorrar}
+    </div>`;
     // "Libre" mirando todos los partidos de la fecha (incluye interzonal).
     const todosFecha = todos.filter(p => p.numeroFecha === nf);
     const playing = new Set([...todosFecha.map(p => p.equipoLocalId), ...todosFecha.map(p => p.equipoVisitanteId)]);
