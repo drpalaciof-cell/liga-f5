@@ -14,6 +14,23 @@
 - **Las pantallas públicas se actualizan solas**: `cargarPartidosPublico` ya tenía `onSnapshot` sobre `partidos`, así que posiciones y goleadores toman la corrección sin recargar.
 - **Probado con simulación en Node** (`test_rectificacion.js`, en scratchpad) extrayendo las funciones reales de `index.html`: caso 1-1 → 3-1, 9 verificaciones OK, incluidas "GOMEZ conserva sus 2 amarillas" y "la planilla firmada quedó intacta". **Sin probar en el navegador** (requiere sesión de admin real).
 
+### v37 — regresión propia: se podían cargar más goleadores que goles
+- El aviso "goles asignados vs marcador" de v36 estaba escrito asumiendo que solo podían **faltar** goles (caso legítimo: gol en contra). Cuando **sobraban** —imposible— mostraba igual "puede ser un gol en contra, se guarda igual" y **dejaba guardar**.
+- Caso real: al rectificar STRONGEST TEAM–INSTITUTO de 5:5 a 7:5 se cargaron 4 y 8 goles a dos jugadores del local (12 para un marcador de 7), y la tabla pública de goleadores mostró a un jugador con 8 goles. **No hubo bug de datos** (sin DNIs duplicados): se guardó exactamente lo tipeado, el problema fue que la app no lo impidió.
+- Ahora el exceso es error rojo, nombra a los equipos con los números, y `guardarResultadoPartido` corta antes de escribir. Que falten sigue siendo solo aviso. 5 casos probados.
+
+### v38 — botón "🗑 Eliminar fecha" en el fixture del admin
+- Motivo: un script de diagnóstico dejó el **15/08 03:02** dos partidos `diagtest_*` con `numeroFecha 999999` y `cancha 999` en Primera ("Test Local vs Test Visitante"). **No tienen `_sim:true`**, que es el flag por el que el resto de la app filtra partidos de prueba, así que se colaban — y el fixture **público** de Primera no filtra nada, con lo cual se veía una "Fecha 999999". No afectaban la tabla (`jugado:false`).
+- Borra todos los partidos de esa fecha de esa división (las dos zonas y el interzonal, no solo la solapa abierta). La división sale de los propios partidos, porque el render se comparte con el fixture TOTAL.
+- Confirmación escalonada: sin jugados, un `confirm`; con jugados, se listan uno por uno con resultado, se avisa cuántos pierden la planilla firmada, y hay que **escribir el número de fecha**. 6 casos probados.
+
+### v39 — el fixture público de Segunda se leía todo mezclado
+- Cada zona era una columna independiente con **todas** sus fechas, así que bastaba un partido de diferencia en una fecha (6 vs 5, según de qué lado caiga el interzonal) para que de ahí para abajo los "FECHA N" de las dos columnas quedaran a distinta altura.
+- Ahora se agrupa **por fecha primero** (título a todo el ancho) y adentro las dos zonas. Cada fecha arranca pareja y el hueco queda contenido. Títulos de zona una sola vez arriba; en celular se ocultan (están las solapas) y cada fecha lleva su etiqueta de zona.
+- Tarjetas compactadas: padding 14/20 → 9/13, nombres 18px → 14.5px, meta 13.5px → 11px.
+- Refactor: `fxMatchHtml()` y `fxByeHtml()` compartidos entre el fixture de Primera y el de Segunda.
+- **Verificado en el navegador** con una previsualización que usa el CSS y las funciones reales y datos que reproducen el 6 vs 5 en fechas alternadas.
+
 ## ✅ Sesión 2026-08-14 — reconciliación repo/producción (trabajo hecho en otra compu, nunca había pasado por git)
 
 - **Contexto**: entre el 12/08 y el 14/08 el usuario trabajó desde otra computadora, directo por PowerShell/Claude Code, y deployeó a Firebase Hosting varias veces (último deploy: 14/08 19:46) — **sin nunca commitear ni pushear a git**. Esta compu (FACUNDO-PALACIO) tenía además cambios propios sin commitear del 13/08 que quedaron superados por lo de producción.
