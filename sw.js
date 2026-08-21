@@ -216,7 +216,16 @@
 // al tocar el boton no pasaba nada. Era ademas el UNICO modo de registrar que
 // un jugador cumplio su fecha de suspension sin pagar. Ahora recibe solo ids y
 // rearma nombre y sanciones adentro de la funcion.
-const CACHE = 'ligaf5-v45';
+// v46: la roja directa ahora se controla por NUMERO DE FECHA. La eleccion de
+// "juega la proxima y cumple la siguiente" existia en la pantalla pero no la
+// hacia cumplir nadie: el planillero bloqueaba al jugador mientras tuviera la
+// roja sin marcar como cumplida, asi que el que pagaba justamente para jugar el
+// sabado siguiente quedaba afuera igual, y el unico boton que lo destrababa
+// ("cumplio la fecha") le borraba toda la sancion. Ahora se guarda la fecha en
+// que vio la roja (N) y se calcula: sin pagar N+1 y N+2; pagando N+2 (default,
+// juega la proxima) o N+1 si lo elige. El bloqueo se pone y se levanta solo.
+// Sin dato de fecha (partidos viejos) bloquea igual, que es el criterio seguro.
+const CACHE = 'ligaf5-v46';
 const ASSETS = [
   './index.html',
   './planilla.html',

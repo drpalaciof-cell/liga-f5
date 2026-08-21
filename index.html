@@ -3635,9 +3635,11 @@ function calcularTarjetasPorJugador(partidos) {
   const map = {};
   partidos.filter(p => p.jugado).forEach(p => {
     (p.tarjetas || []).forEach(t => {
-      if (!map[t.dni]) map[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, equipoId: t.equipoId, amarillas: 0, rojas: 0, expulsiones: 0 };
+      if (!map[t.dni]) map[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, equipoId: t.equipoId, amarillas: 0, rojas: 0, expulsiones: 0, fechaRoja: 0 };
       const r = map[t.dni];
-      if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; }
+      // fechaRoja = la fecha de la ÚLTIMA roja. Es el ancla para saber qué fechas cumple:
+      // sin ella no se puede decidir cuándo se levanta la suspensión, solo "sí o no".
+      if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; r.fechaRoja = Math.max(r.fechaRoja || 0, Number(p.numeroFecha) || 0); }
       else if (t.dobleAmarilla) { r.expulsiones++; } // expulsión, NO suma al contador de acumulación
       else { r.amarillas++; }
     });
@@ -3669,24 +3671,44 @@ function getEstadoSanciones(player, eq) {
   const items = [];
 
   // Roja directa: 2 fechas. Pagando $7.000 baja a 1 fecha (elige cuál cumple).
+  //
+  // `fechasBloqueo` = en qué números de fecha NO puede jugar, calculado desde la fecha en que
+  // vio la roja. Es lo que hace que la elección valga: sin esto el planillero lo bloqueaba
+  // siempre hasta que el admin marcaba "cumplió", así que el que pagaba para jugar la próxima
+  // igual quedaba afuera, y la única forma de destrabarlo le borraba toda la sanción.
+  // Si no se conoce la fecha de la roja (dato viejo), queda null = bloqueado siempre, que es
+  // el criterio seguro y el comportamiento de antes.
   if (player.rojas > 0 && !hasCum('roja')) {
     const pag = getPag('roja');
+    const N = Number(player.fechaRoja) || 0;
+    const f = (k) => N ? N + k : null;
+    const nombrarFechas = (arr) => arr.filter(x => x != null).map(x => 'fecha ' + x).join(' y ');
     if (pag) {
-      const opcion = pag.fechaElegida === 'proxima'
-        ? 'cumple la próxima fecha'
-        : 'juega la próxima — cumple la siguiente';
+      // Por defecto (y es lo que elige casi todo el mundo): juega la próxima y cumple la
+      // siguiente. Sólo cumple la próxima si lo pidió explícitamente.
+      const cumpleProxima = pag.fechaElegida === 'proxima';
+      const bloqueo = cumpleProxima ? [f(1)] : [f(2)];
       items.push({
         tipo: 'roja', ciclo: 1, monto: SANCION_MONTOS.roja, label: '🟥 Roja directa',
-        desc: `Pagó $7.000 — 1 fecha restante (${opcion})`,
+        fechasBloqueo: N ? bloqueo : null,
+        desc: N
+          ? (cumpleProxima
+              ? `Pagó $7.000 — cumple la ${nombrarFechas(bloqueo)} (juega desde la ${f(2)})`
+              : `Pagó $7.000 — juega la fecha ${f(1)}, cumple la ${nombrarFechas(bloqueo)}`)
+          : `Pagó $7.000 — 1 fecha restante (${cumpleProxima ? 'cumple la próxima fecha' : 'juega la próxima — cumple la siguiente'})`,
         acciones: [{ label: '✅ Cumplió la fecha — puede jugar', accion: 'cumplida', tipo: 'roja' }]
       });
     } else {
+      const bloqueo = [f(1), f(2)];
       items.push({
         tipo: 'roja', ciclo: 1, monto: SANCION_MONTOS.roja, label: '🟥 Roja directa',
-        desc: '2 fechas de suspensión · Pagar $7.000 reduce a 1 fecha',
+        fechasBloqueo: N ? bloqueo : null,
+        desc: N
+          ? `2 fechas de suspensión (no juega la ${nombrarFechas(bloqueo)}) · Pagar $7.000 reduce a 1 fecha`
+          : '2 fechas de suspensión · Pagar $7.000 reduce a 1 fecha',
         acciones: [
-          { label: '💳 Pagar $7.000 — cumple la PRÓXIMA fecha', accion: 'pago-proxima', tipo: 'roja' },
           { label: '💳 Pagar $7.000 — juega la próxima, cumple la SIGUIENTE', accion: 'pago-siguiente', tipo: 'roja' },
+          { label: '💳 Pagar $7.000 — cumple la PRÓXIMA fecha', accion: 'pago-proxima', tipo: 'roja' },
           { label: '✅ Cumplió las 2 fechas sin pagar — puede jugar', accion: 'cumplida', tipo: 'roja' }
         ]
       });
@@ -3937,16 +3959,18 @@ function abrirModalPagarSancion(dni, tipo, ciclo, monto) {
   const nombre = _nombreJugadorDni(dni);
   const etiquetas = { roja: '🟥 Roja directa', doble: '🟨🟨 Doble amarilla', amarillas: '🟨 Acumulación de amarillas' };
   // La roja no se borra pagando: baja de 2 fechas a 1, y el equipo elige cuál cumple.
+  // Por defecto viene marcado "juega la próxima": si el equipo se toma el trabajo de pagar
+  // es justamente para tenerlo el sábado que viene. La otra opción queda por las dudas.
   const opcionRoja = tipo !== 'roja' ? '' : `
     <div class="field">
       <label>¿Qué fecha cumple la suspensión?</label>
       <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;font-size:13.5px;margin-bottom:8px;cursor:pointer;">
-        <input type="radio" name="ps-fecha" value="proxima" checked style="margin-top:3px;">
-        <span>Cumple la <strong>PRÓXIMA</strong> fecha (no juega el próximo partido)</span>
+        <input type="radio" name="ps-fecha" value="siguiente" checked style="margin-top:3px;">
+        <span><strong>Juega la próxima</strong> y cumple la SIGUIENTE <span style="color:var(--text-dim);">(lo habitual)</span></span>
       </label>
       <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;font-size:13.5px;cursor:pointer;">
-        <input type="radio" name="ps-fecha" value="siguiente" style="margin-top:3px;">
-        <span>Juega la próxima y cumple la <strong>SIGUIENTE</strong></span>
+        <input type="radio" name="ps-fecha" value="proxima" style="margin-top:3px;">
+        <span>Cumple la <strong>PRÓXIMA</strong> fecha (no juega el próximo partido)</span>
       </label>
     </div>`;
   openModal(`
@@ -3984,7 +4008,7 @@ async function enviarPagoSancion(dni, tipo, ciclo, monto) {
       equipoId: state.equipoId, equipoNombre: eq.nombre || '', division: eq.division || '', zona: eq.zona || '',
       dni, jugadorNombre: _nombreJugadorDni(dni), tipo, ciclo: ciclo || 1,
       montoEsperado: monto, montoDeclarado, nombreTransferencia: nombreTransf,
-      fechaElegida: tipo === 'roja' ? (radio ? radio.value : 'proxima') : null,
+      fechaElegida: tipo === 'roja' ? (radio ? radio.value : 'siguiente') : null,
       comprobante: dataUrl, estado: 'pagado', creadoEn: new Date().toISOString()
     });
     showToast('Pago enviado. La organización lo va a revisar. ✅', 'ok');

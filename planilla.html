@@ -1254,9 +1254,10 @@ async function cargarTarjetasDivision(division){
       if(!p.jugado) return;
       (p.tarjetas||[]).forEach(t=>{
         if(!t.dni) return;
-        if(!map[t.dni])map[t.dni]={dni:t.dni,rojas:0,amarillas:0,expulsiones:0};
+        if(!map[t.dni])map[t.dni]={dni:t.dni,rojas:0,amarillas:0,expulsiones:0,fechaRoja:0};
         const r=map[t.dni];
-        if(t.tipo==='roja'){r.rojas++;r.expulsiones++;}
+        // fechaRoja = fecha de la ULTIMA roja; es el ancla para saber que fechas cumple.
+        if(t.tipo==='roja'){r.rojas++;r.expulsiones++;r.fechaRoja=Math.max(r.fechaRoja||0,Number(p.numeroFecha)||0);}
         else if(t.dobleAmarilla){r.expulsiones++;}
         else{r.amarillas++;}
       });
@@ -1268,16 +1269,36 @@ async function cargarTarjetasDivision(division){
 // Mismo cálculo que getEstadoSanciones en index.html (pagos de $5.000/$7.000 y fechas cumplidas
 // levantan la suspensión) pero solo para SABER si está suspendido — el planillero no gestiona pagos
 // desde acá, eso lo resuelve el admin.
-function getSancionesActivas(counts, eq){
+// `numeroFecha` = la fecha del partido que se esta por jugar. Sin ella la roja bloquea
+// siempre (criterio seguro), que era el comportamiento anterior.
+function getSancionesActivas(counts, eq, numeroFecha){
   if(!counts) return [];
   const pagadas=(eq&&eq.sancionesPagadas)||[];
   const cumplidas=(eq&&eq.sancionesCumplidas)||[];
-  const hasPag=tipo=>pagadas.some(p=>p.dni===counts.dni&&p.tipo===tipo);
+  const getPag=tipo=>pagadas.find(p=>p.dni===counts.dni&&p.tipo===tipo);
+  const hasPag=tipo=>!!getPag(tipo);
   const hasCum=tipo=>cumplidas.some(p=>p.dni===counts.dni&&p.tipo===tipo);
   const items=[];
   if(counts.rojas>0 && !hasCum('roja')){
-    const pagada=hasPag('roja');
-    items.push({label:'🟥 Roja directa',desc:pagada?'Pagó $7.000 — 1 fecha restante de suspensión':'2 fechas de suspensión'});
+    // Que fechas cumple, contadas desde la fecha en que vio la roja (N):
+    //   sin pagar        -> N+1 y N+2 (2 fechas)
+    //   pago 'siguiente' -> N+2  (juega la proxima) — es el default
+    //   pago 'proxima'   -> N+1
+    // Antes esto no existia: bloqueaba hasta que el admin marcaba "cumplio", asi que el que
+    // pagaba para jugar la proxima quedaba afuera igual y destrabarlo le borraba la sancion.
+    const pag=getPag('roja');
+    const N=Number(counts.fechaRoja)||0;
+    const F=Number(numeroFecha)||0;
+    let bloquea=true, desc;
+    if(pag){
+      const cumpleProxima=pag.fechaElegida==='proxima';
+      desc=cumpleProxima?'Pagó $7.000 — cumple la próxima fecha':'Pagó $7.000 — cumple la fecha siguiente';
+      if(N&&F) bloquea = F === (cumpleProxima ? N+1 : N+2);
+    } else {
+      desc='2 fechas de suspensión';
+      if(N&&F) bloquea = (F===N+1 || F===N+2);
+    }
+    if(bloquea) items.push({label:'🟥 Roja directa',desc});
   }
   const nDobles=counts.expulsiones-counts.rojas;
   if(nDobles>0 && !hasPag('doble') && !hasCum('doble')){
@@ -1488,7 +1509,7 @@ async function mostrarAlineacion(equipo){
   if(tarjetasDiv){
     jugadores.forEach(j=>{
       if(!j.dni) return;
-      const items=getSancionesActivas(tarjetasDiv[j.dni], eqData);
+      const items=getSancionesActivas(tarjetasDiv[j.dni], eqData, p.numeroFecha);
       if(items.length) suspendidos.set(j.dni, items);
     });
   } else {
@@ -2717,18 +2738,18 @@ function actualizarBotonesAgregarJugador(){
 // jugador durante el partido) usaba una lista de "disponibles" sin ningún chequeo — dejaba
 // entrar a cualquiera del plantel, esté suspendido o no, sin ningún aviso. Mismo criterio que
 // mostrarAlineacion, para no tener dos reglas distintas para lo mismo.
-async function jugadoresBloqueadosEquipo(equipoId,division){
+async function jugadoresBloqueadosEquipo(equipoId,division,numeroFecha){
   const cfg=await getCfg();
   const venciSeguro=!!(cfg.fechaLimiteSeguro && new Date()>new Date(cfg.fechaLimiteSeguro+'T23:00:00'));
   const eqData=_eCache[equipoId]||{};
   const habilitadosSeguro=new Set([...(eqData.seguroJugadoresDni||[]), ...((eqData.seguroHabilitadoManual||[]).map(h=>h.dni))]);
   const tarjetasDiv=await cargarTarjetasDivision(division);
-  return{venciSeguro,habilitadosSeguro,eqData,tarjetasDiv};
+  return{venciSeguro,habilitadosSeguro,eqData,tarjetasDiv,numeroFecha};
 }
 function motivoBloqueoJugador(dni,ctx){
-  const{venciSeguro,habilitadosSeguro,eqData,tarjetasDiv}=ctx;
+  const{venciSeguro,habilitadosSeguro,eqData,tarjetasDiv,numeroFecha}=ctx;
   if(tarjetasDiv){
-    const items=getSancionesActivas(tarjetasDiv[dni],eqData);
+    const items=getSancionesActivas(tarjetasDiv[dni],eqData,numeroFecha);
     if(items.length)return'🚫 Suspendido: '+items.map(s=>s.label).join(', ');
   }
   if(venciSeguro&&dni&&!habilitadosSeguro.has(dni))return'Seguro médico pendiente';
@@ -2763,7 +2784,7 @@ async function abrirModalAgregarJugador(equipo){
   }
   abrirModal('modal-agregar-jug'); // se abre ya (con lo que había) y se completa cuando resuelva el chequeo, para no sentir el modal trabado
   if(puedeAgregar){
-    const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
+    const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division,p.numeroFecha);
     lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Seleccioná para agregar</div>'+
       disponibles.map(j=>jugadorRowHtml(j,'onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',null)"',motivoBloqueoJugador(j.dni,ctx))).join('')+manualAddRowHtml(equipo,null);
   }else{
@@ -2790,7 +2811,7 @@ async function mostrarIngresante(equipo,dniSale){
   if(!disponibles.length){
     lista.innerHTML='<div style="color:var(--muted);text-align:center;padding:16px 0;font-size:13px;">No hay jugadores disponibles.</div>'+manualAddRowHtml(equipo,dniSale);return;
   }
-  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
+  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division,p.numeroFecha);
   lista.innerHTML='<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">2. ¿Quién entra en lugar de '+esc(salio?salio.nombre:dniSale)+'?</div>'+
     disponibles.map(j=>jugadorRowHtml(j,'onclick="confirmarAgregarJugador(\''+escJs(equipo)+'\',\''+escJs(j.dni)+'\',\''+escJs(dniSale)+'\')"',motivoBloqueoJugador(j.dni,ctx))).join('')+manualAddRowHtml(equipo,dniSale);
 }
@@ -2810,7 +2831,7 @@ async function agregarJugadorManual(equipo,dniSale){
   if(!dniStr){toast('DNI inválido.',3000);return;}
   const alinChk=equipo==='local'?st.alineacionLocal:st.alineacionVisitante;
   if(alinChk.some(x=>x.dni===dniStr)){toast('Ese DNI ya está en la alineación.',3000);return;}
-  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
+  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division,p.numeroFecha);
   const motivo=motivoBloqueoJugador(dniStr,ctx);
   if(motivo){toast('🚫 No se puede agregar: '+motivo,4000);return;}
   cerrarModal('modal-agregar-jug');
@@ -2844,7 +2865,7 @@ async function confirmarAgregarJugador(equipo,dniEntra,dniSale){
   const equipoId=equipo==='local'?p.equipoLocalId:p.equipoVisitanteId;
   // Defensa en profundidad: repite el chequeo acá por si el modal quedó con una lista vieja
   // en pantalla (ej. el equipo se actualizó mientras el modal estaba abierto).
-  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division);
+  const ctx=await jugadoresBloqueadosEquipo(equipoId,p.division,p.numeroFecha);
   const motivo=motivoBloqueoJugador(dniEntra,ctx);
   if(motivo){toast('🚫 No se puede agregar: '+motivo,4000);return;}
   cerrarModal('modal-agregar-jug');

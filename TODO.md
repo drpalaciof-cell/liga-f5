@@ -2,6 +2,25 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-21 (cont.) — el botón "Gestionar" y la roja por número de fecha (sw v45 y v46)
+
+### 🔴 "Gestionar" (sanciones del admin) nunca funcionó — sw v45
+- **Reportado**: *"presiono gestionar y no sucede nada"*.
+- **Causa**: el botón se generaba con `onclick="abrirModalGestionSancion('eq','dni',${JSON.stringify(p.nombre)},…)"`. `JSON.stringify` devuelve el string **con comillas dobles**, y el atributo también usa comillas dobles: el parser HTML cerraba el atributo en la primera y dejaba `abrirModalGestionSancion('eq','dni',` — sintaxis rota, y al tocarlo no pasaba nada, ni siquiera un error visible. **No dependía del nombre: cualquier jugador lo rompía**, así que nunca anduvo.
+- **Gravedad**: era el **único** lugar donde se puede registrar que un jugador cumplió su fecha sin pagar. Sin eso, el que no paga quedaba sancionado para siempre.
+- **Fix**: recibe sólo `equipoId` y `dni`, y rearma el jugador (`calcularTarjetasPorJugador`) y sus sanciones (`getEstadoSanciones`) adentro. Verificado que era el único `onclick` del archivo con ese patrón.
+
+### 🔴 La elección de la roja directa no la hacía cumplir nadie — sw v46
+- **Preguntado por el usuario**: *"cómo hace el jugador para que al pagar roja directa selecciona si juega la próxima fecha y después quedar inhabilitado nuevamente?"*. La respuesta era: **no podía**.
+- **El problema**: `fechaElegida` se guardaba pero era sólo un texto. `getSancionesActivas` (planilla.html) bloquea al jugador mientras tenga una roja sin marcar como cumplida, **sin mirar el pago ni la fecha**. Entonces el que pagaba para jugar el sábado siguiente **quedaba bloqueado igual en la alineación**, y el único botón que lo destrababa ("cumplió la fecha") marcaba la suspensión como purgada, así que después quedaba libre también en la otra. O no jugaba ninguna, o no cumplía ninguna.
+- **Causa de fondo**: el motor no tenía ninguna noción de **cuándo**. Era "¿tiene sanción sin resolver, sí o no?".
+- **Decisión del usuario**: *"si paga y sube el comprobante quiere decir que va jugar, y cumple la otra, aunque deja la opción por las dudas de cambiar eso, pero por default que sea así"* → el default pasa a ser **'siguiente'** (juega la próxima), con la otra opción disponible.
+- **Implementación**: `calcularTarjetasPorJugador` (index.html) y `cargarTarjetasDivision` (planilla.html) ahora guardan **`fechaRoja`** = `numeroFecha` de la última roja (N). Desde ahí se derivan las fechas bloqueadas: **sin pagar → N+1 y N+2**; **pagando 'siguiente' → N+2**; **pagando 'proxima' → N+1**. El item de roja lleva `fechasBloqueo[]` para que el admin muestre los números ("no juega la fecha 6 y fecha 7"), y `getSancionesActivas(counts, eq, numeroFecha)` compara contra el `numeroFecha` del partido que se está por jugar. **El bloqueo se pone y se levanta solo**, sin intervención.
+- **Compatibilidad**: si no hay `fechaRoja` (partido viejo) o no se pasa `numeroFecha`, **bloquea igual** — criterio seguro y comportamiento idéntico al anterior. Un pago viejo sin `fechaElegida` cae en el default ('siguiente').
+- **Alcance**: sólo la roja. La doble amarilla y la acumulación de amarillas son de 1 fecha y pagarlas habilita al toque, así que no necesitan número de fecha; **lo que sigue siendo manual en esos dos casos es el que NO paga** (hay que marcarle "cumplió la fecha" desde Gestionar).
+- **Verificación**: simulación en Node con las funciones reales de **los dos archivos**, cruzando que admin y planillero **coincidan en cada fecha** (si divergen, el admin ve una cosa y el planillero hace otra). 33 verificaciones en verde + 10 de no-regresión del circuito de pago. Sintaxis de ambos archivos validada.
+- **Sin probar en la cancha**: falta ver un caso real de punta a punta.
+
 ## ✅ Sesión 2026-08-21 — que los equipos puedan PAGAR las sanciones (sw v44)
 
 - **Pedido**: *"necesito habilitar para que paguen las sanciones"*. Alcance elegido por el usuario de tres opciones: **circuito completo tipo arancel** (no solo mostrar el alias, y no pago online con MercadoPago — eso obligaría a tocar `functions/`).
