@@ -1504,6 +1504,11 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         <div id="aranceles-cont"></div>
       </div>
       <div class="glass section-card">
+        <h3>🟥 Recaudación por sanciones</h3>
+        <p class="wizard-help" style="margin-bottom:12px;">Cuánta plata generaron las sanciones, cuánta entró de verdad (transferencia aprobada o cobrada en efectivo), cuánta se resignó porque el jugador prefirió cumplir la fecha, y cuánta falta cobrar. Roja $7.000 · doble amarilla $5.000 · cada 3 amarillas $5.000.</p>
+        <div id="sanciones-recaudacion-cont"></div>
+      </div>
+      <div class="glass section-card">
         <h3>🧹 Mantenimiento — liberar memoria</h3>
         <p class="wizard-help" style="margin-bottom:10px;">Borra las imágenes de los comprobantes de <strong>inscripción</strong> y <strong>seguros</strong> (que ya revisaste) de todos los equipos, para no llenar la base. Los montos y estados aprobados se conservan. Es irreversible.</p>
         <button class="btn btn-danger" onclick="limpiarComprobantesViejos()">🧹 Borrar comprobantes viejos</button>
@@ -3595,7 +3600,7 @@ function switchAdminTab(tab) {
   document.querySelectorAll('.tabs-admin .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.admintab').forEach(d => d.classList.add('hidden'));
   document.getElementById('admintab-' + tab).classList.remove('hidden');
-  if (tab === 'aranceles') renderArancelesAdmin();
+  if (tab === 'aranceles') { renderArancelesAdmin(); renderRecaudacionSanciones(); }
   if (tab === 'envivo') renderEnVivoAdmin();
   if (tab === 'mensajes') iniciarMensajesAdmin();
   else detenerMensajesAdmin();
@@ -4024,6 +4029,7 @@ function cargarPagosSanciones() {
   pagosSancionesUnsub = db.collection('pagosSanciones').onSnapshot(snap => {
     pagosSancionesCache = []; snap.forEach(d => pagosSancionesCache.push({ id: d.id, ...d.data() }));
     if (state.adminDivisionActiva) renderSancionesAdmin();
+    if (document.getElementById('sanciones-recaudacion-cont')) renderRecaudacionSanciones();
   }, e => console.error(e));
 }
 function detenerPagosSanciones() { if (pagosSancionesUnsub) { pagosSancionesUnsub(); pagosSancionesUnsub = null; } }
@@ -4092,6 +4098,135 @@ async function rechazarPagoSancion(pagoId) {
     closeModal();
     renderSancionesAdmin();
   } catch (e) { console.error(e); showToast('No se pudo rechazar el pago.', 'error'); }
+}
+
+// ═══════════════════ INFORME: recaudación por sanciones ═══════════════════
+// Cuenta las sanciones EXACTAMENTE como las cobra getEstadoSanciones: una roja viva por
+// jugador, una doble viva por jugador, y un ciclo por cada 3 amarillas. Contar cada tarjeta
+// suelta daría un "potencial" más alto pero mentiroso: el motor no cobra dos rojas del mismo
+// jugador por separado, así que el pendiente nunca podría llegar a cero.
+function sancionesDeJugador(player) {
+  const out = [];
+  if (player.rojas > 0) out.push({ tipo: 'roja', ciclo: 1 });
+  if ((player.expulsiones - player.rojas) > 0) out.push({ tipo: 'doble', ciclo: 1 });
+  const ciclos = Math.floor(player.amarillas / 3);
+  for (let c = 1; c <= ciclos; c++) out.push({ tipo: 'amarillas', ciclo: c });
+  return out;
+}
+
+function calcularRecaudacionSanciones() {
+  const vacio = () => ({
+    cant: 0, potencial: 0,
+    transf: { cant: 0, monto: 0 }, efectivo: { cant: 0, monto: 0 },
+    cumplida: { cant: 0, monto: 0 }, pendiente: { cant: 0, monto: 0 },
+    porAprobar: { cant: 0, monto: 0 }
+  });
+  const nuevoGrupo = () => ({ total: vacio(), tipos: { roja: vacio(), doble: vacio(), amarillas: vacio() } });
+  const grupos = { Primera: nuevoGrupo(), A: nuevoGrupo(), B: nuevoGrupo(), TOTAL: nuevoGrupo() };
+  const claveGrupo = eq => eq.division === 'Primera' ? 'Primera'
+    : (eq.division === 'Segunda' && (eq.zona === 'A' || eq.zona === 'B')) ? eq.zona : null;
+
+  calcularTarjetasPorJugador(partidosTotalCache).forEach(p => {
+    const eq = equiposCacheAdmin.find(e => e.id === p.equipoId);
+    if (!eq) return;
+    const g = claveGrupo(eq);
+    if (!g) return;
+    const pagadas = eq.sancionesPagadas || [], cumplidas = eq.sancionesCumplidas || [];
+    sancionesDeJugador(p).forEach(s => {
+      const monto = SANCION_MONTOS[s.tipo] || 0;
+      // Cada sanción suma a su zona y al total general, y adentro de cada uno a su tipo.
+      const acum = [grupos[g].total, grupos[g].tipos[s.tipo], grupos.TOTAL.total, grupos.TOTAL.tipos[s.tipo]];
+      const sumar = (campo, cant, m) => acum.forEach(a => { a[campo].cant += cant; a[campo].monto += m; });
+      acum.forEach(a => { a.cant++; a.potencial += monto; });
+
+      const pag = pagadas.find(x => x.dni === p.dni && x.tipo === s.tipo && (x.ciclo || 1) === s.ciclo);
+      const cum = cumplidas.find(x => x.dni === p.dni && x.tipo === s.tipo && (x.ciclo || 1) === s.ciclo);
+      if (pag) {
+        // Con pagoId vino por la app: hay comprobante aprobado y un monto declarado real.
+        // Sin pagoId lo registró el admin a mano desde "Gestionar" = cobrado en la cancha.
+        const doc = pag.pagoId ? pagosSancionesCache.find(x => x.id === pag.pagoId) : null;
+        sumar(pag.pagoId ? 'transf' : 'efectivo', 1, doc ? (doc.montoDeclarado || monto) : monto);
+      } else if (cum) {
+        sumar('cumplida', 1, monto);
+      } else {
+        sumar('pendiente', 1, monto);
+        const esperando = pagosSancionesCache.find(x => x.dni === p.dni && x.tipo === s.tipo && (x.ciclo || 1) === s.ciclo && x.estado === 'pagado');
+        if (esperando) sumar('porAprobar', 1, esperando.montoDeclarado || monto);
+      }
+    });
+  });
+  return grupos;
+}
+
+function _barraRecaudacion(t) {
+  const tot = t.potencial || 1;
+  const pct = n => (n / tot * 100).toFixed(1) + '%';
+  const cobrado = t.transf.monto + t.efectivo.monto;
+  return `<div style="display:flex;height:13px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,.07);margin:10px 0 8px;">
+    <div style="width:${pct(cobrado)};background:var(--ok);" title="Cobrado"></div>
+    <div style="width:${pct(t.cumplida.monto)};background:var(--warn);" title="Cumplieron la fecha"></div>
+    <div style="width:${pct(t.pendiente.monto)};background:rgba(248,113,113,.75);" title="Falta cobrar"></div>
+  </div>`;
+}
+
+function _tarjetaRecaudacion(label, g, destacado) {
+  const t = g.total;
+  if (!t.cant) return `<div class="glass" style="border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+    <div style="font-weight:800;font-size:14px;margin-bottom:4px;">${label}</div>
+    <p class="muted" style="font-size:13px;margin:0;">Todavía no hay sanciones en esta categoría.</p></div>`;
+  const cobrado = t.transf.monto + t.efectivo.monto;
+  const pctCobrado = t.potencial ? Math.round(cobrado / t.potencial * 100) : 0;
+  const fila = (color, txt, monto, cant) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0;">
+    <span style="color:${color};">${txt}</span>
+    <span style="white-space:nowrap;"><strong style="color:${color};">${fmtPesos(monto)}</strong> <span class="muted" style="font-size:11.5px;">(${cant})</span></span></div>`;
+  const tipos = [['roja', '🟥 Roja directa'], ['doble', '🟨🟨 Doble amarilla'], ['amarillas', '🟨 Cada 3 amarillas']]
+    .filter(([k]) => g.tipos[k].cant > 0)
+    .map(([k, lbl]) => {
+      const x = g.tipos[k];
+      return `<tr>
+        <td style="padding:4px 6px;">${lbl}</td>
+        <td style="padding:4px 6px;text-align:center;">${x.cant}</td>
+        <td style="padding:4px 6px;text-align:right;color:var(--ok);">${fmtPesos(x.transf.monto + x.efectivo.monto)}</td>
+        <td style="padding:4px 6px;text-align:right;color:var(--warn);">${x.cumplida.cant}</td>
+        <td style="padding:4px 6px;text-align:right;color:var(--danger);">${fmtPesos(x.pendiente.monto)}</td>
+      </tr>`;
+    }).join('');
+  return `<div class="glass" style="border-radius:12px;padding:15px 16px;margin-bottom:12px;${destacado ? 'border:1px solid var(--division-color);' : ''}">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;">
+      <div style="font-weight:800;font-size:14.5px;">${label}</div>
+      <div style="font-size:12.5px;color:var(--text-dim);">${t.cant} sanción${t.cant === 1 ? '' : 'es'} · potencial <strong style="color:var(--text);">${fmtPesos(t.potencial)}</strong></div>
+    </div>
+    ${_barraRecaudacion(t)}
+    <div style="font-size:15px;margin-bottom:8px;">Recaudado: <strong style="color:var(--ok);font-size:19px;">${fmtPesos(cobrado)}</strong> <span class="muted" style="font-size:12.5px;">(${pctCobrado}% de lo posible)</span></div>
+    ${fila('var(--ok)', '· Transferencia aprobada', t.transf.monto, t.transf.cant)}
+    ${fila('var(--ok)', '· Efectivo / cargado a mano', t.efectivo.monto, t.efectivo.cant)}
+    ${fila('var(--warn)', 'Optaron por cumplir la fecha', t.cumplida.monto, t.cumplida.cant)}
+    ${fila('var(--danger)', 'Falta cobrar', t.pendiente.monto, t.pendiente.cant)}
+    ${t.porAprobar.cant ? `<div style="margin-top:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--warn);">💳 De lo que falta, ${fmtPesos(t.porAprobar.monto)} (${t.porAprobar.cant}) ya tiene comprobante cargado esperando que lo apruebes.</div>` : ''}
+    ${tipos ? `<div style="overflow-x:auto;margin-top:10px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:340px;">
+        <thead><tr style="color:var(--text-dim);text-align:left;border-bottom:1px solid rgba(255,255,255,.1);">
+          <th style="padding:4px 6px;font-weight:600;">Tipo</th>
+          <th style="padding:4px 6px;font-weight:600;text-align:center;">Cant.</th>
+          <th style="padding:4px 6px;font-weight:600;text-align:right;">Cobrado</th>
+          <th style="padding:4px 6px;font-weight:600;text-align:right;">Cumplieron</th>
+          <th style="padding:4px 6px;font-weight:600;text-align:right;">Falta</th>
+        </tr></thead><tbody>${tipos}</tbody></table></div>` : ''}
+  </div>`;
+}
+
+function renderRecaudacionSanciones() {
+  const box = document.getElementById('sanciones-recaudacion-cont');
+  if (!box) return;
+  cargarPagosSanciones();
+  cargarPartidosTotal();
+  const g = calcularRecaudacionSanciones();
+  if (!g.TOTAL.total.cant) { box.innerHTML = '<p class="empty-state">Todavía no hay sanciones registradas en el torneo.</p>'; return; }
+  box.innerHTML = _tarjetaRecaudacion('📊 TOTAL del torneo', g.TOTAL, true)
+    + _tarjetaRecaudacion('🥇 Primera', g.Primera)
+    + _tarjetaRecaudacion('🥈 Segunda — Zona A', g.A)
+    + _tarjetaRecaudacion('🥈 Segunda — Zona B', g.B)
+    + `<p class="muted" style="font-size:11.5px;margin-top:4px;">"Transferencia aprobada" suma el monto que declaró el equipo en el comprobante. "Efectivo / cargado a mano" son los que registraste desde el botón Gestionar, valuados al monto que corresponde. Un jugador con dos rojas cuenta como una sola sanción, igual que las cobra el sistema.</p>`;
 }
 
 async function cargarYMostrarTarjetasEquipo() {

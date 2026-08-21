@@ -225,7 +225,15 @@
 // que vio la roja (N) y se calcula: sin pagar N+1 y N+2; pagando N+2 (default,
 // juega la proxima) o N+1 si lo elige. El bloqueo se pone y se levanta solo.
 // Sin dato de fecha (partidos viejos) bloquea igual, que es el criterio seguro.
-const CACHE = 'ligaf5-v46';
+// v47: informe "Recaudacion por sanciones" en la solapa Aranceles del admin.
+// Por division/zona y por tipo de sancion: cuanta plata podian generar, cuanta
+// entro por transferencia aprobada, cuanta se cobro en efectivo (registrada a
+// mano desde Gestionar), cuanta se resigno porque el jugador prefirio cumplir
+// la fecha, y cuanta falta -- marcando aparte la que ya tiene comprobante
+// esperando aprobacion. Cuenta las sanciones igual que las cobra el motor (una
+// roja viva por jugador, un ciclo por cada 3 amarillas), asi el pendiente puede
+// llegar a cero de verdad.
+const CACHE = 'ligaf5-v47';
 const ASSETS = [
   './index.html',
   './planilla.html',

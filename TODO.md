@@ -2,6 +2,18 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-21 (cont. 2) — informe de recaudación por sanciones (sw v47)
+
+- **Pedido**: *"quiero ver los ingresos de dinero respecto a la cantidad de sancionados separados por categoría, y lo efectivamente pagado (los que subieron comprobantes) y los que optaron por cumplir fecha nada más, de tanta cantidad de dinero que podría ingresar cuánto se recaudó"*.
+- **Dónde**: solapa **💵 Aranceles** del admin, bloque nuevo "🟥 Recaudación por sanciones" (esa solapa ya es la de plata y está fuera del Panel de Control, así que lo financiero no queda a la vista de los organizadores).
+- **Qué muestra**, para el TOTAL del torneo y separado por 🥇 Primera / 🥈 Zona A / 🥈 Zona B, con barra apilada y desglose por tipo de sanción:
+  - **Potencial**: cuánta plata podían generar las sanciones existentes.
+  - **Recaudado**, partido en dos: **transferencia aprobada** (pagos por la app, suma el `montoDeclarado` real del comprobante) y **efectivo / cargado a mano** (entradas de `sancionesPagadas` **sin `pagoId`**, o sea las que registró el admin desde Gestionar; valuadas al monto que corresponde porque ahí no se guarda importe).
+  - **Optaron por cumplir la fecha**: plata resignada (`sancionesCumplidas`).
+  - **Falta cobrar**, y aparte cuánto de eso **ya tiene comprobante esperando aprobación** (pagos en estado `pagado`).
+- **Decisión de conteo**: `sancionesDeJugador()` cuenta las sanciones **exactamente como las cobra `getEstadoSanciones`** — una roja viva por jugador, una doble viva por jugador, y un ciclo por cada 3 amarillas. Contar cada tarjeta suelta daría un potencial más alto pero mentiroso: el motor no cobra dos rojas del mismo jugador por separado, así que el "falta cobrar" nunca podría llegar a cero. **Queda como limitación conocida**: si un jugador ve dos rojas en el torneo, el sistema le cobra una sola.
+- **Verificación**: simulación en Node con un torneo armado a mano (roja pagada por app, 3 amarillas que cumplió, 6 amarillas con un ciclo en efectivo y otro esperando, doble impaga, pago rechazado, equipo sin zona, partido no jugado) — 27 verificaciones, incluida la identidad **cobrado + cumplido + falta = potencial**.
+
 ## ✅ Sesión 2026-08-21 (cont.) — el botón "Gestionar" y la roja por número de fecha (sw v45 y v46)
 
 ### 🔴 "Gestionar" (sanciones del admin) nunca funcionó — sw v45
