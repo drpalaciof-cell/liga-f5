@@ -7549,6 +7549,25 @@ function volverAEquiposAdmin() {
 }
 // Admin: editar la lista de buena fe (agregar/editar jugadores), marcar
 // asegurados y cargar DT + ayudante de campo, todo en un modal.
+// Jugadores que la depuración por seguro sacó del plantel abierto en el modal, para poder
+// reponerlos con un clic (`equipos/{id}.jugadoresSinSeguro`).
+let _plantelQuitados = [];
+function reponerJugadorQuitado(i) {
+  const j = _plantelQuitados[i];
+  if (!j) return;
+  const filas = Array.from(document.querySelectorAll('#ep-jug-body tr'));
+  // Primera fila del todo vacía; si el jugador ya está cargado, no lo duplica.
+  const yaEsta = j.dni && filas.some(tr => (tr.querySelector('input[data-f="dni"]') || {}).value === j.dni);
+  if (yaEsta) { showToast('Ese jugador ya está en la lista.', 'info'); return; }
+  const libre = filas.find(tr => ['apellido', 'nombre', 'dni']
+    .every(f => !((tr.querySelector(`input[data-f="${f}"]`) || {}).value || '').trim()));
+  if (!libre) { showToast(`La lista ya tiene los ${NUM_JUGADORES} lugares ocupados.`, 'error'); return; }
+  const set = (f, v) => { const el = libre.querySelector(`input[data-f="${f}"]`); if (el) el.value = v || ''; };
+  set('apellido', (j.apellido || '').toUpperCase()); set('nombre', j.nombre); set('dni', j.dni);
+  libre.style.background = 'rgba(74,222,128,.12)';
+  libre.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  showToast('Cargado. Acordate de tocar 💾 Guardar plantel.', 'ok');
+}
 async function abrirEditarPlantelAdmin(equipoId) {
   try {
     const doc = await db.collection('equipos').doc(equipoId).get();
@@ -7558,6 +7577,9 @@ async function abrirEditarPlantelAdmin(equipoId) {
     while (jugadores.length < NUM_JUGADORES) jugadores.push({ apellido: '', nombre: '', dni: '' });
     const aseguradoSet = new Set([...(eq.seguroJugadoresDni || []), ...(eq.seguroHabilitadoManual || []).map(h => h.dni)]);
     const dt = eq.dt || {}, ay = eq.ayudante || {};
+    // Los que sacó la depuración por seguro, para poder reponerlos de a uno sin tener que
+    // acordarse del nombre ni del DNI.
+    _plantelQuitados = (eq.jugadoresSinSeguro || []).filter(j => j && (j.apellido || j.nombre || j.dni));
     const filas = jugadores.map((j, i) => `
       <tr>
         <td class="idx-cell"><span class="jersey-num">${i + 1}</span></td>
@@ -7571,6 +7593,15 @@ async function abrirEditarPlantelAdmin(equipoId) {
       <p class="muted" style="margin-bottom:12px;font-size:12.5px;">Agregá o editá jugadores de la lista de buena fe, tildá cuáles están <strong>asegurados</strong> (cobertura manual de la organización, $${MONTO_SEGURO_POR_JUGADOR.toLocaleString('es-AR')} c/u — no toca lo ya pagado por comprobante), y cargá el cuerpo técnico.</p>
       <div style="max-height:52vh;overflow-y:auto;">
         <table class="jugadores-table"><thead><tr><th>N°</th><th>Apellido</th><th>Nombre</th><th>DNI</th><th>Aseg.</th></tr></thead><tbody id="ep-jug-body">${filas}</tbody></table>
+        ${_plantelQuitados.length ? `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:11px 13px;margin-top:14px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:2px;">↩️ Quitados por falta de seguro (${_plantelQuitados.length})</div>
+          <p class="muted" style="font-size:11.5px;margin:0 0 8px;">Reponer lo carga en la primera fila libre de arriba. Si además lo vas a habilitar, tildale "Aseg.". Se guarda al tocar 💾 Guardar plantel.</p>
+          ${_plantelQuitados.map((j, i) => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;">
+            <div style="flex:1;min-width:0;">${escapeHtml(((j.apellido || '') + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim() || '(sin nombre)')}
+              <span class="muted">${j.dni ? '· DNI ' + escapeHtml(j.dni) : '· sin DNI'}${j.quitadoEn ? ' · ' + new Date(j.quitadoEn).toLocaleDateString('es-AR') : ''}</span></div>
+            <button class="btn btn-sm" onclick="reponerJugadorQuitado(${i})">Reponer</button>
+          </div>`).join('')}
+        </div>` : ''}
         <h3 style="margin:16px 0 8px;font-size:15px;">Cuerpo técnico</h3>
         <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;">
           <input type="text" id="ep-dt-nombre" value="${escapeHtml(dt.nombre || '')}" placeholder="DT — nombre y apellido">
@@ -7614,7 +7645,14 @@ async function guardarPlantelAdmin(equipoId) {
       const prev = prevManual.find(h => h.dni === dni);
       nuevoManual.push(prev || { dni, fecha: new Date().toISOString(), monto: MONTO_SEGURO_POR_JUGADOR });
     });
-    await db.collection('equipos').doc(equipoId).update({ jugadores, seguroHabilitadoManual: nuevoManual, dt, ayudante: ay });
+    const update = { jugadores, seguroHabilitadoManual: nuevoManual, dt, ayudante: ay };
+    // Si un jugador que había sacado la depuración vuelve a la lista, deja de figurar como
+    // quitado — así el bloque "Quitados por falta de seguro" no acumula gente que ya volvió.
+    if (Array.isArray(eq.jugadoresSinSeguro) && eq.jugadoresSinSeguro.length) {
+      const enLista = new Set(jugadores.map(j => j.dni).filter(Boolean));
+      update.jugadoresSinSeguro = eq.jugadoresSinSeguro.filter(j => !(j && j.dni && enLista.has(j.dni)));
+    }
+    await db.collection('equipos').doc(equipoId).update(update);
     showToast('Plantel actualizado.', 'ok');
     closeModal();
     await cargarEquiposAdmin();

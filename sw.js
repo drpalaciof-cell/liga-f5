@@ -243,7 +243,12 @@
 // equipo porque esto no tiene deshacer y un DNI mal tipeado no puede costarle
 // el torneo a un jugador. No toca goles, tarjetas ni sanciones: eso vive en los
 // partidos.
-const CACHE = 'ligaf5-v48';
+// v49: reponer jugadores. En "Editar plantel" del admin aparece el bloque
+// "Quitados por falta de seguro" (lee equipos/{id}.jugadoresSinSeguro) con un
+// boton Reponer por jugador: lo carga en la primera fila libre sin tener que
+// acordarse del DNI, y al guardar deja de figurar como quitado. Agregar
+// jugadores nuevos a la lista de buena fe ya se podia desde ese mismo editor.
+const CACHE = 'ligaf5-v49';
 const ASSETS = [
   './index.html',
   './planilla.html',
