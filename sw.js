@@ -256,7 +256,17 @@
 // lado. Ahora lista todas las fechas hasta la abierta con su estado, el total
 // adeudado arriba, y un boton Pagar por fecha. Las fechas anteriores a la
 // abierta van al monto de fuera de hora, porque ya vencieron.
-const CACHE = 'ligaf5-v50';
+// v51: los equipos cargan su PROPIA planilla de juego desde su panel (solapa
+// "Planilla de juego"), para no perder tiempo dictandosela al planillero con el
+// partido por empezar. Escribe los mismos campos que confirmarAlineacion() de
+// planilla.html, asi el planillero abre el partido y ya la encuentra cargada.
+// Minimo 5 y maximo 15, numero obligatorio y sin repetir ("7" y "07" son el
+// mismo), y NO deja tildar a un suspendido ni a uno sin seguro -- mismo
+// criterio que usa el planillero, verificado cruzando los dos motores. Una vez
+// que el partido arranca, la planilla es del planillero y el equipo no la pisa.
+// firestore.rules: un role 'equipo' ahora solo puede tocar SU alineacion en SU
+// partido; antes cualquier sesion autenticada podia reescribir la del rival.
+const CACHE = 'ligaf5-v51';
 const ASSETS = [
   './index.html',
   './planilla.html',

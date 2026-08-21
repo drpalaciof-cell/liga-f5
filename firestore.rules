@@ -76,13 +76,26 @@ service cloud.firestore {
         'division', 'zona', 'numeroFecha', 'cancha', 'horario'
       ]);
     }
+    // Un equipo logueado carga su propia planilla de juego por adelantado desde su panel.
+    // Sólo puede tocar SU lado (alineación + capitán) y sólo en un partido que juega él:
+    // antes, cualquier sesión autenticada podía reescribir la alineación de cualquier
+    // partido, incluida la del rival.
+    function equipoTocaSuAlineacion() {
+      let tocados = request.resource.data.diff(resource.data).affectedKeys();
+      let esLocal = request.auth.token.equipoId == resource.data.equipoLocalId;
+      let esVisitante = request.auth.token.equipoId == resource.data.equipoVisitanteId;
+      return (esLocal || esVisitante) && tocados.hasOnly(
+        esLocal ? ['alineacionLocal', 'capitanLocalDni'] : ['alineacionVisitante', 'capitanVisitanteDni']
+      );
+    }
     match /partidos/{id} {
       allow read: if autenticado();
       allow create: if autenticado();
       // Una vez cerrado el partido, la planilla queda tal cual — ni el
       // planillero ni un equipo pueden modificarla. Solo el admin puede
       // corregir un error después, desde "Editar resultado".
-      allow update: if isAdmin() || (autenticado() && resource.data.get('estado','') != 'cerrado' && soloCamposPlanilla());
+      allow update: if isAdmin() || (autenticado() && resource.data.get('estado','') != 'cerrado'
+        && (request.auth.token.role == 'equipo' ? equipoTocaSuAlineacion() : soloCamposPlanilla()));
       allow delete: if isAdmin();
     }
     // Pagos semanales de arancel. Un equipo carga el suyo (estado 'pagado' al

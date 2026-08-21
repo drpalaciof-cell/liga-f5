@@ -1002,6 +1002,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       <button class="tab-btn" data-petab="pagos" onclick="switchPanelEquipoTab('pagos')">💵 Pagos</button>
       <button class="tab-btn" data-petab="mensajes" onclick="switchPanelEquipoTab('mensajes')">✉️ Mensajes<span class="msg-tab-badge" id="msg-equipo-tab-badge"></span></button>
       <button class="tab-btn" data-petab="partidos" onclick="switchPanelEquipoTab('partidos')">⚽ Partidos</button>
+      <button class="tab-btn" data-petab="planilla" onclick="switchPanelEquipoTab('planilla')">📝 Planilla de juego</button>
       <button class="tab-btn" data-petab="sanciones" onclick="switchPanelEquipoTab('sanciones')">🟥 Sanciones</button>
       <button class="tab-btn" data-petab="carnet" onclick="switchPanelEquipoTab('carnet')">🪪 Carnet</button>
       <button class="tab-btn" data-petab="comprobantes" onclick="switchPanelEquipoTab('comprobantes')">📎 Comprobantes</button>
@@ -1184,6 +1185,8 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
         <p class="wizard-help" style="margin-bottom:0;">Próximamente — todavía no está habilitada la carga de arancel.</p>
       </div>
     </div>
+
+    <div id="pe-tab-planilla" class="hidden"></div>
 
     <div id="pe-tab-pagos" class="hidden"></div>
 
@@ -2957,6 +2960,168 @@ async function limpiarComprobantesViejos() {
     showToast(`Listo: comprobantes borrados de ${n} equipo(s).`, 'ok');
   } catch (e) { console.error(e); showToast('No se pudo limpiar: ' + e.message, 'error'); }
 }
+// ═══════════ Planilla de juego: la carga el propio equipo ═══════════
+// A pedido del usuario: si el planillero recién arranca a tipear los 5+ que entran cuando el
+// partido ya tiene que empezar, se pierde tiempo en cada cancha. Escribe los MISMOS campos
+// que confirmarAlineacion() de planilla.html y que el modal del admin
+// (alineacionLocal/Visitante + capitanLocalDni/VisitanteDni), así el planillero abre el
+// partido y ya la encuentra cargada.
+//
+// Reusa los helpers _aliAdm* del modal del admin pasando 'propio' como equipo: son genéricos
+// en ese parámetro, así que el comportamiento (tocar el nombre tilda, escribir el número
+// tilda solo, contador, buscador) es exactamente el mismo que ya está probado.
+const MIN_ALINEACION = 5, MAX_ALINEACION = 15;
+let _planillaEquipoPartido = null;
+
+async function renderPlanillaEquipo() {
+  const cont = document.getElementById('pe-tab-planilla');
+  if (!cont || !state.equipoId) return;
+  cont.innerHTML = `<div class="glass" style="padding:12px 14px;border-radius:10px;color:var(--text-dim);">Cargando…</div>`;
+  const eq = state.equipo || {};
+  try {
+    const snap = await db.collection('partidos').where('division', '==', eq.division).get();
+    const mios = [];
+    const cardMap = {};
+    snap.forEach(d => {
+      const x = { id: d.id, ...d.data() };
+      const esMio = x.equipoLocalId === state.equipoId || x.equipoVisitanteId === state.equipoId;
+      if (esMio) mios.push(x);
+      // Tarjetas de MIS jugadores en toda la división, para saber quién está suspendido.
+      if (!x.jugado) return;
+      (x.tarjetas || []).filter(t => t.equipoId === state.equipoId && t.dni).forEach(t => {
+        if (!cardMap[t.dni]) cardMap[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, amarillas: 0, rojas: 0, expulsiones: 0, fechaRoja: 0 };
+        const r = cardMap[t.dni];
+        if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; r.fechaRoja = Math.max(r.fechaRoja || 0, Number(x.numeroFecha) || 0); }
+        else if (t.dobleAmarilla) { r.expulsiones++; }
+        else { r.amarillas++; }
+      });
+    });
+    const p = mios.filter(x => !x.jugado && x.estado !== 'cerrado')
+      .sort((a, b) => (Number(a.numeroFecha) || 0) - (Number(b.numeroFecha) || 0)
+        || String(a.horario || '').localeCompare(String(b.horario || '')))[0];
+    if (!p) {
+      cont.innerHTML = `<div class="glass section-card"><h3>📝 Planilla de juego</h3>
+        <p class="muted">No tenés ningún partido pendiente. Cuando la organización publique la próxima fecha vas a poder cargar acá quiénes entran a la cancha.</p></div>`;
+      return;
+    }
+    _planillaEquipoPartido = p;
+    const esLocal = p.equipoLocalId === state.equipoId;
+    const rival = esLocal ? p.equipoVisitanteNombre : p.equipoLocalNombre;
+    const alinExistente = (esLocal ? p.alineacionLocal : p.alineacionVisitante) || [];
+    const capDni = (esLocal ? p.capitanLocalDni : p.capitanVisitanteDni) || '';
+    // Una vez que el planillero arrancó el partido, la planilla es suya: el equipo no la pisa.
+    const enCurso = !!(p.estado && p.estado !== 'pendiente');
+
+    // Seguro médico: sólo bloquea después del plazo, igual que en el planillero.
+    let cfg = {};
+    try { const c = await db.collection('config').doc('general').get(); cfg = c.exists ? c.data() : {}; } catch (e) {}
+    const venciSeguro = !!(cfg.fechaLimiteSeguro && new Date() > new Date(cfg.fechaLimiteSeguro + 'T23:00:00'));
+    const aseg = new Set([...(eq.seguroJugadoresDni || []), ...((eq.seguroHabilitadoManual || []).map(h => h && h.dni))].filter(Boolean));
+    const fechaPartido = Number(p.numeroFecha) || 0;
+    const motivoBloqueo = (dni) => {
+      if (venciSeguro && !aseg.has(dni)) return 'Sin seguro médico';
+      const c = cardMap[dni];
+      if (c) {
+        // Mismo criterio que getSancionesActivas del planillero: la roja mira la fecha, la
+        // doble amarilla y la acumulación bloquean hasta que se paguen o se cumplan.
+        const items = getEstadoSanciones(c, eq)
+          .filter(i => !i.fechasBloqueo || i.fechasBloqueo.includes(fechaPartido));
+        if (items.length) return 'Suspendido — ' + items.map(i => i.label).join(', ');
+      }
+      return '';
+    };
+
+    const numByDni = {}; alinExistente.forEach(j => numByDni[j.dni] = j.numero);
+    const selDnis = new Set(alinExistente.map(j => j.dni));
+    const lista = (eq.jugadores || []).filter(j => j && j.dni).slice()
+      .sort((a, b) => (a.apellido || '').localeCompare(b.apellido || '', 'es'));
+
+    const rows = lista.map(j => {
+      const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
+      const motivo = motivoBloqueo(j.dni);
+      if (motivo) {
+        return `<div class="ali-adm-row" style="opacity:.5;cursor:not-allowed;" data-buscar="${escapeHtml(nombre.toLowerCase())} ${escapeHtml(j.dni)}">
+          <span style="width:18px;text-align:center;">🚫</span>
+          <span class="ali-adm-nombre">${escapeHtml(nombre)}<br><span style="font-size:10.5px;color:var(--danger);">${escapeHtml(motivo)}</span></span>
+        </div>`;
+      }
+      const sel = selDnis.has(j.dni);
+      return `<div class="ali-adm-row${sel ? ' sel' : ''}" id="ali-row-propio-${escapeHtml(j.dni)}" data-buscar="${escapeHtml(nombre.toLowerCase())} ${escapeHtml(j.dni)}">
+        <input type="checkbox" class="ali-adm-chk" data-equipo="propio" data-dni="${escapeHtml(j.dni)}" ${sel ? 'checked' : ''} ${enCurso ? 'disabled' : ''} onchange="_aliAdmToggle('propio','${escapeHtml(j.dni)}')">
+        <span class="ali-adm-nombre" onclick="${enCurso ? '' : `_aliAdmClickNombre('propio','${escapeHtml(j.dni)}')`}">${escapeHtml(nombre)}<br><span class="muted" style="font-size:10.5px;">DNI ${escapeHtml(j.dni)}</span></span>
+        <input type="text" inputmode="numeric" maxlength="2" placeholder="N°" value="${escapeHtml(numByDni[j.dni] || '')}" class="ali-adm-num" data-equipo="propio" data-dni="${escapeHtml(j.dni)}" ${enCurso ? 'disabled' : ''} oninput="_aliAdmNumero('propio','${escapeHtml(j.dni)}')">
+      </div>`;
+    }).join('');
+
+    const capOptions = lista.filter(j => !motivoBloqueo(j.dni)).map(j => {
+      const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
+      return `<option value="${escapeHtml(j.dni)}" ${j.dni === capDni ? 'selected' : ''}>${escapeHtml(nombre)}</option>`;
+    }).join('');
+
+    cont.innerHTML = `
+      <div class="glass section-card">
+        <h3>📝 Planilla de juego</h3>
+        <p style="font-size:14px;margin-bottom:4px;"><strong>Fecha ${p.numeroFecha || '—'}</strong> · ${esLocal ? 'Local' : 'Visitante'} vs <strong>${escapeHtml(rival || '—')}</strong></p>
+        <p class="muted" style="font-size:12.5px;margin-bottom:12px;">Cancha ${p.cancha || '—'} · ${p.horario || '—'} hs</p>
+        ${enCurso
+          ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:11px 13px;font-size:13px;color:var(--warn);">🔒 El partido ya arrancó: la planilla la maneja el planillero desde la cancha. Lo que cargaste queda como estaba.</div>`
+          : `<p class="wizard-help" style="margin-bottom:10px;">Tildá a los que entran a la cancha y ponele el número a cada uno. Escribir el número lo tilda solo. Mínimo <strong>${MIN_ALINEACION}</strong>, máximo ${MAX_ALINEACION}. Cuando guardes, el planillero ya la va a encontrar cargada y no hay que dictarla en la cancha.</p>`}
+        ${alinExistente.length ? `<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:var(--ok);">✅ Ya cargaste ${alinExistente.length} jugador(es) para este partido.${enCurso ? '' : ' Podés seguir cambiándola hasta que arranque.'}</div>` : ''}
+        <div class="ali-adm-tabs" style="margin-bottom:8px;"><button type="button" class="ali-adm-tab activa">Mi equipo <span class="ali-adm-badge" id="ali-adm-cont-propio">0</span></button></div>
+        <input type="text" class="ali-adm-buscar" id="ali-adm-buscar-propio" placeholder="🔎 Buscar por apellido o DNI..." oninput="_aliAdmFiltrar('propio')">
+        <div id="ali-adm-lista-propio">${rows || '<p class="muted" style="font-size:12.5px;">No tenés jugadores en la lista de buena fe.</p>'}</div>
+        <label style="font-size:11.5px;color:var(--text-dim);display:block;margin-top:12px;">Capitán</label>
+        <select id="ali-eq-cap" class="ali-adm-cap" ${enCurso ? 'disabled' : ''}><option value="">—</option>${capOptions}</select>
+        ${enCurso ? '' : `<button class="btn btn-primary btn-block" style="margin-top:14px;padding:13px;" onclick="guardarAlineacionEquipo()">💾 Guardar planilla</button>`}
+      </div>`;
+    _aliAdmContar('propio');
+  } catch (e) {
+    console.error(e);
+    cont.innerHTML = `<div class="glass section-card"><p class="muted">No se pudo cargar la planilla. Probá de nuevo.</p></div>`;
+  }
+}
+
+function guardarAlineacionEquipo() {
+  const p = _planillaEquipoPartido;
+  if (!p) { showToast('No hay partido cargado.', 'error'); return; }
+  const esLocal = p.equipoLocalId === state.equipoId;
+  const byDni = {}; ((state.equipo || {}).jugadores || []).forEach(j => { if (j && j.dni) byDni[j.dni] = j; });
+  const alin = [], usados = new Map(), problemas = [];
+  document.querySelectorAll('#ali-adm-lista-propio .ali-adm-row').forEach(f => f.classList.remove('error'));
+  [...document.querySelectorAll('.ali-adm-chk[data-equipo="propio"]:checked')].forEach(chk => {
+    const dni = chk.dataset.dni;
+    const numInput = document.querySelector(`.ali-adm-num[data-equipo="propio"][data-dni="${dni}"]`);
+    const num = ((numInput && numInput.value) || '').trim();
+    const j = byDni[dni] || {};
+    const nombre = ((j.apellido || '').toUpperCase() + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim();
+    if (!num) { problemas.push({ dni, nombre, motivo: 'le falta el número' }); return; }
+    // "7" y "07" son el mismo número: se comparan normalizados, si no entraban dos jugadores
+    // con el mismo dorsal.
+    const numPad = num.padStart(2, '0');
+    if (usados.has(numPad)) { problemas.push({ dni, nombre, motivo: `tiene el número ${numPad}, igual que ${usados.get(numPad)}` }); return; }
+    usados.set(numPad, nombre);
+    alin.push({ dni, numero: numPad, nombre });
+  });
+  if (problemas.length) {
+    problemas.forEach(pr => { const f = _aliAdmFila('propio', pr.dni); if (f) f.classList.add('error'); });
+    const primero = problemas[0];
+    const fila = _aliAdmFila('propio', primero.dni);
+    if (fila) fila.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    showToast(`${primero.nombre} ${primero.motivo}${problemas.length > 1 ? ` (y ${problemas.length - 1} más en rojo)` : ''}`, 'error');
+    return;
+  }
+  if (alin.length < MIN_ALINEACION) { showToast(`Tenés que cargar al menos ${MIN_ALINEACION} jugadores. Llevás ${alin.length}.`, 'error'); return; }
+  if (alin.length > MAX_ALINEACION) { showToast(`Como máximo ${MAX_ALINEACION} jugadores. Llevás ${alin.length}.`, 'error'); return; }
+  const cap = (document.getElementById('ali-eq-cap') || {}).value || '';
+  if (cap && !alin.some(j => j.dni === cap)) { showToast('El capitán tiene que estar entre los que juegan.', 'error'); return; }
+  const updates = esLocal
+    ? { alineacionLocal: alin, ...(cap ? { capitanLocalDni: cap } : {}) }
+    : { alineacionVisitante: alin, ...(cap ? { capitanVisitanteDni: cap } : {}) };
+  db.collection('partidos').doc(p.id).update(updates)
+    .then(() => { showToast(`Planilla guardada ✓ ${alin.length} jugadores. El planillero ya la va a encontrar cargada.`, 'ok'); renderPlanillaEquipo(); })
+    .catch(e => { console.error(e); showToast('No se pudo guardar: ' + (e.message || e.code || e), 'error'); });
+}
+
 function switchPanelEquipoTab(tab, renderSanc = true) {
   document.querySelectorAll('.tabs-equipo .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.petab === tab));
   document.getElementById('pe-tab-panel').classList.toggle('hidden', tab !== 'panel');
@@ -2967,8 +3132,10 @@ function switchPanelEquipoTab(tab, renderSanc = true) {
   document.getElementById('pe-tab-comprobantes').classList.toggle('hidden', tab !== 'comprobantes');
   document.getElementById('pe-tab-mensajes').classList.toggle('hidden', tab !== 'mensajes');
   document.getElementById('pe-tab-pagos').classList.toggle('hidden', tab !== 'pagos');
+  document.getElementById('pe-tab-planilla').classList.toggle('hidden', tab !== 'planilla');
   if (tab === 'sanciones' && renderSanc) renderSancionesEquipo();
   if (tab === 'pagos') renderPagosEquipo();
+  if (tab === 'planilla') renderPlanillaEquipo();
   if (tab === 'carnet') renderCarnetTab();
   if (tab === 'partidos') renderPartidosEquipo();
   if (tab === 'listabf') renderListaBFPanel();
