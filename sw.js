@@ -248,7 +248,15 @@
 // boton Reponer por jugador: lo carga en la primera fila libre sin tener que
 // acordarse del DNI, y al guardar deja de figurar como quitado. Agregar
 // jugadores nuevos a la lista de buena fe ya se podia desde ese mismo editor.
-const CACHE = 'ligaf5-v49';
+// v50: el equipo puede pagar CUALQUIER fecha que deba, no solo la abierta.
+// Antes la solapa Pagos mostraba un unico formulario, el de config/general
+// .arancelFechaActual: el que ya habia pagado esa fecha veia "Ya cargaste el
+// pago" y nada mas, y si el admin pasaba a la fecha 2 el que no habia pagado la
+// 1 se quedaba SIN NINGUNA forma de pagarla y la deuda no figuraba en ningun
+// lado. Ahora lista todas las fechas hasta la abierta con su estado, el total
+// adeudado arriba, y un boton Pagar por fecha. Las fechas anteriores a la
+// abierta van al monto de fuera de hora, porque ya vencieron.
+const CACHE = 'ligaf5-v50';
 const ASSETS = [
   './index.html',
   './planilla.html',

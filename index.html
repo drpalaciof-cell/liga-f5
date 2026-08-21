@@ -2736,12 +2736,10 @@ async function renderPagosEquipo() {
   await _cargarCfgArancel();
   const fecha = _cfgArancel.fecha, vence = _cfgArancel.vence;
   const vencido = vence ? (new Date() > new Date(vence)) : false;
-  const monto = vencido ? ARANCEL_MONTO_TARDE : ARANCEL_MONTO;
   const venceTxt = vence ? new Date(vence).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
   let pagos = [];
   try { const snap = await db.collection('aranceles').where('equipoId', '==', state.equipoId).get(); snap.forEach(d => pagos.push({ id: d.id, ...d.data() })); } catch (e) {}
   pagos.sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
-  const yaPago = fecha != null && pagos.some(p => p.fecha === fecha && p.estado !== 'rechazado');
   const aliasBox = `<div class="glass" style="border:1px solid var(--division-color);border-radius:14px;padding:16px;text-align:center;margin-bottom:16px;">
       <div style="font-size:12px;color:var(--text-dim);letter-spacing:.5px;">TRANSFERÍ AL ALIAS</div>
       <div style="font-size:30px;font-weight:900;color:var(--division-color);letter-spacing:1px;margin:4px 0;word-break:break-all;">${ARANCEL_ALIAS}</div>
@@ -2752,15 +2750,36 @@ async function renderPagosEquipo() {
   if (fecha == null) {
     arancelCard = `<div class="glass section-card"><h3>💵 Arancel semanal</h3><p class="muted">Todavía no hay una fecha de arancel abierta. La organización la habilita cada semana.</p></div>`;
   } else {
+    // Se listan TODAS las fechas hasta la abierta, no sólo la última. Antes sólo se podía
+    // pagar la fecha actual: al pasar a la 2, el que no había pagado la 1 se quedaba sin
+    // ninguna forma de hacerlo y la deuda no se veía por ningún lado.
+    const filas = [];
+    let deuda = 0, nDeuda = 0;
+    for (let f = fecha; f >= 1; f--) {
+      const st = _estadoArancelFecha(pagos, f);
+      const m = _montoArancelFecha(f, fecha, vencido);
+      const esActual = f === fecha;
+      if (st.estado !== 'pagado') { deuda += m; nDeuda++; }
+      const detalle = st.estado === 'pagado'
+        ? `Pagado ${fmtPesos(st.pago.montoDeclarado)}${st.pago.fueraDeHora ? ' · fuera de hora' : ''}`
+        : `${fmtPesos(m)}${m === ARANCEL_MONTO_TARDE ? ' <span style="color:var(--warn);">(fuera de hora)</span>' : ''}`;
+      filas.push(`<div class="list-row" style="align-items:center;">
+        <div style="flex:1;min-width:0;">
+          <strong>Fecha ${f}</strong>${esActual ? ' <span class="badge badge-warn">Actual</span>' : ''}
+          <div class="muted" style="font-size:12px;">${detalle}</div>
+        </div>
+        ${st.estado === 'pagado'
+          ? '<span class="badge badge-ok">✅ Pagado</span>'
+          : `${st.estado === 'rechazado' ? '<span class="badge badge-danger" style="margin-right:6px;">Rechazado</span>' : ''}<button class="btn btn-sm btn-primary" onclick="abrirModalPagarArancel(${f})">Pagar</button>`}
+      </div>`);
+    }
     arancelCard = `<div class="glass section-card">
-      <h3>💵 Arancel — Fecha ${fecha}</h3>
-      <p style="font-size:13.5px;margin-bottom:6px;">Vence: <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencido</span>' : ''}</p>
-      <p style="font-size:15px;margin-bottom:12px;">Monto a pagar: <strong style="color:var(--division-color);font-size:19px;">${fmtPesos(monto)}</strong> ${vencido ? `<span style="font-size:12px;color:var(--danger);">(fuera de hora)</span>` : `<span style="font-size:12px;color:var(--text-dim);">(pasado el vencimiento sube a ${fmtPesos(ARANCEL_MONTO_TARDE)})</span>`}</p>
-      ${yaPago ? `<div class="glass" style="padding:12px 14px;border-radius:10px;color:var(--ok);border:1px solid var(--ok);">✅ Ya cargaste el pago de la Fecha ${fecha}.</div>` : `
-      <div class="field"><label>Comprobante (obligatorio)</label><input type="file" accept="image/*" id="ar-comprobante"></div>
-      <div class="field"><label>Monto transferido (obligatorio)</label><input type="text" id="ar-monto" inputmode="numeric" placeholder="Ej: 50000 o 50.000"></div>
-      <div class="field"><label>Nombre de quien transfirió (obligatorio)</label><input type="text" id="ar-nombre" placeholder="Nombre y apellido"></div>
-      <button class="btn btn-primary" onclick="pagarArancel()">Cargar pago del arancel</button>`}
+      <h3>💵 Aranceles por fecha</h3>
+      <p style="font-size:13px;margin-bottom:10px;">La Fecha ${fecha} vence <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencida</span>' : `<span class="muted">· después sube a ${fmtPesos(ARANCEL_MONTO_TARDE)}</span>`}</p>
+      ${nDeuda ? `<div style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;">
+        Debés <strong style="color:var(--danger);font-size:17px;">${fmtPesos(deuda)}</strong> — ${nDeuda} fecha(s) sin pagar.</div>`
+        : `<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;color:var(--ok);">✅ Estás al día con los aranceles.</div>`}
+      ${filas.join('')}
     </div>`;
   }
   const historial = pagos.length ? `<div class="glass section-card"><h3>Mis pagos de arancel</h3>${pagos.map(p => `
@@ -2774,7 +2793,38 @@ async function renderPagosEquipo() {
   const pasesCard = `<div class="glass section-card" style="opacity:.6;"><h3>🔄 Pases de jugadores</h3><p class="muted">🔒 Se habilita en playoffs.</p></div>`;
   cont.innerHTML = aliasBox + arancelCard + historial + sancionesCard + pasesCard;
 }
-async function pagarArancel() {
+// El pago vigente de una fecha es el primero que no esté rechazado; si todos lo están, la
+// fecha sigue impaga y se puede volver a cargar.
+function _estadoArancelFecha(pagos, f) {
+  const dela = pagos.filter(p => p.fecha === f);
+  const vivo = dela.find(p => p.estado !== 'rechazado');
+  if (vivo) return { estado: 'pagado', pago: vivo };
+  return { estado: dela.length ? 'rechazado' : 'falta', pago: dela[0] || null };
+}
+// Una fecha anterior a la abierta ya venció sí o sí, así que va al monto de fuera de hora.
+function _montoArancelFecha(f, fechaActual, vencidaActual) {
+  return (f < fechaActual || (f === fechaActual && vencidaActual)) ? ARANCEL_MONTO_TARDE : ARANCEL_MONTO;
+}
+function abrirModalPagarArancel(f) {
+  const vencido = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
+  const monto = _montoArancelFecha(f, _cfgArancel.fecha, vencido);
+  const tarde = monto === ARANCEL_MONTO_TARDE;
+  openModal(`
+    <h2 style="margin-bottom:4px;">Pagar arancel — Fecha ${f}</h2>
+    <p class="muted" style="margin-bottom:14px;font-size:13px;">${tarde ? 'Fuera de término' : 'En término'}</p>
+    <div class="glass" style="border:1px solid var(--division-color);border-radius:14px;padding:14px;text-align:center;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text-dim);letter-spacing:.5px;">TRANSFERÍ AL ALIAS</div>
+      <div style="font-size:26px;font-weight:900;color:var(--division-color);letter-spacing:1px;margin:4px 0;word-break:break-all;">${ARANCEL_ALIAS}</div>
+      <div style="font-size:12.5px;color:var(--text-dim);">${ARANCEL_ALIAS_TITULAR}</div>
+      <div style="font-size:16px;margin-top:8px;">Monto: <strong style="color:${tarde ? 'var(--warn)' : 'var(--division-color)'};font-size:21px;">${fmtPesos(monto)}</strong></div>
+    </div>
+    <div class="field"><label>Comprobante (obligatorio)</label><input type="file" accept="image/*" id="ar-comprobante"></div>
+    <div class="field"><label>Monto transferido (obligatorio)</label><input type="text" id="ar-monto" inputmode="numeric" placeholder="Ej: ${monto}"></div>
+    <div class="field"><label>Nombre de quien transfirió (obligatorio)</label><input type="text" id="ar-nombre" placeholder="Nombre y apellido"></div>
+    <button class="btn btn-primary btn-block" onclick="pagarArancel(${f})">Cargar pago de la Fecha ${f}</button>
+    <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Cancelar</button>`);
+}
+async function pagarArancel(fechaPago) {
   const fileInput = document.getElementById('ar-comprobante');
   const file = fileInput && fileInput.files[0];
   const monto = parsearMonto((document.getElementById('ar-monto') || {}).value);
@@ -2786,16 +2836,19 @@ async function pagarArancel() {
     const dataUrl = await resizeImageFile(file, 900);
     if (dataUrl.length > 350000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla.', 'error'); return; }
     await _cargarCfgArancel();
-    const fecha = _cfgArancel.fecha;
+    const fecha = fechaPago != null ? Number(fechaPago) : _cfgArancel.fecha;
     if (fecha == null) { showToast('No hay una fecha de arancel abierta.', 'error'); return; }
-    const fueraDeHora = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
+    if (_cfgArancel.fecha != null && fecha > _cfgArancel.fecha) { showToast('Esa fecha todavía no está abierta para pagar.', 'error'); return; }
+    const vencidaActual = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
+    const fueraDeHora = _montoArancelFecha(fecha, _cfgArancel.fecha, vencidaActual) === ARANCEL_MONTO_TARDE;
     const eq = state.equipo || {};
     await db.collection('aranceles').add({
       equipoId: state.equipoId, equipoNombre: eq.nombre || '', division: eq.division || '', zona: eq.zona || '',
       fecha, montoDeclarado: monto, nombreTransferencia: nombre, comprobante: dataUrl,
       estado: 'pagado', fueraDeHora, creadoEn: new Date().toISOString()
     });
-    showToast('Pago del arancel cargado. ✅', 'ok');
+    showToast(`Pago de la Fecha ${fecha} cargado. ✅`, 'ok');
+    closeModal();
     renderPagosEquipo();
   } catch (e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
 }
