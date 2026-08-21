@@ -233,7 +233,17 @@
 // esperando aprobacion. Cuenta las sanciones igual que las cobra el motor (una
 // roja viva por jugador, un ciclo por cada 3 amarillas), asi el pendiente puede
 // llegar a cero de verdad.
-const CACHE = 'ligaf5-v47';
+// v48: se saca el banner "N equipo(s) con plazos vencidos e incompletos" (ya
+// cerro el plazo de seguros, no señalaba nada accionable) y se agrega, en la
+// solapa "Lista de buena fe" del admin, la depuracion por seguro medico: saca
+// del plantel a los jugadores sin comprobante aprobado ni habilitacion manual,
+// en todas las divisiones. Va en DOS pasos -- primero muestra exactamente quien
+// sale y avisa que equipos quedarian con menos de 5 jugadores, y recien al
+// confirmar escribe. Lo quitado se guarda en `jugadoresSinSeguro` del propio
+// equipo porque esto no tiene deshacer y un DNI mal tipeado no puede costarle
+// el torneo a un jugador. No toca goles, tarjetas ni sanciones: eso vive en los
+// partidos.
+const CACHE = 'ligaf5-v48';
 const ASSETS = [
   './index.html',
   './planilla.html',

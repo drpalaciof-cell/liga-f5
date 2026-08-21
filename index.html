@@ -1255,7 +1255,11 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       </div>
       <button class="btn btn-primary btn-sm" onclick="activarNotificaciones('admin')">Activar</button>
     </div>
-    <div id="admin-deadline-banner" style="display:none;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.35);border-radius:12px;padding:12px 16px;margin-bottom:14px;align-items:center;gap:12px;"></div>
+<!-- Acá iba el banner "N equipo(s) con plazos vencidos e incompletos". Se sacó el
+         2026-08-21: cerrado el plazo de seguros, el que está asegurado está y el resto
+         queda fuera de la lista de buena fe, así que el aviso ya no señalaba nada
+         accionable. La depuración se hace desde "Lista de buena fe". -->
+
 
       <!-- Pantalla 1: entrar al torneo -->
       <div id="torneo-home">
@@ -1361,6 +1365,11 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
           <div class="glass section-card">
             <h3>📋 Lista de buena fe — todos los equipos <span class="muted" id="pa-listabf-count" style="font-size:12px;font-weight:500;"></span></h3>
             <p class="wizard-help" style="margin-bottom:10px;">Todos los jugadores de esta división en una sola tabla — útil para escanear a simple vista coincidencias de nombre o DNI entre equipos (además de la detección automática en "Jugadores duplicados", en la pantalla de elegir división).</p>
+            <div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.28);border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:13px;margin-bottom:4px;">🧹 Depurar por seguro médico</div>
+              <p class="muted" style="font-size:12px;margin:0 0 10px;">Saca de la lista de buena fe a los jugadores <strong>sin seguro</strong> (los que no tienen comprobante aprobado ni habilitación manual), en <strong>todas las divisiones</strong>. Primero vas a ver exactamente quiénes salen; nada se toca hasta que confirmes. Los quitados quedan guardados por si hay que reponerlos.</p>
+              <button class="btn btn-danger btn-sm" onclick="previsualizarDepuracionSeguro()">Ver quiénes saldrían</button>
+            </div>
             <input type="text" id="pa-listabf-buscar" placeholder="🔎 Buscar jugador por nombre o apellido..." style="width:100%;margin-bottom:10px;" oninput="buscarJugadorListaBFAdmin()">
             <div class="tbl-scroll-hint">👉 Deslizá la tabla hacia los costados para ver todas las columnas</div>
             <div class="tbl-wrap" style="overflow-x:auto;">
@@ -1779,6 +1788,93 @@ function renderListaBFAdmin() {
 }
 function buscarJugadorListaBFAdmin() {
   filtrarPorNombre(document.getElementById('pa-listabf-buscar'), '#pa-listabf-body > tr', tr => tr.textContent);
+}
+
+// ═══════════ Depurar la lista de buena fe por seguro médico ═══════════
+// Cerrado el plazo, el que no tiene seguro no puede jugar, así que sale del plantel. Se hace
+// en dos pasos a propósito: primero se muestra exactamente quién sale, recién después se
+// escribe. Y lo quitado se guarda en `jugadoresSinSeguro` del propio equipo, porque esto no
+// tiene "deshacer" y un DNI mal tipeado no puede costarle el torneo a un jugador.
+//
+// Asegurado = DNI en `seguroJugadoresDni` (cubierto por comprobante aprobado) o en
+// `seguroHabilitadoManual` (habilitado a mano por la organización). Mismo criterio que usa
+// el planillero para dejar entrar a alguien a la cancha.
+function _aseguradosDe(eq) {
+  return new Set([
+    ...(eq.seguroJugadoresDni || []),
+    ...((eq.seguroHabilitadoManual || []).map(h => h && h.dni))
+  ].filter(Boolean));
+}
+function _equiposParaDepurar() {
+  return (equiposCacheAdmin && equiposCacheAdmin.length) ? equiposCacheAdmin : (pagosCacheAdmin || []);
+}
+function calcularDepuracionSeguro() {
+  return _equiposParaDepurar().map(eq => {
+    const seg = _aseguradosDe(eq);
+    const conDatos = (eq.jugadores || []).filter(j => j && (j.apellido || j.nombre || j.dni));
+    // Sin DNI no hay forma de haberlo asegurado, así que también sale.
+    const salen = conDatos.filter(j => !j.dni || !seg.has(j.dni));
+    return { eq, salen, quedan: conDatos.filter(j => j.dni && seg.has(j.dni)), total: conDatos.length };
+  }).filter(x => x.salen.length > 0)
+    .sort((a, b) => (a.eq.nombre || '').localeCompare(b.eq.nombre || ''));
+}
+
+function previsualizarDepuracionSeguro() {
+  const afectados = calcularDepuracionSeguro();
+  if (!afectados.length) {
+    openModal(`<h2 style="margin-bottom:10px;">Depurar por seguro médico</h2>
+      <p style="margin-bottom:18px;">✅ No hay nada que sacar: todos los jugadores cargados tienen seguro.</p>
+      <button class="btn btn-block" onclick="closeModal()">Cerrar</button>`);
+    return;
+  }
+  const totalSalen = afectados.reduce((s, x) => s + x.salen.length, 0);
+  // Un equipo que se queda con menos de 5 no puede presentarse a jugar: hay que verlo ANTES.
+  const criticos = afectados.filter(x => x.quedan.length < 5);
+  const nom = j => ((j.apellido || '') + (j.apellido && j.nombre ? ', ' : '') + (j.nombre || '')).trim() || j.dni || '(fila sin datos)';
+  openModal(`
+    <h2 style="margin-bottom:4px;">Depurar por seguro médico</h2>
+    <p class="muted" style="margin-bottom:14px;font-size:13.5px;">Saldrían <strong style="color:var(--danger);">${totalSalen} jugador(es)</strong> de ${afectados.length} equipo(s).</p>
+    ${criticos.length ? `<div style="background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:13px;">
+      ⚠️ <strong>${criticos.length} equipo(s) quedarían con menos de 5 jugadores</strong> y no podrían presentarse:
+      ${criticos.map(x => `<div style="margin-top:4px;">· ${escapeHtml(x.eq.nombre || '-')} — quedarían ${x.quedan.length} de ${x.total}</div>`).join('')}
+    </div>` : ''}
+    <div style="max-height:44vh;overflow-y:auto;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:4px 0;margin-bottom:14px;">
+      ${afectados.map(x => `<div style="padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.06);">
+        <div style="font-weight:700;font-size:13px;">${escapeHtml(x.eq.nombre || '-')}
+          <span class="muted" style="font-weight:400;font-size:11.5px;">· ${escapeHtml(x.eq.division || '')}${x.eq.zona ? ' ' + escapeHtml(x.eq.zona) : ''} · quedan ${x.quedan.length} de ${x.total}</span></div>
+        ${x.salen.map(j => `<div style="font-size:12px;color:var(--danger);margin-top:2px;">✕ ${escapeHtml(nom(j))}${j.dni ? ` <span class="muted">(DNI ${escapeHtml(j.dni)})</span>` : ' <span class="muted">(sin DNI)</span>'}</div>`).join('')}
+      </div>`).join('')}
+    </div>
+    <p class="muted" style="font-size:12px;margin-bottom:12px;">No borra goles, tarjetas ni sanciones ya registradas — eso vive en los partidos. Los jugadores quitados quedan guardados en el equipo por si hay que reponer alguno.</p>
+    <button class="btn btn-danger btn-block" onclick="ejecutarDepuracionSeguro()">Sacar a los ${totalSalen} jugador(es) sin seguro</button>
+    <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Cancelar</button>`);
+}
+
+async function ejecutarDepuracionSeguro() {
+  const afectados = calcularDepuracionSeguro();
+  if (!afectados.length) { closeModal(); return; }
+  const ahora = new Date().toISOString();
+  let equipos = 0, jugadores = 0;
+  try {
+    for (let i = 0; i < afectados.length; i += 200) {
+      const batch = db.batch();
+      afectados.slice(i, i + 200).forEach(({ eq, salen, quedan }) => {
+        // Los editores de plantel esperan siempre NUM_JUGADORES filas: se compactan los que
+        // quedan al principio y se rellena con filas vacías.
+        const nuevos = quedan.slice(0, NUM_JUGADORES);
+        while (nuevos.length < NUM_JUGADORES) nuevos.push({ apellido: '', nombre: '', dni: '' });
+        const backup = (eq.jugadoresSinSeguro || []).concat(salen.map(j => ({ ...j, quitadoEn: ahora })));
+        batch.update(db.collection('equipos').doc(eq.id), { jugadores: nuevos, jugadoresSinSeguro: backup });
+        eq.jugadores = nuevos; eq.jugadoresSinSeguro = backup;
+        equipos++; jugadores += salen.length;
+      });
+      await batch.commit();
+    }
+    closeModal();
+    showToast(`Listo: ${jugadores} jugador(es) sacados de ${equipos} equipo(s).`, 'ok');
+    await cargarEquiposAdmin();
+    renderListaBFAdmin();
+  } catch (e) { console.error(e); showToast('No se pudo completar la depuración.', 'error'); }
 }
 function buscarJugadorCarnetAdmin() {
   filtrarPorNombre(document.getElementById('admin-carnet-buscar'), '#admin-carnet-rows-wrap > div', div => div.textContent);
@@ -3520,7 +3616,7 @@ function generarPDFEquipo(eq) {
 const PC_TABS_PERMITIDAS = ['torneo', 'envivo'];
 const PC_SUBTABS_PERMITIDAS = ['planillas'];
 const PC_BLOQUES_OCULTOS = ['card-datos-temporada', 'admin-fixture-general', 'admin-auditoria-card',
-  'admin-duplicados-card', 'admin-buscador-global-card', 'admin-deadline-banner'];
+  'admin-duplicados-card', 'admin-buscador-global-card'];
 let panelControlUsuarios = [];
 function esPanelControl() { return state.esPanelControl === true; }
 
@@ -3567,34 +3663,11 @@ async function renderPanelAdmin() {
   cargarPartidosTotal();
   if (!esPanelControl()) cargarAranceles();
   iniciarSyncAvisosPlanilla();
-  renderBannerPlazosVencidos();
 }
-async function renderBannerPlazosVencidos() {
-  const banner = document.getElementById('admin-deadline-banner');
-  if (!banner) return;
-  // Habla de pagos y seguros: no va en el panel de los organizadores.
-  if (esPanelControl()) { banner.style.display = 'none'; return; }
-  let cfg = {};
-  try { const cfgDoc = await db.collection('config').doc('general').get(); cfg = cfgDoc.exists ? cfgDoc.data() : {}; } catch (e) {}
-  const hoy = new Date();
-  const vencioInscripcion = !!(cfg.fechaLimiteInscripcion && hoy > new Date(cfg.fechaLimiteInscripcion + 'T23:59:59'));
-  const vencioSeguro = !!(cfg.fechaLimiteSeguro && hoy > new Date(cfg.fechaLimiteSeguro + 'T23:00:00'));
-  if (!vencioInscripcion && !vencioSeguro) { banner.style.display = 'none'; return; }
-  const incompletos = equiposCacheAdmin.filter(eq => {
-    const pagoIncompleto = vencioInscripcion && estadoGeneralPago(eq) !== 'aprobado';
-    const aprobados = new Set(eq.seguroJugadoresDni || []);
-    const manual = new Set((eq.seguroHabilitadoManual || []).map(h => h.dni));
-    const seguroIncompleto = vencioSeguro && (eq.jugadores || []).some(j => j.dni && !aprobados.has(j.dni) && !manual.has(j.dni));
-    return pagoIncompleto || seguroIncompleto;
-  });
-  if (!incompletos.length) { banner.style.display = 'none'; return; }
-  banner.style.display = 'flex';
-  banner.innerHTML = `<span style="font-size:22px;">⚠️</span>
-    <div style="flex:1;min-width:0;">
-      <div style="font-weight:700;font-size:13px;">${incompletos.length} equipo(s) con plazos vencidos e incompletos</div>
-      <div style="font-size:11px;color:var(--text-dim);">${vencioInscripcion ? 'Pago' : ''}${vencioInscripcion && vencioSeguro ? ' y/o ' : ''}${vencioSeguro ? 'seguro' : ''} sin completar: ${incompletos.slice(0, 6).map(e => escapeHtml(e.nombre)).join(', ')}${incompletos.length > 6 ? ` y ${incompletos.length - 6} más` : ''}</div>
-    </div>`;
-}
+// renderBannerPlazosVencidos() vivía acá y pintaba "N equipo(s) con plazos vencidos e
+// incompletos". Se eliminó el 2026-08-21 junto con su div: cerrado el plazo de seguros, el
+// que está asegurado está y el resto sale de la lista de buena fe, así que el cartel ya no
+// señalaba nada que se pudiera hacer.
 function switchAdminTab(tab) {
   if (esPanelControl() && !PC_TABS_PERMITIDAS.includes(tab)) tab = 'envivo';
   document.querySelectorAll('.tabs-admin .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));

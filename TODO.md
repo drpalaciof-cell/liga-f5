@@ -2,6 +2,20 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-21 (cont. 3) — fuera el banner de plazos + depuración por seguro (sw v48)
+
+- **Pedido**: *"sacame ya esto ya pasó lo de los seguros, los que están ya están, y ya los demás quedaron afuera de la lista, borra todos los que no están asegurados"*. Primero se entendió mal como **borrar equipos** y se frenó a tiempo; el usuario aclaró: *"no te dije que borres equipos, que borres jugadores que no están asegurados, o los saques de la lista de buena fe"*.
+- **Banner eliminado**: `renderBannerPlazosVencidos()` + su `<div id="admin-deadline-banner">` + la entrada en `PC_BLOQUES_OCULTOS`. Cerrado el plazo ya no señalaba nada accionable.
+- **Herramienta nueva** (admin → división → 📋 Lista de buena fe): "🧹 Depurar por seguro médico". Saca del plantel a los jugadores **sin seguro** en **todas las divisiones**.
+  - **Asegurado** = DNI en `seguroJugadoresDni` (comprobante aprobado) **o** en `seguroHabilitadoManual` (habilitado a mano). Mismo criterio que usa el planillero para dejar entrar a alguien a la cancha. **El que no tiene DNI cargado también sale** (sin DNI no hay forma de haberlo asegurado).
+  - **Dos pasos a propósito**: `previsualizarDepuracionSeguro()` muestra equipo por equipo quién sale y **avisa qué equipos quedarían con menos de 5 jugadores** (no podrían presentarse); recién `ejecutarDepuracionSeguro()` escribe, en batches de 200.
+  - **Backup**: lo quitado se guarda en `equipos/{id}.jugadoresSinSeguro[]` con `quitadoEn`. Esto no tiene deshacer y un DNI mal tipeado no puede costarle el torneo a un jugador.
+  - **Formato**: el array `jugadores` se compacta y se rellena hasta `NUM_JUGADORES` (25) con filas vacías, que es lo que esperan los editores de plantel (`guardarPlantelAdmin`, línea 7484).
+  - **No toca** goles, tarjetas ni sanciones: eso vive en `partidos`, no en el plantel.
+- **Dato verificado**: `planilla.html:1437` arma `st.partido.jugadoresLocal` leyendo **en vivo** el documento del equipo, no un snapshot congelado en el partido — así que la depuración sí tiene efecto en la cancha (sujeto al caché `_eCache`, ver más abajo).
+- **NO se ejecutó nada**: la herramienta quedó desplegada para que el usuario la corra viendo la previsualización. No se borró ningún dato desde acá.
+- **Verificación**: 15 casos en Node (habilitación manual cuenta como seguro, filas vacías no cuentan como jugador, jugador sin DNI sale, array queda en 25 filas con los asegurados adelante, backup completo, detección de equipos con menos de 5, listas vacías sin romper).
+
 ## ✅ Sesión 2026-08-21 (cont. 2) — informe de recaudación por sanciones (sw v47)
 
 - **Pedido**: *"quiero ver los ingresos de dinero respecto a la cantidad de sancionados separados por categoría, y lo efectivamente pagado (los que subieron comprobantes) y los que optaron por cumplir fecha nada más, de tanta cantidad de dinero que podría ingresar cuánto se recaudó"*.
