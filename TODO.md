@@ -2,6 +2,21 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-21 (cont. 5) — que la planilla del equipo funcione de verdad (sw v52 y v53)
+
+### 🔴 El guardado del equipo esperaba el ack de Firestore (sw v52)
+- **Detectado a partir de**: *"necesitan internet los equipos no?"*.
+- `guardarAlineacionEquipo()` daba el feedback en un `.then()` del `update()`. Ese promise **no resuelve hasta que confirma el servidor**: sin señal el equipo tocaba "Guardar planilla" y **no pasaba absolutamente nada**, aunque la escritura quedaba encolada y se hubiera sincronizado sola. Es la **misma regla de oro que ya se había aprendido en planilla.html (v22, v24, v35)** y que no se aplicó al flujo nuevo.
+- **Ahora**: estado local + aviso al toque, escritura en segundo plano; se distingue "sin conexión" (no es error, el mensaje lo dice) de una falla real; lecturas por `_getRapidoEquipo()` (reloj de 4s, si no contesta resuelve con el caché local) para que la solapa no quede en "Cargando…"; y aviso arriba si el celular está sin señal.
+
+### 🔴 El planillero no veía la planilla salvo que tocara ↺ (sw v53)
+- **Detectado a partir de**: *"cómo es el circuito para que el planillero vea lo que el equipo cargó? tiene que actualizar?"*. La respuesta era **sí**, y eso volvía inútil la función: el ahorro de tiempo dependía de que el planillero se acordara de tocar un botón que no sabe que tiene que tocar, y si no lo tocaba tipeaba todo de nuevo.
+- **Causa**: `_pCache` es una **foto** sacada en `cargarLista()` al entrar a la cancha, y `abrirPartido()` la usa si existe. Además **no hay listener durante la alineación** — `iniciarSyncPartido()` arranca recién en `irAPartido()`.
+- **Ahora** `abrirPartido()` sigue dibujando al toque desde el caché (regla de oro: no colgarse con señal mala) y dispara `refrescarPartidoEnSegundoPlano(id)` **sin await**. Si el servidor trae una alineación que no teníamos, la incorpora y avisa *"Planilla ya cargada por X — no hace falta tipearla"*.
+- **Las tres guardas que importan**: (1) **nunca pisa** una alineación ya cargada; (2) si el planillero **ya empezó a tildar a mano** (`_aliTocada`) **no redibuja** —le borraría lo que lleva hecho, que es peor que hacerle tocar ↺—, sólo avisa; (3) descarta la respuesta si se cambió de partido o si el partido ya arrancó (ahí manda el listener en vivo). Sin señal, `catch` vacío y sigue el flujo normal.
+- De paso refresca planteles y limpia `_tarjetasCache`, así entra un jugador repuesto o **un pago de sanción recién aprobado** sin volver a la lista — eso resuelve la salvedad que estaba anotada desde v44.
+- **Verificación**: 15 escenarios simulados sobre la función real con stubs de `db`/`st`/`document`.
+
 ## ✅ Sesión 2026-08-21 (cont. 4) — aranceles por fecha + planilla que carga el equipo (sw v50 y v51)
 
 ### 🔴 No había forma de pagar la fecha 2 (sw v50)
