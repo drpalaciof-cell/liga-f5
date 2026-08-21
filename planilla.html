@@ -8,7 +8,14 @@
 <meta name="theme-color" content="#03040a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- media="print" + onload: la hoja de fuentes NO bloquea el primer pintado. Es cross-origin
+     sin CORS, así que la respuesta es opaca (status 0) y el service worker nunca la guarda:
+     en cada arranque se vuelve a pedir a la red. Como <link rel=stylesheet> normal, en la
+     cancha con señal mala eso deja la tablet en blanco esperando algo que no va a llegar.
+     Así la app pinta SIEMPRE al instante con las fuentes de respaldo ('Segoe UI', sans-serif)
+     y la tipografía linda entra después si hay red. -->
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -1462,9 +1469,13 @@ let _aliTocada=false;
 function refrescarPartidoEnSegundoPlano(id){
   const antes=st.partidoId;
   // doc(undefined) tira sincrónicamente, y un partido puede no tener los dos equipos.
-  const eqDoc=eid=>eid?db.collection('equipos').doc(eid).get().catch(()=>null):Promise.resolve(null);
+  // TODO pasa por getRapido(): con señal mala un get() crudo puede resolver recién minutos
+  // después y aplicar cambios en un momento cualquiera. Acá se acota igual que el resto del
+  // archivo, y si el servidor no contesta resuelve con el caché local (que es lo que ya
+  // tenemos, o sea que no hace nada).
+  const eqDoc=eid=>eid?getRapido(db.collection('equipos').doc(eid)).catch(()=>null):Promise.resolve(null);
   Promise.all([
-    db.collection('partidos').doc(id).get(),
+    getRapido(db.collection('partidos').doc(id)),
     eqDoc(st.partido.equipoLocalId),
     eqDoc(st.partido.equipoVisitanteId)
   ]).then(([doc,dL,dV])=>{
@@ -1475,7 +1486,12 @@ function refrescarPartidoEnSegundoPlano(id){
     // aprobada por el admin, que si no se veía recién al volver a la lista.
     if(dL&&dL.exists){_eCache[st.partido.equipoLocalId]=dL.data();st.partido.jugadoresLocal=dL.data().jugadores||[];}
     if(dV&&dV.exists){_eCache[st.partido.equipoVisitanteId]=dV.data();st.partido.jugadoresVisitante=dV.data().jugadores||[];}
-    _tarjetasCache={}; // que se recalculen las suspensiones con los datos nuevos
+    // OJO: NO se limpia _tarjetasCache. Sin señal, volver a pedirlo puede fallar y ahí el
+    // planillero pierde el chequeo de suspendidos ("revisar manualmente"). Y no hace falta:
+    // los contadores de tarjetas sólo cambian cuando se juega una fecha, y las suspensiones
+    // se aplican a la fecha SIGUIENTE. Lo que sí puede cambiar el mismo día es
+    // `sancionesPagadas` (un pago que aprueba el admin), y eso vive en el documento del
+    // equipo, que es justo lo que se acaba de refrescar arriba.
     const r=doc.data();
     const nuevos=[];
     [['Local','alineacionLocal','capitanLocalDni'],['Visitante','alineacionVisitante','capitanVisitanteDni']].forEach(([lado,campo,capCampo])=>{
@@ -2725,16 +2741,19 @@ async function cerrarFechaPlanillero(){
   const id=`${_histDivision}_${fecha}`;
   try{
     const ref=db.collection('fechasCerradas').doc(id);
-    const d=await ref.get();
+    // getRapido + escritura sin await, igual que el resto del planillero: con señal mala esto
+    // esperaba el servidor y el botón quedaba mudo. Es una marca organizativa, no bloquea
+    // nada, así que se confirma al toque y se sincroniza cuando haya red.
+    const d=await getRapido(ref);
     if(d.exists){
       if(!confirm(`La Fecha ${fecha} ya está marcada como cerrada. ¿Reabrirla?`))return;
-      await ref.delete();toast('Fecha reabierta.',2000);
+      ref.delete().catch(()=>{});toast('Fecha reabierta.',2000);
     }else{
       if(!confirm(`¿Marcar la Fecha ${fecha} de ${_histDivision} como cerrada? Es solo organizativo.`))return;
-      await ref.set({division:_histDivision,numeroFecha:Number(fecha)||fecha,cerradaEn:firebase.firestore.FieldValue.serverTimestamp(),cerradaPor:st.planillero||'planillero'});
+      ref.set({division:_histDivision,numeroFecha:Number(fecha)||fecha,cerradaEn:firebase.firestore.FieldValue.serverTimestamp(),cerradaPor:st.planillero||'planillero'}).catch(()=>{});
       toast('Fecha cerrada.',2000);
     }
-    await actualizarBotonCerrarFechaPlanillero();
+    actualizarBotonCerrarFechaPlanillero();
   }catch(e){toast('Error: '+e.message,3000);}
 }
 async function actualizarBotonCerrarFechaPlanillero(){

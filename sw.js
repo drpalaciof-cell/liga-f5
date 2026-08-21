@@ -288,7 +288,24 @@
 // lleva hecho): solo avisa que puede volver a entrar para usarla. De paso
 // refresca planteles y sanciones, asi entra un jugador repuesto o un pago de
 // sancion recien aprobado sin volver a la lista.
-const CACHE = 'ligaf5-v53';
+// v54: auditoria "el planillero NO necesita internet en la cancha". Tres cosas
+// que podian romper eso:
+// (1) La hoja de fuentes de Google era un <link rel=stylesheet> normal, o sea
+//     RENDER-BLOCKING, y al ser cross-origin sin CORS la respuesta es opaca
+//     (status 0) asi que este service worker nunca la guarda: se volvia a pedir
+//     a la red en CADA arranque. Con senal mala eso deja la tablet en blanco
+//     esperando algo que no llega. Ahora va con media="print" + onload, asi la
+//     app pinta siempre al instante con 'Segoe UI'.
+// (2) El refresco en segundo plano de v53 usaba get() crudos: con senal mala
+//     podian resolver minutos despues y aplicar cambios en cualquier momento.
+//     Ahora pasan por getRapido() (3,5s y cae al cache local).
+// (3) Ese mismo refresco limpiaba _tarjetasCache. Sin senal, volver a pedirlo
+//     falla y el planillero PIERDE el chequeo de suspendidos. Ya no se limpia:
+//     los contadores de tarjetas solo cambian al jugarse una fecha y las
+//     suspensiones se aplican a la SIGUIENTE; lo unico que cambia el mismo dia
+//     (sancionesPagadas) vive en el documento del equipo, que si se refresca.
+// Ademas cerrarFechaPlanillero() ya no espera el ack del servidor.
+const CACHE = 'ligaf5-v54';
 const ASSETS = [
   './index.html',
   './planilla.html',
