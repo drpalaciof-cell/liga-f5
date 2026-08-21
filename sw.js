@@ -209,7 +209,14 @@
 // qué fecha cumple), el admin aprueba o rechaza con motivo desde su panel, y la
 // suspensión se levanta recién al aprobar. De paso: con 6 amarillas el segundo
 // pago pisaba al primero y el jugador quedaba sancionado para siempre.
-const CACHE = 'ligaf5-v44';
+// v45: el boton "Gestionar" de sanciones (admin) nunca funciono. Se generaba
+// con onclick="abrirModalGestionSancion('eq','dni',${JSON.stringify(nombre)}…)"
+// y las comillas dobles que agrega JSON.stringify cerraban el atributo HTML: el
+// navegador se quedaba con una llamada cortada a la mitad, error de sintaxis, y
+// al tocar el boton no pasaba nada. Era ademas el UNICO modo de registrar que
+// un jugador cumplio su fecha de suspension sin pagar. Ahora recibe solo ids y
+// rearma nombre y sanciones adentro de la funcion.
+const CACHE = 'ligaf5-v45';
 const ASSETS = [
   './index.html',
   './planilla.html',

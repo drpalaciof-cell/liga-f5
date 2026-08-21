@@ -3780,7 +3780,6 @@ function renderSancionesAdmin() {
     if (p.expulsiones > 0) badges.push(`<span class="badge-roja">⛔ ${p.expulsiones}</span>`);
     if (p.rojas > 0) badges.push(`<span class="badge-roja">🟥 ${p.rojas}</span>`);
     if (suspendido) badges.push(`<span class="badge-susp">SANCIONADO</span>`);
-    const estadoJson = encodeURIComponent(JSON.stringify(items));
     const comp = (eq.sancionesComprobantes || {})[p.dni];
     // Comprobante del circuito viejo (mapa dentro del doc del equipo). Ya no se escribe,
     // pero lo que se cargó antes tiene que seguir siendo visible.
@@ -3804,17 +3803,27 @@ function renderSancionesAdmin() {
         <div class="sancion-badges">${badges.join('')}</div>
         ${pagoHtml}
         ${compHtml}
-        ${suspendido ? `<button class="btn btn-sm" onclick="abrirModalGestionSancion('${p.equipoId}','${p.dni}',${JSON.stringify(p.nombre)},${JSON.stringify(eq.nombre||'')},${JSON.stringify(estadoJson)})">Gestionar</button>` : ''}
+        ${suspendido ? `<button class="btn btn-sm" onclick="abrirModalGestionSancion('${p.equipoId}','${p.dni}')">Gestionar</button>` : ''}
       </div>
     </div>`;
   }).join('');
   wrap.innerHTML = html;
 }
 
-function abrirModalGestionSancion(equipoId, dni, nombre, eqNombre, estadoJson) {
-  const items = JSON.parse(decodeURIComponent(estadoJson));
+// Recibe SÓLO ids y rearma el resto acá adentro. Antes recibía el nombre y los items
+// serializados, interpolados con JSON.stringify() dentro de un atributo onclick="…": las
+// comillas dobles que agrega JSON.stringify cerraban el atributo, el navegador se quedaba
+// con `abrirModalGestionSancion('eq','dni',` y el botón "Gestionar" no hacía absolutamente
+// nada al tocarlo. Nunca funcionó — cualquier nombre dispara el corte.
+function abrirModalGestionSancion(equipoId, dni) {
+  const eq = equiposCacheAdmin.find(e => e.id === equipoId) || {};
+  const partidos = partidosCacheAdmin.filter(p => p.division === state.adminDivisionActiva);
+  const player = calcularTarjetasPorJugador(partidos).find(p => p.dni === dni && p.equipoId === equipoId);
+  if (!player) { showToast('No se encontró al jugador en esta división.', 'error'); return; }
+  const items = getEstadoSanciones(player, eq);
+  if (!items.length) { showToast('Este jugador ya no tiene sanciones activas.', 'info'); renderSancionesAdmin(); return; }
   let html = `<h2 style="margin-bottom:4px;">Gestionar sanción</h2>
-    <p class="muted" style="margin-bottom:18px;font-size:13.5px;"><strong>${escapeHtml(nombre)}</strong> · ${escapeHtml(eqNombre)}</p>`;
+    <p class="muted" style="margin-bottom:18px;font-size:13.5px;"><strong>${escapeHtml(player.nombre)}</strong> · ${escapeHtml(eq.nombre || '')}</p>`;
   items.forEach(item => {
     html += `<div style="border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 16px;margin-bottom:14px;">
       <div style="font-weight:700;margin-bottom:4px;">${item.label}</div>
