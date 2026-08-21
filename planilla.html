@@ -1440,9 +1440,61 @@ async function abrirPartido(id,cardEl){
     st.partido.equipoVisitanteEscudo=dV.escudo||'';
 
     actualizarEscudos();
+    _aliTocada=false;
     if(estado==='pendiente'||estado==='alineacion'){iniciarAlineacion();}else{irAPartido();}
+    // A propósito DESPUÉS de dibujar y sin await: la pantalla ya está en pantalla con lo que
+    // había en caché (con señal mala no se cuelga), y esto va a buscar por atrás si el equipo
+    // cargó su planilla después de que entramos a la cancha.
+    refrescarPartidoEnSegundoPlano(id);
   }catch(e){toast('Error al abrir el partido.');}
   finally{_abriendo=false;if(cardEl){cardEl.style.opacity='';cardEl.style.pointerEvents='';}}
+}
+
+// `_pCache` es una FOTO de los partidos sacada al entrar a la cancha (cargarLista). Si un
+// equipo carga su planilla desde su panel después de esa foto, el planillero abría el partido
+// y veía la alineación vacía aunque en el servidor estuviera cargada, y sólo se enteraba si
+// tocaba ↺. Esto relee el partido y los dos equipos por atrás y, si aparece una alineación
+// que no teníamos, la incorpora sola y avisa.
+//
+// NO redibuja si el planillero ya empezó a tildar jugadores (_aliTocada): redibujar le
+// borraría lo que lleva hecho, que es peor que hacerle tocar ↺. En ese caso sólo avisa.
+let _aliTocada=false;
+function refrescarPartidoEnSegundoPlano(id){
+  const antes=st.partidoId;
+  // doc(undefined) tira sincrónicamente, y un partido puede no tener los dos equipos.
+  const eqDoc=eid=>eid?db.collection('equipos').doc(eid).get().catch(()=>null):Promise.resolve(null);
+  Promise.all([
+    db.collection('partidos').doc(id).get(),
+    eqDoc(st.partido.equipoLocalId),
+    eqDoc(st.partido.equipoVisitanteId)
+  ]).then(([doc,dL,dV])=>{
+    // Si mientras tanto se cambió de partido (o se cerró), esta respuesta ya no aplica.
+    if(!doc||!doc.exists||st.partidoId!==antes||st.partidoId!==id)return;
+    if(st.partido&&st.partido.estado&&st.partido.estado!=='pendiente'&&st.partido.estado!=='alineacion')return;
+    // Planteles y sanciones frescos: así entra un jugador agregado o una sanción recién
+    // aprobada por el admin, que si no se veía recién al volver a la lista.
+    if(dL&&dL.exists){_eCache[st.partido.equipoLocalId]=dL.data();st.partido.jugadoresLocal=dL.data().jugadores||[];}
+    if(dV&&dV.exists){_eCache[st.partido.equipoVisitanteId]=dV.data();st.partido.jugadoresVisitante=dV.data().jugadores||[];}
+    _tarjetasCache={}; // que se recalculen las suspensiones con los datos nuevos
+    const r=doc.data();
+    const nuevos=[];
+    [['Local','alineacionLocal','capitanLocalDni'],['Visitante','alineacionVisitante','capitanVisitanteDni']].forEach(([lado,campo,capCampo])=>{
+      const remota=r[campo]||[];
+      if(!remota.length||(st[campo]||[]).length)return; // ya la teníamos: no se pisa nada
+      st[campo]=remota;
+      st.partido[campo]=remota;
+      if(r[capCampo])st.partido[capCampo]=r[capCampo];
+      nuevos.push(lado==='Local'?(st.partido.equipoLocalNombre||'Local'):(st.partido.equipoVisitanteNombre||'Visitante'));
+    });
+    if(!nuevos.length)return;
+    const enAlineacion=document.getElementById('screen-alineacion').classList.contains('active');
+    if(enAlineacion&&_aliTocada){
+      toast('✅ '+nuevos.join(' y ')+' cargó su planilla desde el panel. Tocá ← y volvé a entrar para usarla (no te la piso ahora porque estás cargando).',7000);
+      return;
+    }
+    toast('✅ Planilla ya cargada por '+nuevos.join(' y ')+' — no hace falta tipearla',4500);
+    if(enAlineacion)iniciarAlineacion();
+  }).catch(()=>{}); // sin señal no pasa nada: sigue el flujo normal de carga a mano
 }
 
 async function iniciarAlineacion(){
@@ -1565,6 +1617,9 @@ function validarNumero(input){
 }
 
 function toggleJugador(dni,equipo){
+  // Marca que el planillero ya está cargando a mano: a partir de acá, si llega la planilla
+  // del equipo por atrás, se avisa pero NO se redibuja (le borraría lo que lleva tildado).
+  _aliTocada=true;
   const row=document.getElementById('prow-'+dni);
   const numInp=document.getElementById('num-'+dni);
   const isSel=row.classList.contains('selected');

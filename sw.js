@@ -276,7 +276,19 @@
 // pasan por _getRapidoEquipo() (reloj de 4s y si no contesta resuelve con el
 // cache local) para que la pantalla no quede colgada en "Cargando...", y hay un
 // aviso arriba cuando el celular esta sin senal.
-const CACHE = 'ligaf5-v52';
+// v53: el planillero recibe solo la planilla que carga el equipo. _pCache es una
+// FOTO de los partidos sacada al entrar a la cancha: si el equipo cargaba
+// despues, el planillero abria el partido y veia la alineacion vacia aunque en
+// el servidor estuviera, y solo se enteraba si tocaba el boton de recargar --
+// o sea que el ahorro de tiempo dependia de que se acordara. Ahora abrirPartido
+// dibuja al toque con lo que tiene en cache (no se cuelga con senal mala) y por
+// atras relee el partido y los dos equipos: si aparece una alineacion que no
+// teniamos la incorpora sola y avisa. NUNCA pisa una alineacion ya cargada, y
+// si el planillero ya empezo a tildar a mano NO redibuja (le borraria lo que
+// lleva hecho): solo avisa que puede volver a entrar para usarla. De paso
+// refresca planteles y sanciones, asi entra un jugador repuesto o un pago de
+// sancion recien aprobado sin volver a la lista.
+const CACHE = 'ligaf5-v53';
 const ASSETS = [
   './index.html',
   './planilla.html',
