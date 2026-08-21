@@ -1347,20 +1347,22 @@ async function cargarLista(){
     }
     if(!partidos.length){body.innerHTML+='<div class="empty-msg">Todos los partidos de esta cancha ya fueron cerrados.</div>';return;}
     const labels={pendiente:'Pendiente',alineacion:'En alineación',esperando_inicio:'Esperando inicio',primer_tiempo:'1° Tiempo',entretiempo:'Entretiempo',segundo_tiempo:'2° Tiempo',cerrado:'Cerrado'};
-    // Solo el primer partido no cerrado (en orden de horario) queda
-    // habilitado para abrir — evita que se salteen partidos fuera de orden.
-    const primerActivoId=(partidos.find(p=>(p.estado||'pendiente')!=='cerrado')||{}).id;
+    // Cualquier partido no cerrado de la cancha se puede abrir, en el orden que
+    // sea. Antes solo se habilitaba el primero sin cerrar y el resto salía con
+    // "🔒 Se habilita al cerrar el anterior": eso trababa poder entrar al
+    // próximo partido para ir cargando la alineación mientras el anterior
+    // todavía se estaba jugando, que es justo lo que se necesita para no perder
+    // tiempo entre partido y partido. Los cerrados siguen sin poder abrirse
+    // (lo corta abrirPartido()), que es lo correcto: esa planilla ya está firmada.
     partidos.forEach(p=>{
       const estado=p.estado||'pendiente';
-      const bloqueado=estado!=='cerrado'&&p.id!==primerActivoId;
-      const onclick=bloqueado?`toast('Primero cerrá el partido anterior de esta cancha.',2500)`:`confirmarAbrirPartido('${p.id}',this)`;
-      body.innerHTML+=`<div class="match-card estado-${estado}${bloqueado?' bloqueado':''}" id="card-${p.id}" onclick="${onclick}" style="${bloqueado?'opacity:.45;':''}">
+      body.innerHTML+=`<div class="match-card estado-${estado}" id="card-${p.id}" onclick="confirmarAbrirPartido('${p.id}',this)">
 <div style="display:flex;align-items:center;gap:12px;">
   <div class="mc-hora">${p.horario||'--:--'}</div>
   <div style="flex:1;">
     <div class="mc-teams">${esc(p.equipoLocalNombre)}<span class="mc-vs">vs</span>${esc(p.equipoVisitanteNombre)}</div>
     <div class="mc-fecha">${p.interzonal?'⚔ Interzonal':'Zona '+(p.zona||'—')}</div>
-    <span class="mc-estado ${estado}">${bloqueado?'🔒 Se habilita al cerrar el anterior':(labels[estado]||estado)}</span>
+    <span class="mc-estado ${estado}">${labels[estado]||estado}</span>
   </div>
   <span class="mc-arrow">›</span>
 </div></div>`;
@@ -1369,7 +1371,14 @@ async function cargarLista(){
 }
 
 async function confirmarAbrirPartido(id,cardEl){
-  if(!confirm('¿Abrir este partido?'))return;
+  // Ahora se puede abrir cualquier partido de la cancha, así que puede pasar
+  // que haya uno en curso. No se bloquea (es justamente lo que se quiere: ir a
+  // cargar la alineación del próximo mientras el anterior sigue), pero se avisa
+  // para que no se salga de un partido en juego por un toque de más.
+  if(st.partidoId&&st.partidoId!==id&&(st.partido&&st.partido.estado!=='cerrado')){
+    const p=st.partido;
+    if(!confirm('Tenés abierto '+(p.equipoLocalNombre||'')+' vs '+(p.equipoVisitanteNombre||'')+'.\n\nTodo lo cargado ahí ya está guardado y lo podés retomar cuando quieras.\n\n¿Abrir este otro partido?'))return;
+  }else if(!confirm('¿Abrir este partido?'))return;
   await abrirPartido(id,cardEl);
   // Confirmación explícita de que quedó realmente registrado (no solo en
   // pantalla) — pedido para que el planillero no tenga dudas de que abrió.
