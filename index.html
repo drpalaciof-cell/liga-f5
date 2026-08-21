@@ -2973,13 +2973,24 @@ async function limpiarComprobantesViejos() {
 const MIN_ALINEACION = 5, MAX_ALINEACION = 15;
 let _planillaEquipoPartido = null;
 
+// Con señal mala (que es lo normal en la cancha) un get() puede quedarse colgado sin resolver
+// ni fallar, y la pantalla se queda en "Cargando…" para siempre. Se corre contra un reloj y,
+// si el servidor no contesta, se resuelve con el caché local — la persistencia de Firestore
+// está activada (index.html:1665). Mismo criterio que getRapido() del planillero.
+function _getRapidoEquipo(ref, ms = 4000) {
+  return Promise.race([
+    ref.get(),
+    new Promise((res, rej) => setTimeout(() => ref.get({ source: 'cache' }).then(res, rej), ms))
+  ]);
+}
+
 async function renderPlanillaEquipo() {
   const cont = document.getElementById('pe-tab-planilla');
   if (!cont || !state.equipoId) return;
   cont.innerHTML = `<div class="glass" style="padding:12px 14px;border-radius:10px;color:var(--text-dim);">Cargando…</div>`;
   const eq = state.equipo || {};
   try {
-    const snap = await db.collection('partidos').where('division', '==', eq.division).get();
+    const snap = await _getRapidoEquipo(db.collection('partidos').where('division', '==', eq.division));
     const mios = [];
     const cardMap = {};
     snap.forEach(d => {
@@ -3014,7 +3025,7 @@ async function renderPlanillaEquipo() {
 
     // Seguro médico: sólo bloquea después del plazo, igual que en el planillero.
     let cfg = {};
-    try { const c = await db.collection('config').doc('general').get(); cfg = c.exists ? c.data() : {}; } catch (e) {}
+    try { const c = await _getRapidoEquipo(db.collection('config').doc('general')); cfg = c.exists ? c.data() : {}; } catch (e) {}
     const venciSeguro = !!(cfg.fechaLimiteSeguro && new Date() > new Date(cfg.fechaLimiteSeguro + 'T23:00:00'));
     const aseg = new Set([...(eq.seguroJugadoresDni || []), ...((eq.seguroHabilitadoManual || []).map(h => h && h.dni))].filter(Boolean));
     const fechaPartido = Number(p.numeroFecha) || 0;
@@ -3061,6 +3072,7 @@ async function renderPlanillaEquipo() {
     cont.innerHTML = `
       <div class="glass section-card">
         <h3>📝 Planilla de juego</h3>
+        ${navigator.onLine ? '' : `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;color:var(--warn);">📶 Estás sin conexión. Podés armar la planilla igual: se guarda en el celular y se envía sola cuando vuelva la señal.</div>`}
         <p style="font-size:14px;margin-bottom:4px;"><strong>Fecha ${p.numeroFecha || '—'}</strong> · ${esLocal ? 'Local' : 'Visitante'} vs <strong>${escapeHtml(rival || '—')}</strong></p>
         <p class="muted" style="font-size:12.5px;margin-bottom:12px;">Cancha ${p.cancha || '—'} · ${p.horario || '—'} hs</p>
         ${enCurso
@@ -3117,9 +3129,21 @@ function guardarAlineacionEquipo() {
   const updates = esLocal
     ? { alineacionLocal: alin, ...(cap ? { capitanLocalDni: cap } : {}) }
     : { alineacionVisitante: alin, ...(cap ? { capitanVisitanteDni: cap } : {}) };
-  db.collection('partidos').doc(p.id).update(updates)
-    .then(() => { showToast(`Planilla guardada ✓ ${alin.length} jugadores. El planillero ya la va a encontrar cargada.`, 'ok'); renderPlanillaEquipo(); })
-    .catch(e => { console.error(e); showToast('No se pudo guardar: ' + (e.message || e.code || e), 'error'); });
+  // Misma regla de oro que planilla.html: NO esperar el ack de Firestore para dar feedback.
+  // Con la persistencia activada la escritura queda encolada y sincroniza sola al volver la
+  // señal, pero el promise de update() no resuelve hasta que confirma el servidor — si se
+  // espera, el equipo toca "Guardar" con mala señal y no pasa absolutamente nada.
+  Object.assign(p, updates);
+  db.collection('partidos').doc(p.id).update(updates).catch(e => {
+    console.error(e);
+    // Sin conexión no es un error: la escritura está encolada. Sólo se avisa de fallas
+    // reales (permisos, cuota), donde lo que se ve en pantalla NO va a llegar al servidor.
+    if (navigator.onLine) showToast('No se pudo guardar: ' + (e.message || e.code || e), 'error');
+  });
+  showToast(navigator.onLine
+    ? `Planilla guardada ✓ ${alin.length} jugadores. El planillero ya la va a encontrar cargada.`
+    : `Planilla guardada en el celular ✓ ${alin.length} jugadores. Se envía sola cuando vuelva la señal.`, 'ok');
+  renderPlanillaEquipo();
 }
 
 function switchPanelEquipoTab(tab, renderSanc = true) {

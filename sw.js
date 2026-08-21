@@ -266,7 +266,17 @@
 // que el partido arranca, la planilla es del planillero y el equipo no la pisa.
 // firestore.rules: un role 'equipo' ahora solo puede tocar SU alineacion en SU
 // partido; antes cualquier sesion autenticada podia reescribir la del rival.
-const CACHE = 'ligaf5-v51';
+// v52: la planilla que carga el equipo tambien anda con senal mala. El guardado
+// esperaba (.then) el ack de Firestore, y ese promise NO resuelve hasta que
+// confirma el servidor: sin conexion el equipo tocaba "Guardar planilla" y no
+// pasaba absolutamente nada, aunque la escritura quedaba encolada. Es la misma
+// regla de oro que ya se habia aprendido en planilla.html y que no se habia
+// aplicado aca. Ahora avisa al toque y escribe en segundo plano, distingue
+// "sin conexion" (no es error, sincroniza sola) de una falla real, las lecturas
+// pasan por _getRapidoEquipo() (reloj de 4s y si no contesta resuelve con el
+// cache local) para que la pantalla no quede colgada en "Cargando...", y hay un
+// aviso arriba cuando el celular esta sin senal.
+const CACHE = 'ligaf5-v52';
 const ASSETS = [
   './index.html',
   './planilla.html',
