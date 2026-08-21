@@ -2,6 +2,47 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+---
+
+# 👉 RETOMAR ACÁ — traspaso del 2026-08-21 (PC de la ATP → computadora personal)
+
+**Primero de todo: `git pull`.** Todo lo de esta sesión está pusheado a `origin/main` (último commit: *"Auditoria: el planillero no debe necesitar internet en la cancha"*). Nada quedó sin commitear.
+
+**En vivo ahora mismo:** `sw v54`, hosting y `firestore.rules` desplegados. La fecha 2 de arancel está abierta (vence 21/08 12:00).
+
+## ⚠️ Lo urgente antes de jugar
+
+**1. Preparar CADA tablet con WiFi** (no alcanza con cargar los partidos desde el panel):
+   1. Abrir el planillero, poner el nombre del planillero y entrar.
+   2. Elegir la cancha y esperar a que carguen los partidos.
+   3. **Abrir un partido y llegar hasta la pantalla de tildar jugadores**, después salir con ←. Si en esa cancha se juegan las dos divisiones, hacerlo con una de cada una.
+
+   El paso 3 es lo único que baja **las tarjetas de la división**. Sin eso, en la cancha dice *"no se pudo verificar sanciones — revisar manualmente"* y podría entrar un suspendido.
+   **Comprobación:** modo avión → reabrir la app → si se ven los partidos y los jugadores, está lista.
+
+**2. Vencimiento del arancel de la fecha 2**: quedó **hoy 21/08 12:00**, no el sábado. Pasado el mediodía los equipos pagan $55.000 en vez de $50.000. Si no era la idea, cambiarlo en admin → 💵 Aranceles.
+
+## Lo que se hizo hoy (detalle en las secciones de abajo)
+`v44` pago de sanciones por el equipo · `v45` fix del botón Gestionar (nunca había funcionado) · `v46` la roja se cumple por número de fecha · `v47` informe de recaudación por sanciones · `v48` depuración por seguro (**ejecutada**: 9 jugadores de 6 equipos) · `v49` reponer jugadores quitados · `v50` pagar cualquier fecha de arancel · `v51` el equipo carga su planilla de juego · `v52` que ande sin señal · `v53` el planillero la recibe solo · `v54` auditoría de "sin internet en la cancha".
+
+## Sin probar en la vida real (todo lo verificado es simulado)
+- Un pago de sanción de punta a punta: equipo carga comprobante → admin aprueba → jugador habilitado en el planillero.
+- La roja directa levantándose sola en la fecha que corresponde.
+- El equipo cargando su planilla y el planillero recibiéndola.
+- El comportamiento sin señal en la cancha.
+
+## Decisiones pendientes tuyas
+- **`SIGEL, BRIAN` (CITY RECURSOS)** quedó fuera de la lista de buena fe con DNI `4606616` (7 dígitos, mal cargado). Si pagó el seguro, reponerlo desde **Editar plantel → "↩️ Quitados por falta de seguro"** con el DNI corregido y tildarle *Aseg.*
+- **Bandeja de pagos de sanción**: hoy es por división. Si querés una global con contador, es un agregado chico.
+- **Doble amarilla y acumulación de amarillas** siguen siendo manuales para el que NO paga (hay que marcarle "cumplió la fecha" desde Gestionar). Se puede automatizar por número de fecha igual que la roja.
+- **Los equipos pueden volver a agregar jugadores** desde su panel: la depuración fue una foto, no un candado. Si querés cerrar la lista, hay que poner fecha límite de lista de buena fe en Configuración.
+- **Privacidad de lo financiero** (pendiente viejo): `/equipos` tiene `allow read: if autenticado()` y la sesión anónima de cualquier visitante cuenta, así que montos y comprobantes son legibles desde la consola del navegador.
+
+## Recordatorio de siempre
+**NUNCA `firebase deploy --only functions` desde la PC de la ATP** (faltan las claves VAPID y rompe todas las push). Desde la computadora personal sí se puede.
+
+---
+
 ## ✅ Sesión 2026-08-21 (cont. 5) — que la planilla del equipo funcione de verdad (sw v52 y v53)
 
 ### 🔴 El guardado del equipo esperaba el ack de Firestore (sw v52)
