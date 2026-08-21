@@ -2,6 +2,26 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-21 (cont. 4) — aranceles por fecha + planilla que carga el equipo (sw v50 y v51)
+
+### 🔴 No había forma de pagar la fecha 2 (sw v50)
+- **Reportado**: *"dónde acceden los equipos para pagar aranceles de 2 fecha? ... la fecha 1 pagaron pero ahora no hay opciones para ir a pagar la segunda fecha"*.
+- **Diagnóstico (leyendo la base)**: no era un bug — `config/general.arancelFechaActual` seguía en **1**, con vencimiento 15/08 12:00, mientras la fecha 1 ya se había jugado entera (17/17) con 35 pagos cargados. El panel del equipo mostraba **sólo la fecha abierta**, así que todos veían "Ya cargaste el pago de la Fecha 1".
+- **El agujero de fondo, que sí era un bug**: se podía pagar **una sola fecha a la vez**. Al abrir la 2, el que no había pagado la 1 **se quedaba sin ninguna forma de pagarla**, y la deuda no figuraba en ningún lado.
+- **Ahora** la solapa 💵 Pagos lista **todas las fechas desde la 1 hasta la abierta**, con estado por fecha (pagado / rechazado / falta), el **total adeudado** arriba, y un botón Pagar por fecha que abre el formulario con alias y monto. Una fecha anterior a la abierta ya venció, así que va a `ARANCEL_MONTO_TARDE`; la actual depende de `arancelVence`. Una fecha con todos los pagos rechazados vuelve a quedar pagable.
+- El usuario abrió la fecha 2 (vence 21/08 12:00 — **se le avisó que es hoy al mediodía, no el sábado**).
+- 9 verificaciones, incluidos los dos escenarios reales.
+
+### 📝 El equipo carga su propia planilla de juego (sw v51)
+- **Pedido**: *"necesito darle la función a los equipos desde su panel de confeccionar planilla de juego, entonces lo hacen ellos mismos y le aparece reflejado al planillero, así ahorramos ese tiempo, por lo menos 5 jugadores que entrarán en cancha"*.
+- Solapa nueva **📝 Planilla de juego** en el panel del equipo. Escribe los **mismos campos** que `confirmarAlineacion()` de planilla.html y que el modal del admin (`alineacionLocal/Visitante` + `capitanLocalDni/VisitanteDni`), así el planillero abre el partido y ya la encuentra cargada.
+- Toma solo el **próximo partido pendiente** del equipo y muestra **solo su lado**. **Mínimo 5, máximo 15.** Número obligatorio y sin repetir, normalizando `"7"`/`"07"` (bug real anterior).
+- **No deja tildar a un suspendido ni a uno sin seguro** — mismo criterio que usa el planillero, con la roja mirando el número de fecha. **Verificado cruzando `getEstadoSanciones` (index) contra `getSancionesActivas` (planilla) en 40 combinaciones sanción × fecha**: si divergieran, el equipo cargaría a alguien que después el planillero rechaza en la cancha.
+- Una vez que el partido arranca (`estado` distinto de `pendiente`), la planilla pasa a ser del planillero y el equipo no la pisa.
+- **Reusa los helpers `_aliAdm*`** del modal del admin pasando `'propio'` como equipo — son genéricos en ese parámetro, así que tocar el nombre tilda, escribir el número tilda solo, el contador y el buscador se comportan igual que en el flujo ya probado.
+- **`firestore.rules` endurecido**: hasta ahora **cualquier sesión autenticada podía reescribir la alineación de cualquier partido, incluida la del rival**. Ahora un `role:'equipo'` sólo puede tocar su propio lado y sólo en un partido que juega él; el planillero (sesión anónima, sin role) sigue con `soloCamposPlanilla()`.
+- **Sin probar en la cancha**: falta el primer uso real equipo → planillero. Ojo con el caché `_eCache`/`_pCache` del planillero (ver más abajo): si ya tiene el partido abierto, tiene que volver a la lista y entrar de nuevo.
+
 ## ✅ Sesión 2026-08-21 (cont. 3) — fuera el banner de plazos + depuración por seguro (sw v48)
 
 - **Pedido**: *"sacame ya esto ya pasó lo de los seguros, los que están ya están, y ya los demás quedaron afuera de la lista, borra todos los que no están asegurados"*. Primero se entendió mal como **borrar equipos** y se frenó a tiempo; el usuario aclaró: *"no te dije que borres equipos, que borres jugadores que no están asegurados, o los saques de la lista de buena fe"*.
