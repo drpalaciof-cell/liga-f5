@@ -1936,6 +1936,7 @@ function logout() {
   detenerBadgeAdmin(); detenerBadgeEquipo();
   detenerMensajesAdmin(); detenerMensajesEquipo();
   detenerSyncEquiposAdmin(); detenerPartidosAdmin(); detenerPartidosTotal(); detenerAranceles();
+  detenerPagosSanciones(); pagosSancionesCache = []; _pagosSancionEquipo = [];
   state.equipo = null; state.equipoId = null; state.admin = null;
   // Si no se limpia, el próximo que entre en este dispositivo hereda el modo del
   // anterior: un admin completo vería el panel recortado, o al revés.
@@ -3649,6 +3650,15 @@ function calcularTarjetasPorJugador(partidos) {
       return b.amarillas - a.amarillas || b.rojas - a.rojas;
     });
 }
+// Lo que sale pagar cada sanción. Antes estos números vivían sueltos dentro de los textos
+// de getEstadoSanciones; ahora el equipo transfiere contra este monto, así que tiene que
+// haber UN solo lugar donde cambiarlo.
+const SANCION_MONTOS = { roja: 7000, doble: 5000, amarillas: 5000 };
+// Identidad de una sanción concreta. Un jugador puede deber más de una (una roja y un ciclo
+// de amarillas) y hasta más de un ciclo de amarillas, así que ni el DNI ni el DNI+tipo
+// alcanzan para saber qué se está pagando.
+const sancionKey = (dni, tipo, ciclo) => `${dni}|${tipo}|${ciclo || 1}`;
+
 // Calcula suspensiones activas considerando pagos ($5.000 amarillas/doble, $7.000 roja) y cumplimientos
 function getEstadoSanciones(player, eq) {
   const pagadas = eq.sancionesPagadas || [];
@@ -3666,13 +3676,13 @@ function getEstadoSanciones(player, eq) {
         ? 'cumple la próxima fecha'
         : 'juega la próxima — cumple la siguiente';
       items.push({
-        tipo: 'roja', label: '🟥 Roja directa',
+        tipo: 'roja', ciclo: 1, monto: SANCION_MONTOS.roja, label: '🟥 Roja directa',
         desc: `Pagó $7.000 — 1 fecha restante (${opcion})`,
         acciones: [{ label: '✅ Cumplió la fecha — puede jugar', accion: 'cumplida', tipo: 'roja' }]
       });
     } else {
       items.push({
-        tipo: 'roja', label: '🟥 Roja directa',
+        tipo: 'roja', ciclo: 1, monto: SANCION_MONTOS.roja, label: '🟥 Roja directa',
         desc: '2 fechas de suspensión · Pagar $7.000 reduce a 1 fecha',
         acciones: [
           { label: '💳 Pagar $7.000 — cumple la PRÓXIMA fecha', accion: 'pago-proxima', tipo: 'roja' },
@@ -3687,7 +3697,7 @@ function getEstadoSanciones(player, eq) {
   const nDobles = player.expulsiones - player.rojas;
   if (nDobles > 0 && !hasPag('doble') && !hasCum('doble')) {
     items.push({
-      tipo: 'doble', label: '🟨🟨 Doble amarilla',
+      tipo: 'doble', ciclo: 1, monto: SANCION_MONTOS.doble, label: '🟨🟨 Doble amarilla',
       desc: '1 fecha de suspensión · Pagando $5.000 queda habilitado',
       acciones: [
         { label: '💳 Pagar $5.000 — queda habilitado', accion: 'pago', tipo: 'doble' },
@@ -3704,8 +3714,13 @@ function getEstadoSanciones(player, eq) {
     if (nPag + nCum < ciclos) {
       const pend = ciclos - nPag - nCum;
       items.push({
-        tipo: 'amarillas', label: '🟨 Acumulación de amarillas',
-        desc: `1 fecha de suspensión · Pagar $5.000 para habilitar`,
+        // `ciclo` = qué tanda de 3 amarillas es la que está pendiente ahora. A las 6 amarillas
+        // son dos sanciones distintas y hay que poder pagarlas por separado.
+        tipo: 'amarillas', ciclo: nPag + nCum + 1, monto: SANCION_MONTOS.amarillas,
+        label: '🟨 Acumulación de amarillas',
+        desc: pend > 1
+          ? `${pend} fechas de suspensión pendientes (${pend} tandas de 3 amarillas) · Pagar $5.000 habilita una`
+          : `1 fecha de suspensión · Pagar $5.000 para habilitar`,
         acciones: [
           { label: '💳 Pagar $5.000 — queda habilitado', accion: 'pago', tipo: 'amarillas' },
           { label: '✅ Cumplió la fecha — puede jugar', accion: 'cumplida', tipo: 'amarillas' }
@@ -3720,6 +3735,7 @@ function getEstadoSanciones(player, eq) {
 function renderSancionesAdmin() {
   const wrap = document.getElementById('sanciones-admin-content');
   if (!wrap) return;
+  cargarPagosSanciones();
   const div = state.adminDivisionActiva;
   const partidos = partidosCacheAdmin.filter(p => p.division === div);
   const lista = calcularTarjetasPorJugador(partidos);
@@ -3731,6 +3747,20 @@ function renderSancionesAdmin() {
   });
 
   let html = '';
+
+  // Bandeja de pagos esperando revisión — arriba de todo, para que no se pasen por alto.
+  const pendientesDiv = pagosSancionesCache.filter(p => p.estado === 'pagado' && p.division === div)
+    .sort((a, b) => (a.creadoEn || '').localeCompare(b.creadoEn || ''));
+  if (pendientesDiv.length > 0) {
+    html += `<div class="sancion-alert" style="background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.28);">
+      <strong style="color:var(--warn);">💳 ${pendientesDiv.length} pago${pendientesDiv.length > 1 ? 's' : ''} de sanción esperando aprobación</strong>
+      ${pendientesDiv.map(p => `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;">
+        <div style="flex:1;min-width:0;"><strong>${escapeHtml(p.jugadorNombre || p.dni)}</strong> <span class="muted">(${escapeHtml(p.equipoNombre || '-')})</span> — ${fmtPesos(p.montoDeclarado)}</div>
+        <button class="btn btn-sm btn-primary" onclick="abrirModalRevisarPagoSancion('${p.id}')">Revisar</button>
+      </div>`).join('')}
+    </div>`;
+  }
+
   if (conSancion.length > 0) {
     html += `<div class="sancion-alert"><strong style="color:var(--danger);">⚠ ${conSancion.length} jugador${conSancion.length > 1 ? 'es' : ''} con sanción activa</strong>`;
     conSancion.forEach(p => {
@@ -3752,17 +3782,27 @@ function renderSancionesAdmin() {
     if (suspendido) badges.push(`<span class="badge-susp">SANCIONADO</span>`);
     const estadoJson = encodeURIComponent(JSON.stringify(items));
     const comp = (eq.sancionesComprobantes || {})[p.dni];
+    // Comprobante del circuito viejo (mapa dentro del doc del equipo). Ya no se escribe,
+    // pero lo que se cargó antes tiene que seguir siendo visible.
     const compHtml = comp
-      ? `<button class="btn btn-sm" style="background:rgba(74,222,128,.15);color:var(--ok);border-color:rgba(74,222,128,.3);" onclick="verComprobanteAdminSancion('${p.equipoId}','${p.dni}')">📄 Ver comprobante</button>`
+      ? `<button class="btn btn-sm" style="background:rgba(74,222,128,.15);color:var(--ok);border-color:rgba(74,222,128,.3);" onclick="verComprobanteAdminSancion('${p.equipoId}','${p.dni}')">📄 Comprobante viejo</button>`
       : '';
+    const pendientes = items.map(i => pagoSancionPendiente(p.dni, i.tipo, i.ciclo)).filter(Boolean);
+    const pagoHtml = pendientes.map(pg =>
+      `<button class="btn btn-sm" style="background:rgba(251,191,36,.18);color:var(--warn);border-color:rgba(251,191,36,.4);" onclick="abrirModalRevisarPagoSancion('${pg.id}')">💳 Revisar pago ${fmtPesos(pg.montoDeclarado)}</button>`
+    ).join('');
     return `<div class="sancion-row">
       <div style="flex:1;">
         <div class="sancion-nombre">${escapeHtml(p.nombre)}</div>
         <div class="sancion-equipo">${escapeHtml(eq.nombre || '-')}</div>
-        ${items.map(i => `<div class="sancion-hist-line" style="margin-top:4px;">${i.label} — ${i.desc}</div>`).join('')}
+        ${items.map(i => {
+          const pg = pagoSancionPendiente(p.dni, i.tipo, i.ciclo);
+          return `<div class="sancion-hist-line" style="margin-top:4px;">${i.label} — ${i.desc}${pg ? ' <span class="badge badge-warn">Pago sin revisar</span>' : ''}</div>`;
+        }).join('')}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
         <div class="sancion-badges">${badges.join('')}</div>
+        ${pagoHtml}
         ${compHtml}
         ${suspendido ? `<button class="btn btn-sm" onclick="abrirModalGestionSancion('${p.equipoId}','${p.dni}',${JSON.stringify(p.nombre)},${JSON.stringify(eq.nombre||'')},${JSON.stringify(estadoJson)})">Gestionar</button>` : ''}
       </div>
@@ -3784,7 +3824,7 @@ function abrirModalGestionSancion(equipoId, dni, nombre, eqNombre, estadoJson) {
       const stl = a.accion === 'cumplida'
         ? 'background:rgba(74,222,128,.2);color:var(--ok);border:1px solid rgba(74,222,128,.4);'
         : 'background:rgba(251,191,36,.2);color:var(--warn);border:1px solid rgba(251,191,36,.4);';
-      html += `<button class="btn" style="${stl}" onclick="registrarAccionSancion('${equipoId}','${dni}','${a.tipo}','${a.accion}')">${escapeHtml(a.label)}</button>`;
+      html += `<button class="btn" style="${stl}" onclick="registrarAccionSancion('${equipoId}','${dni}','${a.tipo}','${a.accion}',${item.ciclo || 1})">${escapeHtml(a.label)}</button>`;
     });
     html += `</div></div>`;
   });
@@ -3792,20 +3832,27 @@ function abrirModalGestionSancion(equipoId, dni, nombre, eqNombre, estadoJson) {
   openModal(html);
 }
 
-async function registrarAccionSancion(equipoId, dni, tipo, accion) {
+async function registrarAccionSancion(equipoId, dni, tipo, accion, ciclo) {
   const eq = equiposCacheAdmin.find(e => e.id === equipoId);
   if (!eq) return;
   try {
     const update = {};
+    // Para 'roja' y 'doble' sólo puede haber una sanción viva por jugador, así que se
+    // reemplaza la entrada anterior. Para 'amarillas' NO: getEstadoSanciones cuenta cuántas
+    // entradas hay para saber cuántas tandas de 3 quedan saldadas, y filtrar borraba la
+    // anterior — un jugador con 6 amarillas nunca podía tener sus dos fechas registradas,
+    // la segunda pisaba a la primera y quedaba sancionado para siempre.
+    const acumula = tipo === 'amarillas';
+    const sinPrevia = (arr) => acumula ? arr.slice() : arr.filter(p => !(p.dni === dni && p.tipo === tipo));
     if (accion === 'cumplida') {
-      const arr = (eq.sancionesCumplidas || []).filter(p => !(p.dni === dni && p.tipo === tipo));
-      arr.push({ dni, tipo, fecha: new Date().toISOString() });
+      const arr = sinPrevia(eq.sancionesCumplidas || []);
+      arr.push({ dni, tipo, ciclo: ciclo || 1, fecha: new Date().toISOString() });
       eq.sancionesCumplidas = arr;
       update.sancionesCumplidas = arr;
     } else {
       // 'pago', 'pago-proxima', 'pago-siguiente'
-      const arr = (eq.sancionesPagadas || []).filter(p => !(p.dni === dni && p.tipo === tipo));
-      const entry = { dni, tipo, fecha: new Date().toISOString() };
+      const arr = sinPrevia(eq.sancionesPagadas || []);
+      const entry = { dni, tipo, ciclo: ciclo || 1, fecha: new Date().toISOString() };
       if (accion === 'pago-proxima') entry.fechaElegida = 'proxima';
       if (accion === 'pago-siguiente') entry.fechaElegida = 'siguiente';
       arr.push(entry);
@@ -3837,6 +3884,181 @@ function verComprobanteAdminSancion(equipoId, dni) {
     <img src="${comp.url}" style="width:100%;border-radius:10px;margin-bottom:12px;">
     <p class="muted" style="font-size:12px;margin-bottom:14px;">Enviado: ${new Date(comp.fecha).toLocaleDateString('es-AR')}</p>
     <button class="btn btn-block" onclick="closeModal()">Cerrar</button>`);
+}
+
+// ═══════════════════ PAGO DE SANCIONES (equipo → admin) ═══════════════════
+// Mismo circuito que el arancel semanal: el equipo transfiere al alias, carga comprobante +
+// monto + quién transfirió, y queda PENDIENTE. La suspensión recién se levanta cuando el
+// admin aprueba — aprobar es lo que escribe la entrada en equipos.sancionesPagadas, que es
+// lo único que mira getEstadoSanciones. Nadie se habilita solo por subir una imagen.
+//
+// Por qué colección aparte y no un campo más en equipos/{id}: el comprobante es un data URL
+// de ~300KB y el documento del equipo tiene el límite de 1MB de Firestore. El mapa viejo
+// `sancionesComprobantes` (uno por DNI, se pisaba al resubir) se sigue leyendo para no perder
+// lo ya cargado, pero no se escribe más.
+
+// ---- Lado equipo ----
+let _pagosSancionEquipo = [];
+async function _cargarPagosSancionEquipo() {
+  _pagosSancionEquipo = [];
+  if (!state.equipoId) return;
+  try {
+    const snap = await db.collection('pagosSanciones').where('equipoId', '==', state.equipoId).get();
+    snap.forEach(d => _pagosSancionEquipo.push({ id: d.id, ...d.data() }));
+  } catch (e) { console.error(e); }
+}
+// El pago vigente de una sanción = el más reciente que no esté rechazado.
+function _pagoSancionDe(dni, tipo, ciclo) {
+  return _pagosSancionEquipo
+    .filter(p => p.dni === dni && p.tipo === tipo && (p.ciclo || 1) === (ciclo || 1) && p.estado !== 'rechazado')
+    .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''))[0] || null;
+}
+function _rechazoSancionDe(dni, tipo, ciclo) {
+  return _pagosSancionEquipo
+    .filter(p => p.dni === dni && p.tipo === tipo && (p.ciclo || 1) === (ciclo || 1) && p.estado === 'rechazado')
+    .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''))[0] || null;
+}
+function _nombreJugadorDni(dni) {
+  const j = ((state.equipo || {}).jugadores || []).find(x => x.dni === dni) || {};
+  const n = `${j.apellido || ''} ${j.nombre || ''}`.trim();
+  return n || dni;
+}
+
+function abrirModalPagarSancion(dni, tipo, ciclo, monto) {
+  const nombre = _nombreJugadorDni(dni);
+  const etiquetas = { roja: '🟥 Roja directa', doble: '🟨🟨 Doble amarilla', amarillas: '🟨 Acumulación de amarillas' };
+  // La roja no se borra pagando: baja de 2 fechas a 1, y el equipo elige cuál cumple.
+  const opcionRoja = tipo !== 'roja' ? '' : `
+    <div class="field">
+      <label>¿Qué fecha cumple la suspensión?</label>
+      <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;font-size:13.5px;margin-bottom:8px;cursor:pointer;">
+        <input type="radio" name="ps-fecha" value="proxima" checked style="margin-top:3px;">
+        <span>Cumple la <strong>PRÓXIMA</strong> fecha (no juega el próximo partido)</span>
+      </label>
+      <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;font-size:13.5px;cursor:pointer;">
+        <input type="radio" name="ps-fecha" value="siguiente" style="margin-top:3px;">
+        <span>Juega la próxima y cumple la <strong>SIGUIENTE</strong></span>
+      </label>
+    </div>`;
+  openModal(`
+    <h2 style="margin-bottom:4px;">Pagar sanción</h2>
+    <p class="muted" style="margin-bottom:14px;font-size:13.5px;"><strong>${escapeHtml(nombre)}</strong> · ${etiquetas[tipo] || tipo}</p>
+    <div class="glass" style="border:1px solid var(--division-color);border-radius:14px;padding:14px;text-align:center;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text-dim);letter-spacing:.5px;">TRANSFERÍ AL ALIAS</div>
+      <div style="font-size:26px;font-weight:900;color:var(--division-color);letter-spacing:1px;margin:4px 0;word-break:break-all;">${ARANCEL_ALIAS}</div>
+      <div style="font-size:12.5px;color:var(--text-dim);">${ARANCEL_ALIAS_TITULAR}</div>
+      <div style="font-size:16px;margin-top:8px;">Monto: <strong style="color:var(--division-color);font-size:21px;">${fmtPesos(monto)}</strong></div>
+    </div>
+    ${opcionRoja}
+    <div class="field"><label>Comprobante (obligatorio)</label><input type="file" accept="image/*" id="ps-comprobante"></div>
+    <div class="field"><label>Monto transferido (obligatorio)</label><input type="text" id="ps-monto" inputmode="numeric" placeholder="Ej: ${monto}"></div>
+    <div class="field"><label>Nombre de quien transfirió (obligatorio)</label><input type="text" id="ps-nombre" placeholder="Nombre y apellido"></div>
+    <p class="muted" style="font-size:12px;margin-bottom:12px;">El jugador queda habilitado recién cuando la organización aprueba el comprobante.</p>
+    <button class="btn btn-primary btn-block" onclick="enviarPagoSancion('${escapeHtml(dni)}','${tipo}',${ciclo || 1},${monto})">Enviar pago</button>
+    <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Cancelar</button>`);
+}
+
+async function enviarPagoSancion(dni, tipo, ciclo, monto) {
+  const fileInput = document.getElementById('ps-comprobante');
+  const file = fileInput && fileInput.files[0];
+  const montoDeclarado = parsearMonto((document.getElementById('ps-monto') || {}).value);
+  const nombreTransf = ((document.getElementById('ps-nombre') || {}).value || '').trim();
+  const radio = document.querySelector('input[name="ps-fecha"]:checked');
+  if (!file) { showToast('Subí el comprobante.', 'error'); return; }
+  if (!montoDeclarado || montoDeclarado <= 0) { showToast('Ingresá el monto transferido.', 'error'); return; }
+  if (!nombreTransf) { showToast('Ingresá el nombre de quien transfirió.', 'error'); return; }
+  try {
+    const dataUrl = await resizeImageFile(file, 900);
+    if (dataUrl.length > 350000) { showToast('La imagen es muy pesada. Probá con una captura de pantalla.', 'error'); return; }
+    const eq = state.equipo || {};
+    await db.collection('pagosSanciones').add({
+      equipoId: state.equipoId, equipoNombre: eq.nombre || '', division: eq.division || '', zona: eq.zona || '',
+      dni, jugadorNombre: _nombreJugadorDni(dni), tipo, ciclo: ciclo || 1,
+      montoEsperado: monto, montoDeclarado, nombreTransferencia: nombreTransf,
+      fechaElegida: tipo === 'roja' ? (radio ? radio.value : 'proxima') : null,
+      comprobante: dataUrl, estado: 'pagado', creadoEn: new Date().toISOString()
+    });
+    showToast('Pago enviado. La organización lo va a revisar. ✅', 'ok');
+    closeModal();
+    renderSancionesEquipo();
+  } catch (e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
+}
+
+// ---- Lado admin ----
+let pagosSancionesCache = [], pagosSancionesUnsub = null;
+function cargarPagosSanciones() {
+  if (pagosSancionesUnsub) return;
+  pagosSancionesUnsub = db.collection('pagosSanciones').onSnapshot(snap => {
+    pagosSancionesCache = []; snap.forEach(d => pagosSancionesCache.push({ id: d.id, ...d.data() }));
+    if (state.adminDivisionActiva) renderSancionesAdmin();
+  }, e => console.error(e));
+}
+function detenerPagosSanciones() { if (pagosSancionesUnsub) { pagosSancionesUnsub(); pagosSancionesUnsub = null; } }
+function pagoSancionPendiente(dni, tipo, ciclo) {
+  return pagosSancionesCache.find(p => p.dni === dni && p.tipo === tipo && (p.ciclo || 1) === (ciclo || 1) && p.estado === 'pagado') || null;
+}
+
+function abrirModalRevisarPagoSancion(pagoId) {
+  const p = pagosSancionesCache.find(x => x.id === pagoId);
+  if (!p) return;
+  const etiquetas = { roja: '🟥 Roja directa', doble: '🟨🟨 Doble amarilla', amarillas: '🟨 Acumulación de amarillas' };
+  const difiere = p.montoEsperado && p.montoDeclarado !== p.montoEsperado;
+  const eleccion = p.tipo !== 'roja' ? '' : `<div style="font-size:13px;margin-bottom:6px;">Eligió cumplir: <strong>${p.fechaElegida === 'siguiente' ? 'la SIGUIENTE fecha (juega la próxima)' : 'la PRÓXIMA fecha'}</strong></div>`;
+  openModal(`
+    <h2 style="margin-bottom:4px;">Revisar pago de sanción</h2>
+    <p class="muted" style="margin-bottom:12px;font-size:13.5px;"><strong>${escapeHtml(p.jugadorNombre || p.dni)}</strong> · ${escapeHtml(p.equipoNombre || '')} · ${etiquetas[p.tipo] || p.tipo}</p>
+    <img src="${p.comprobante}" style="width:100%;border-radius:10px;margin-bottom:12px;">
+    <div style="font-size:14px;margin-bottom:6px;">Declaró: <strong style="color:${difiere ? 'var(--warn)' : 'var(--ok)'};">${fmtPesos(p.montoDeclarado)}</strong>
+      ${p.montoEsperado ? `<span class="muted" style="font-size:12.5px;">(corresponde ${fmtPesos(p.montoEsperado)})</span>` : ''}
+      ${difiere ? '<span class="badge badge-warn">No coincide</span>' : ''}</div>
+    <div style="font-size:13px;margin-bottom:6px;">Transfirió: <strong>${escapeHtml(p.nombreTransferencia || '—')}</strong></div>
+    ${eleccion}
+    <div class="muted" style="font-size:12px;margin-bottom:14px;">Enviado: ${p.creadoEn ? new Date(p.creadoEn).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</div>
+    <div class="field"><label>Motivo (sólo si lo rechazás)</label><input type="text" id="ps-motivo" placeholder="Ej: el comprobante no se lee"></div>
+    <button class="btn btn-primary btn-block" onclick="aprobarPagoSancion('${pagoId}')">✅ Aprobar pago</button>
+    <button class="btn btn-danger btn-block" style="margin-top:8px;" onclick="rechazarPagoSancion('${pagoId}')">✕ Rechazar</button>
+    <button class="btn btn-block" style="margin-top:8px;" onclick="closeModal()">Cerrar</button>`);
+}
+
+async function aprobarPagoSancion(pagoId) {
+  const p = pagosSancionesCache.find(x => x.id === pagoId);
+  if (!p) return;
+  const eq = equiposCacheAdmin.find(e => e.id === p.equipoId);
+  if (!eq) { showToast('No se encontró el equipo del pago.', 'error'); return; }
+  try {
+    const ciclo = p.ciclo || 1;
+    const acumula = p.tipo === 'amarillas';
+    const arr = acumula
+      ? (eq.sancionesPagadas || []).slice()
+      : (eq.sancionesPagadas || []).filter(x => !(x.dni === p.dni && x.tipo === p.tipo));
+    const yaEsta = arr.some(x => x.dni === p.dni && x.tipo === p.tipo && (x.ciclo || 1) === ciclo);
+    if (!yaEsta) {
+      const entry = { dni: p.dni, tipo: p.tipo, ciclo, fecha: new Date().toISOString(), pagoId };
+      if (p.fechaElegida) entry.fechaElegida = p.fechaElegida;
+      arr.push(entry);
+    }
+    eq.sancionesPagadas = arr;
+    await db.collection('equipos').doc(p.equipoId).update({ sancionesPagadas: arr });
+    await db.collection('pagosSanciones').doc(pagoId).update({ estado: 'aprobado', revisadoEn: new Date().toISOString() });
+    showToast(p.tipo === 'roja'
+      ? '💳 Pago aprobado. La roja baja a 1 fecha.'
+      : '💳 Pago aprobado. Jugador habilitado.', 'ok');
+    closeModal();
+    renderSancionesAdmin();
+  } catch (e) { console.error(e); showToast('No se pudo aprobar el pago.', 'error'); }
+}
+
+async function rechazarPagoSancion(pagoId) {
+  const motivo = ((document.getElementById('ps-motivo') || {}).value || '').trim();
+  if (!motivo) { showToast('Escribí el motivo del rechazo — el equipo lo va a ver.', 'error'); return; }
+  try {
+    await db.collection('pagosSanciones').doc(pagoId).update({
+      estado: 'rechazado', motivoRechazo: motivo, revisadoEn: new Date().toISOString()
+    });
+    showToast('Pago rechazado. El equipo puede volver a cargarlo.', 'ok');
+    closeModal();
+    renderSancionesAdmin();
+  } catch (e) { console.error(e); showToast('No se pudo rechazar el pago.', 'error'); }
 }
 
 async function cargarYMostrarTarjetasEquipo() {
@@ -3887,6 +4109,7 @@ async function renderSancionesEquipo() {
   if (!wrap || !state.equipoId) return;
   wrap.innerHTML = '<p class="muted" style="text-align:center;padding:20px 0;">Cargando...</p>';
   try {
+    await _cargarPagosSancionEquipo();
     const snap = await db.collection('partidos').where('division', '==', state.equipo.division).get();
     const cardMap = {};
     snap.forEach(doc => {
@@ -3921,6 +4144,18 @@ async function renderSancionesEquipo() {
 
     // ── Carnets de sancionados ──
     if (sancionados.length > 0) {
+      // El alias tiene que estar acá y no sólo en la solapa Pagos: si el equipo tiene que
+      // ir a buscar a dónde transferir, no transfiere.
+      const totalAPagar = sancionados.reduce((s, p) => s + p.items
+        .filter(i => (i.acciones || []).some(a => String(a.accion).startsWith('pago')) && !_pagoSancionDe(p.dni, i.tipo, i.ciclo))
+        .reduce((t, i) => t + (i.monto || 0), 0), 0);
+      html += `<div class="glass" style="border:1px solid var(--division-color);border-radius:14px;padding:16px;text-align:center;margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text-dim);letter-spacing:.5px;">TRANSFERÍ AL ALIAS</div>
+        <div style="font-size:30px;font-weight:900;color:var(--division-color);letter-spacing:1px;margin:4px 0;word-break:break-all;">${ARANCEL_ALIAS}</div>
+        <div style="font-size:12.5px;color:var(--text-dim);">${ARANCEL_ALIAS_TITULAR}</div>
+        ${totalAPagar > 0 ? `<div style="font-size:14px;margin-top:8px;">Sanciones sin pagar: <strong style="color:var(--division-color);font-size:19px;">${fmtPesos(totalAPagar)}</strong></div>` : ''}
+        <div style="font-size:11.5px;color:var(--text-dim);margin-top:4px;">Pagá cada sanción por separado con su botón, y subí el comprobante ahí.</div>
+      </div>`;
       html += `<div style="font-size:12px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">⚠ Jugadores sancionados</div>`;
       html += `<div class="pe-carnets-grid">`;
       html += sancionados.map(p => {
@@ -3936,17 +4171,30 @@ async function renderSancionesEquipo() {
           ? `<img class="pe-carnet-foto" src="${fotoUrl}" alt="">`
           : `<div class="pe-carnet-foto-ph">👤</div>`;
 
-        const sancionHtml = p.items.map(i =>
-          `<div class="pe-carnet-sancion${i.pagada ? ' pagada' : ''}">${i.label}<br><span style="font-size:10px;">${i.desc}</span></div>`
-        ).join('');
+        // Una sanción se puede pagar sólo mientras getEstadoSanciones siga ofreciendo una
+        // acción de pago. La roja ya pagada, por ejemplo, sigue listada (queda 1 fecha por
+        // cumplir) pero no se paga de nuevo.
+        const sancionHtml = p.items.map(i => {
+          const pagable = (i.acciones || []).find(a => String(a.accion).startsWith('pago'));
+          const pend = _pagoSancionDe(p.dni, i.tipo, i.ciclo);
+          const rech = !pend && _rechazoSancionDe(p.dni, i.tipo, i.ciclo);
+          let pie = '';
+          if (pagable && pend) {
+            pie = `<div class="pe-carnet-sancion pagada">⏳ Pago enviado — ${fmtPesos(pend.montoDeclarado)}<br><span style="font-size:10px;">Esperando que la organización lo apruebe.</span></div>`;
+          } else if (pagable) {
+            const aviso = rech
+              ? `<div class="pe-carnet-sancion">✕ Pago rechazado<br><span style="font-size:10px;">${escapeHtml(rech.motivoRechazo || 'Volvé a cargarlo.')}</span></div>`
+              : '';
+            pie = `${aviso}<button class="btn btn-sm pe-carnet-comp-btn btn-primary" onclick="abrirModalPagarSancion('${escapeHtml(p.dni)}','${i.tipo}',${i.ciclo || 1},${i.monto})">💳 Pagar ${fmtPesos(i.monto)}</button>`;
+          }
+          return `<div class="pe-carnet-sancion">${i.label}<br><span style="font-size:10px;">${i.desc}</span></div>${pie}`;
+        }).join('');
 
+        // Comprobante del circuito anterior (subida suelta, sin monto ni aprobación).
+        // Se muestra sólo como referencia; el pago se hace con el botón de arriba.
         const compBtn = comp
-          ? `<label class="btn btn-sm pe-carnet-comp-btn" style="cursor:pointer;background:rgba(74,222,128,.15);color:var(--ok);border-color:rgba(74,222,128,.3);">
-               ✅ Reemplazar comprobante<input type="file" accept="image/*" class="hidden" onchange="subirComprobanteSancion('${p.dni}',this)">
-             </label>`
-          : `<label class="btn btn-sm pe-carnet-comp-btn btn-primary" style="cursor:pointer;">
-               📎 Subir comprobante<input type="file" accept="image/*" class="hidden" onchange="subirComprobanteSancion('${p.dni}',this)">
-             </label>`;
+          ? `<div class="pe-carnet-dato" style="margin-top:5px;font-size:10px;color:var(--text-dim);">📄 Tenés un comprobante viejo cargado (${new Date(comp.fecha).toLocaleDateString('es-AR')})</div>`
+          : '';
 
         return `<div class="pe-carnet">
           <div class="pe-carnet-foto-wrap">
@@ -3994,6 +4242,19 @@ async function renderSancionesEquipo() {
         <div style="font-weight:700;font-size:15px;margin-bottom:4px;">Sin tarjetas registradas</div>
         <div>Ningún jugador tiene amarillas ni sanciones.</div>
       </div>`;
+    }
+
+    // ── Historial de pagos de sanciones ──
+    if (_pagosSancionEquipo.length > 0) {
+      const badge = { pagado: '<span class="badge badge-warn">Pendiente</span>', aprobado: '<span class="badge badge-ok">Aprobado</span>', rechazado: '<span class="badge badge-danger">Rechazado</span>' };
+      const ordenados = _pagosSancionEquipo.slice().sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+      html += `<div class="glass section-card" style="margin-top:12px;"><h3>💳 Pagos de sanciones</h3>${ordenados.map(pg => `
+        <div class="list-row" style="align-items:center;">
+          ${pg.comprobante ? `<img src="${pg.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrandeEquipo('${pg.comprobante}')">` : ''}
+          <div style="flex:1;min-width:0;"><strong>${escapeHtml(pg.jugadorNombre || pg.dni)}</strong> · ${fmtPesos(pg.montoDeclarado)}
+            <div class="muted" style="font-size:12px;">${escapeHtml(pg.nombreTransferencia || '')} · ${pg.creadoEn ? new Date(pg.creadoEn).toLocaleDateString('es-AR') : ''}${pg.estado === 'rechazado' && pg.motivoRechazo ? ' · ' + escapeHtml(pg.motivoRechazo) : ''}</div></div>
+          ${badge[pg.estado] || ''}
+        </div>`).join('')}</div>`;
     }
 
     wrap.innerHTML = html;
@@ -4253,20 +4514,11 @@ async function adminBorrarFotoJugador(equipoId, dni) {
   } catch (e) { console.error(e); showToast('No se pudo eliminar la foto.', 'error'); }
 }
 
-async function subirComprobanteSancion(dni, input) {
-  const file = input.files[0];
-  if (!file) return;
-  try {
-    showToast('Subiendo comprobante...', 'info');
-    const dataUrl = await resizeImageFile(file, 1200, 1600);
-    const comps = state.equipo.sancionesComprobantes || {};
-    comps[dni] = { url: dataUrl, fecha: new Date().toISOString() };
-    await db.collection('equipos').doc(state.equipoId).update({ sancionesComprobantes: comps });
-    state.equipo.sancionesComprobantes = comps;
-    showToast('Comprobante enviado. El admin lo revisará pronto.', 'ok');
-    renderSancionesEquipo();
-  } catch(e) { console.error(e); showToast('No se pudo subir el comprobante.', 'error'); }
-}
+// subirComprobanteSancion() vivía acá: subía una imagen suelta al mapa
+// equipos/{id}.sancionesComprobantes, uno por DNI (se pisaba al resubir) y sin monto, sin
+// quién transfirió, sin aprobación y sin saber a qué sanción correspondía. Lo reemplazó el
+// circuito de la colección `pagosSanciones` (ver "PAGO DE SANCIONES"). El mapa viejo se
+// sigue LEYENDO para no perder lo ya cargado, pero ya no se escribe.
 
 function renderCarnetTab() {
   const wrap = document.getElementById('pe-carnet-content');

@@ -2,6 +2,27 @@
 
 > Se actualiza cada sesión para no depender de la memoria del chat.
 
+## ✅ Sesión 2026-08-21 — que los equipos puedan PAGAR las sanciones (sw v44)
+
+- **Pedido**: *"necesito habilitar para que paguen las sanciones"*. Alcance elegido por el usuario de tres opciones: **circuito completo tipo arancel** (no solo mostrar el alias, y no pago online con MercadoPago — eso obligaría a tocar `functions/`).
+- **Qué había antes**: en el panel del equipo → 🟥 Sanciones, un único botón "📎 Subir comprobante" (`subirComprobanteSancion`). Sin alias a la vista (el `aliasBox` estaba solo en la solapa Pagos), sin monto, sin quién transfirió, sin historial y **sin saber a qué sanción correspondía**. Del lado admin, "📄 Ver comprobante" y el registro del pago a mano en "Gestionar".
+- **Colección nueva `pagosSanciones`** (mismo contrato que `aranceles`): `equipoId`, `dni`, `tipo`, `ciclo`, `montoEsperado`, `montoDeclarado`, `nombreTransferencia`, `fechaElegida` (solo roja), `comprobante`, `estado` (`pagado`/`aprobado`/`rechazado`), `motivoRechazo`.
+- **Por qué colección aparte y no un campo más en `equipos/{id}`**: el comprobante es un data URL de ~300KB y el documento del equipo tiene el límite de **1MB de Firestore** — es el mismo problema que ya se había resuelto sacando las fotos de carnet a la subcolección `equipos/{id}/fotos/{dni}`.
+- **Equipo**: alias + total sin pagar arriba de los carnets, y un botón **💳 Pagar $X por sanción** (no uno por jugador). El modal pide comprobante + monto + nombre, y **en la roja el equipo elige si cumple la próxima o la siguiente fecha**. Estado visible por sanción (⏳ pendiente / ✕ rechazado con el motivo) e historial de pagos abajo.
+- **Admin** (división → Sanciones): bandeja arriba de todo con los pagos sin revisar, botón Revisar por jugador, y modal que muestra el comprobante, **avisa si el monto declarado no coincide** con el que corresponde, y permite Aprobar o Rechazar (**el rechazo exige motivo** y el equipo lo ve). El botón "Gestionar" de siempre queda intacto para los pagos en efectivo en la cancha.
+- **Decisión de diseño**: subir el comprobante **NO** habilita al jugador. La suspensión se levanta recién al aprobar, porque aprobar es lo único que escribe en `equipos.sancionesPagadas`, que es lo que lee `getEstadoSanciones`. La lógica de habilitado/suspendido no se tocó.
+- **BUG ARREGLADO — el jugador con 6 amarillas quedaba sancionado para siempre**: `getEstadoSanciones` cuenta *cuántas* entradas hay en `sancionesPagadas` para saber cuántas tandas de 3 están saldadas, pero `registrarAccionSancion` hacía `.filter(p => !(p.dni === dni && p.tipo === tipo))` antes de push — o sea que el segundo pago **borraba el primero** y siempre quedaba una tanda impaga. Ahora `amarillas` acumula (cada tanda es un `ciclo` propio) y `roja`/`doble` siguen reemplazando, que es lo correcto porque solo puede haber una viva.
+- **BUG ARREGLADO — comprobantes que se pisaban**: el mapa viejo `sancionesComprobantes` estaba indexado solo por DNI, así que resubir pisaba el anterior y un jugador con roja **y** acumulación de amarillas no podía cargar los dos. Se sigue **leyendo** (aparece como "Comprobante viejo") pero ya no se escribe; `subirComprobanteSancion()` se eliminó y quedó un comentario en su lugar explicando por qué.
+- **`firestore.rules`**: `match /pagosSanciones/{id}` — el equipo crea el suyo en estado `pagado` y solo lee los propios; `update`/`delete` solo admin. **Sin desplegar las reglas la función no anda**: Firestore rechaza por defecto cualquier escritura a una colección sin regla.
+- **Verificación**: sintaxis del `<script>` inline con `new Function()`, y simulación en Node del motor de sanciones con las funciones reales extraídas de `index.html` — 22 casos en verde: ciclos de amarillas (3/6/9), roja + amarillas simultáneas, roja que tras pagar no se vuelve a cobrar, doble clic en Aprobar sin duplicar, y **compatibilidad con las entradas viejas que no tienen campo `ciclo`**.
+- **Sin probar en el navegador**: el circuito completo equipo → admin no se ejecutó contra Firestore real. Falta confirmar en vivo el primer pago de punta a punta.
+- En el mismo push va el trabajo del planillero del 19/08 que había quedado sin commitear (sw v43, ver abajo).
+
+## ✅ Sesión 2026-08-19 — el planillero puede abrir cualquier partido de su cancha (sw v43)
+
+- Se sacó el bloqueo de "🔒 Se habilita al cerrar el anterior" en la lista de partidos del planillero: solo se podía abrir el primer partido no cerrado de la cancha, y eso trababa entrar al próximo para ir cargando la alineación mientras el anterior seguía jugándose — justo lo que hace falta para no perder tiempo entre partido y partido. Ahora se puede abrir cualquiera; si ya hay uno en curso se avisa (sin bloquear) que lo cargado queda guardado y se puede retomar. Los partidos cerrados siguen sin poder abrirse.
+- Quedó sin commitear en la PC de la ATP hasta el 21/08.
+
 ## ✅ Sesión 2026-08-18 (cont. 2) — los 3 problemas de la fecha del sábado (sw v41)
 
 ### 🔴 BUG GRAVE: "FIN DEL PARTIDO" no hacía nada y había que reiniciar la app

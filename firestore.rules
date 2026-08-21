@@ -94,6 +94,15 @@ service cloud.firestore {
       allow create: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && request.resource.data.equipoId == request.auth.token.equipoId && request.resource.data.estado == 'pagado');
       allow update, delete: if isAdmin();
     }
+    // Pago de una sanción de un jugador (roja, doble amarilla, acumulación de amarillas).
+    // Mismo criterio que aranceles: el equipo crea el suyo en estado 'pagado' y sólo ve los
+    // propios; nunca puede ponerse 'aprobado' solo. Aprobar es lo que levanta la suspensión
+    // (escribe en equipos/{id}.sancionesPagadas), así que queda sólo del lado del admin.
+    match /pagosSanciones/{id} {
+      allow read: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && resource.data.equipoId == request.auth.token.equipoId);
+      allow create: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && request.resource.data.equipoId == request.auth.token.equipoId && request.resource.data.estado == 'pagado');
+      allow update, delete: if isAdmin();
+    }
     match /avisos/{id} {
       allow read, write: if autenticado();
     }

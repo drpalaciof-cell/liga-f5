@@ -192,7 +192,24 @@
 // sanciones) pasan por getRapido(): corren contra un reloj de 3,5s y si el
 // servidor no contesta resuelven con el caché local, avisando al planillero que
 // está viendo datos guardados.
-const CACHE = 'ligaf5-v42';
+// v43: se saca el bloqueo de "🔒 Se habilita al cerrar el anterior" en la lista
+// de partidos del planillero. Solo se podía abrir el primer partido no cerrado
+// de la cancha, y eso trababa entrar al próximo para ir cargando la alineación
+// mientras el anterior seguía jugándose -- que es justo lo que hace falta para
+// no perder tiempo entre partido y partido. Ahora se puede abrir cualquiera; si
+// ya hay uno en curso se avisa (sin bloquear) que lo cargado queda guardado y
+// se puede retomar. Los partidos cerrados siguen sin poder abrirse.
+// v44: el equipo ya puede PAGAR las sanciones desde su panel, igual que el
+// arancel semanal. Antes en la solapa Sanciones sólo había un "subir
+// comprobante" suelto: sin alias a la vista, sin monto, sin quién transfirió y
+// sin saber a qué sanción correspondía -- y como se guardaba uno por DNI dentro
+// del documento del equipo, resubir pisaba el anterior y un jugador con roja Y
+// acumulación de amarillas no podía cargar los dos. Ahora hay colección
+// `pagosSanciones` (comprobante + monto + nombre + qué sanción, y para la roja
+// qué fecha cumple), el admin aprueba o rechaza con motivo desde su panel, y la
+// suspensión se levanta recién al aprobar. De paso: con 6 amarillas el segundo
+// pago pisaba al primero y el jugador quedaba sancionado para siempre.
+const CACHE = 'ligaf5-v44';
 const ASSETS = [
   './index.html',
   './planilla.html',
