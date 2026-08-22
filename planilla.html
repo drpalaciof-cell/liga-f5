@@ -734,7 +734,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v60</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v61</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -898,8 +898,9 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <span class="ph-div-nombre" id="ph-division-nombre"></span>
       </div>
       <span class="ph-periodo" id="ph-periodo">1° TIEMPO</span>
-      <span id="ph-crono" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:17px;color:var(--orange);letter-spacing:.5px;"></span>
+      <span id="ph-crono" onclick="abrirModalCorregirCrono()" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:17px;color:var(--orange);letter-spacing:.5px;cursor:pointer;text-decoration:underline dotted;" title="Tocar para corregir el tiempo"></span>
     </div>
+    <button class="topbar-back" onclick="abrirModalArbitros()" title="Árbitros">🧑‍⚖️</button>
   </div>
 
   <!-- COLUMNAS: control de equipo + lista de jugadores -->
@@ -1087,6 +1088,53 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
     <div id="mag-lista" class="modal-body" style="max-height:55vh;"></div>
     <div style="padding:8px 10px 4px;">
       <button class="btn btn-ghost btn-sm" style="width:100%;" onclick="cerrarModal('modal-agregar-jug')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal árbitros -- si los dos equipos ya vienen con la planilla cargada desde su panel, el
+     partido entra directo a jugar y arbitros-section (que solo se ve durante la carga manual
+     de la alineación local) nunca aparece, así que no quedaba forma de anotarlos. -->
+<div class="modal-overlay" id="modal-arbitros" onclick="if(event.target===this)cerrarModal('modal-arbitros')">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h3>Árbitros del partido</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-arbitros')">✕</button>
+    </div>
+    <div style="padding:0 10px;">
+      <div class="arb-row">
+        <label class="arb-label">Principal</label>
+        <input class="planillero-inp" id="marb1-input" type="text" autocomplete="off" placeholder="Nombre del árbitro principal" style="height:48px;">
+      </div>
+      <div class="arb-row" style="margin-top:8px;">
+        <label class="arb-label">Asistente</label>
+        <input class="planillero-inp" id="marb2-input" type="text" autocomplete="off" placeholder="Nombre del árbitro asistente" style="height:48px;">
+      </div>
+    </div>
+    <div style="padding:14px 10px 4px;">
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="guardarArbitrosModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal corregir cronómetro -- el cronómetro arranca desde horaArranque/horaInicio2T, que
+     hoy (22/08) quedó mal por el incidente: se guardó recién cuando el guardado finalmente
+     funcionó, no en el pitazo real, así que quedó atrasado respecto al partido real. -->
+<div class="modal-overlay" id="modal-crono" onclick="if(event.target===this)cerrarModal('modal-crono')">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h3>Corregir minuto de juego</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-crono')">✕</button>
+    </div>
+    <div style="padding:0 10px;">
+      <div class="arb-row">
+        <label class="arb-label">¿Cuántos minutos van jugados de verdad, ahora mismo?</label>
+        <input class="planillero-inp" id="crono-min-input" type="number" inputmode="numeric" min="0" max="90" placeholder="Ej: 17" style="height:52px;font-size:20px;text-align:center;">
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:6px;">Ajusta el arranque de este tiempo hacia atrás o adelante para que el cronómetro quede en ese minuto justo ahora.</p>
+    </div>
+    <div style="padding:14px 10px 4px;">
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="guardarCorreccionCrono()">Guardar</button>
     </div>
   </div>
 </div>
@@ -2535,6 +2583,54 @@ function cerrarPlanilla(){
 function abrirModal(id){document.getElementById(id).classList.add('open');}
 function cerrarModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+
+// Único lugar para cargar árbitros cuando el partido entra directo a jugar (los dos equipos
+// ya venían con la alineación cargada desde su panel) -- mismo default por cancha que ya
+// usaba arbitros-section durante la carga manual.
+function abrirModalArbitros(){
+  const p=st.partido||{};
+  const arbCancha=_avisosData||{};
+  document.getElementById('marb1-input').value=p.arbitro1||arbCancha.arbitro1||'';
+  document.getElementById('marb2-input').value=p.arbitro2||arbCancha.arbitro2||'';
+  abrirModal('modal-arbitros');
+}
+function guardarArbitrosModal(){
+  const arbitro1=(document.getElementById('marb1-input').value||'').trim();
+  const arbitro2=(document.getElementById('marb2-input').value||'').trim();
+  st.partido.arbitro1=arbitro1;st.partido.arbitro2=arbitro2;
+  cerrarModal('modal-arbitros');
+  toast('Árbitros guardados ✓');
+  db.collection('partidos').doc(st.partidoId).update({arbitro1,arbitro2}).catch(e=>{console.error('guardarArbitros:',e);if(navigator.onLine)toast('⚠ No se guardaron los árbitros ('+(e.code||e.message||e)+')',6000);});
+  if(st.cancha&&(arbitro1||arbitro2)){db.collection('avisosPlanilla').doc(String(st.cancha)).set({arbitro1,arbitro2},{merge:true}).catch(()=>{});}
+}
+
+// Corrige el arranque de ESTE tiempo (horaArranque en 1er tiempo, horaInicio2T en el 2°) para
+// que el cronómetro quede en el minuto que el planillero indique, YA -- necesario el 22/08
+// porque varios partidos quedaron con horaArranque marcada muy tarde (recién cuando el
+// guardado, que estaba roto, volvió a andar), no en el pitazo real.
+function abrirModalCorregirCrono(){
+  const el=document.getElementById('ph-crono');
+  const actual=el&&el.textContent?parseInt(el.textContent,10):0;
+  document.getElementById('crono-min-input').value=isNaN(actual)?'':actual;
+  abrirModal('modal-crono');
+  setTimeout(()=>document.getElementById('crono-min-input').select(),150);
+}
+function guardarCorreccionCrono(){
+  const min=parseInt(document.getElementById('crono-min-input').value,10);
+  if(isNaN(min)||min<0){toast('Ingresá un número de minutos válido.',3000);return;}
+  const p=st.partido;
+  const fase=faseCrono(p);
+  let campo=null;
+  if(fase==='segundo_tiempo')campo='horaInicio2T';else if(fase==='primer_tiempo')campo='horaArranque';
+  if(!campo){toast('El partido no está en juego ahora mismo.',3000);return;}
+  const pausaAcum=(fase==='segundo_tiempo'?p.pausaAcumulada2T:p.pausaAcumulada1T)||0;
+  const nuevaHoraDesde=new Date(Date.now()-pausaAcum-min*60000).toISOString();
+  st.partido[campo]=nuevaHoraDesde;
+  cerrarModal('modal-crono');
+  actualizarCronoPartido();
+  toast('⏱ Cronómetro corregido a '+min+"'",2500);
+  db.collection('partidos').doc(st.partidoId).update({[campo]:nuevaHoraDesde}).catch(e=>{console.error('corregirCrono:',e);if(navigator.onLine)toast('⚠ No se guardó la corrección ('+(e.code||e.message||e)+')',6000);});
+}
 
 // iOS Safari no soporta overscroll-behavior — este fix evita el rubber-band
 // manteniendo el scroll siempre 1px alejado de los límites absolutos

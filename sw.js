@@ -331,7 +331,11 @@
 // en vivo a un partido en curso desde otro dispositivo, si ese segundo fetch se quedaba
 // corto de tiempo). Y getRapido() sube su limite de 3,5s a 7s -- corto de mas en una cancha
 // real con muchos dispositivos, hacia caer a caches viejas de mas.
-const CACHE = 'ligaf5-v60';
+// v61: se re-agrega el boton de Arbitros (se habia perdido en el revert de emergencia) y
+// se agrega "tocar el cronometro para corregirlo" -- necesario porque horaArranque/
+// horaInicio2T de varios partidos de hoy quedaron mal (se guardaron recien cuando el
+// guardado, roto por el bug de firestore.rules, volvio a andar -- no en el pitazo real).
+const CACHE = 'ligaf5-v61';
 const ASSETS = [
   './index.html',
   './planilla.html',
