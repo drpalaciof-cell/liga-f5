@@ -734,7 +734,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v59</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v60</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -1160,8 +1160,15 @@ db.enablePersistence({synchronizeTabs:false}).catch(()=>{});
 
    Esto corre la lectura contra un reloj: si el servidor no contesta en unos
    segundos, se resuelve con lo que haya en el caché local (que la app ya venía
-   guardando). Con buena señal no cambia nada. */
-async function getRapido(ref, ms=3500){
+   guardando). Con buena señal no cambia nada.
+
+   3,5s -- el límite original -- resultó corto en una cancha real con muchos
+   dispositivos compitiendo por la misma señal (22/08): cortaba a la lectura
+   ANTES de que llegara la respuesta real y caía a una copia vieja en caché,
+   mandando por ejemplo a rearmar la alineación de un partido que ya estaba en
+   curso en otro dispositivo. Subido a 7s -- sigue acotado (nunca cuelga), pero
+   le da más chance real a la lectura antes de rendirse. */
+async function getRapido(ref, ms=7000){
   try{
     return await Promise.race([
       ref.get(),
@@ -1445,17 +1452,16 @@ async function abrirPartido(id,cardEl){
   if(st.unsub){st.unsub();st.unsub=null;} // por si quedó una escucha viva de un partido anterior
   if(cardEl){cardEl.style.opacity='0.5';cardEl.style.pointerEvents='none';}
   try{
-    // Antes usaba _pCache tal cual (la foto tomada al entrar a "Ver partidos") sin volver a
-    // consultar. Si un equipo cargaba su alineación DESPUÉS de esa foto -- el caso normal: la
-    // idea es que la carguen con anticipación, antes de que el planillero llegue a la cancha --
-    // el planillero abría el partido con la copia vieja sin alineación y quedaba preguntando
-    // "¿quién arranca?" en vez de ir directo a jugar (bug preexistente, confirmado en
-    // producción el 22/08 con capturas reales). Ahora relee fresco (mismo límite de 3,5s de
-    // getRapido: no se cuelga con mala señal, y sin señal cae al mismo caché que antes).
-    const doc=await getRapido(db.collection('partidos').doc(id));
-    if(!doc.exists){toast('Partido no encontrado.');return;}
-    const data={id:doc.id,...doc.data()};
-    _pCache[id]=data;
+    // REVERTIDO el 22/08: se había cambiado esto a releer siempre fresco (para el caso del
+    // equipo cargando la alineación por adelantado), pero eso agregaba un SEGUNDO fetch con
+    // su propio límite de 3,5s cada vez que se abre un partido -- y en un partido YA EN
+    // CURSO, si ese fetch puntual se quedaba corto de tiempo (señal congestionada, muchos
+    // dispositivos en la cancha), caía al caché y en el peor caso mandaba de nuevo a armar la
+    // alineación de un partido que ya se estaba jugando en otro dispositivo. Eso rompía algo
+    // que sí andaba bien (entrar en vivo a un partido en curso desde cualquier dispositivo).
+    // Se vuelve a usar _pCache tal cual, sin el segundo fetch.
+    let data=_pCache[id];
+    if(!data){const doc=await getRapido(db.collection('partidos').doc(id));if(!doc.exists){toast('Partido no encontrado.');return;}data={id:doc.id,...doc.data()};_pCache[id]=data;}
     st.partido=data;st.partidoId=id;
     st.alineacionLocal=st.partido.alineacionLocal||[];
     st.alineacionVisitante=st.partido.alineacionVisitante||[];

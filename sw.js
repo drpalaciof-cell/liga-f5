@@ -327,7 +327,11 @@
 // v59: el error de "no se guardo la alineacion" ahora muestra el codigo real de Firestore
 // (permission-denied / unavailable / etc.) en vez de un mensaje generico -- para diagnosticar
 // de una vez si sigue pasando despues del fix de sesion de v58.
-const CACHE = 'ligaf5-v59';
+// v60: revert del fetch extra en abrirPartido() de v55 (rompia algo que andaba bien: entrar
+// en vivo a un partido en curso desde otro dispositivo, si ese segundo fetch se quedaba
+// corto de tiempo). Y getRapido() sube su limite de 3,5s a 7s -- corto de mas en una cancha
+// real con muchos dispositivos, hacia caer a caches viejas de mas.
+const CACHE = 'ligaf5-v60';
 const ASSETS = [
   './index.html',
   './planilla.html',
