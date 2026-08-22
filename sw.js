@@ -335,7 +335,10 @@
 // se agrega "tocar el cronometro para corregirlo" -- necesario porque horaArranque/
 // horaInicio2T de varios partidos de hoy quedaron mal (se guardaron recien cuando el
 // guardado, roto por el bug de firestore.rules, volvio a andar -- no en el pitazo real).
-const CACHE = 'ligaf5-v61';
+// v62: boton ✕ en cada jugador de la planilla en vivo para sacarlo de la cancha (cambio del
+// tecnico, no expulsion) -- los goles/tarjetas que ya tenga cargados quedan en la planilla
+// igual, viven en `eventos` separado de la alineacion.
+const CACHE = 'ligaf5-v62';
 const ASSETS = [
   './index.html',
   './planilla.html',

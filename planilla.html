@@ -501,6 +501,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .prow-mdni{font-size:9px;color:rgba(255,255,255,0.3);font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .prow-cap{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:16px;height:16px;font-size:9px;font-weight:900;background:var(--cyan);color:#000;border-radius:4px;letter-spacing:.2px;}
 .prow-mev{font-size:11px;flex-shrink:0;line-height:1;letter-spacing:-1px;}
+.prow-mout{flex-shrink:0;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:rgba(255,61,61,.12);color:var(--red);font-size:12px;cursor:pointer;}
 
 /* ── PARTIDO FOOTER ── */
 .partido-footer{
@@ -734,7 +735,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v61</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v62</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -1892,7 +1893,7 @@ function renderColumnaPartido(alin,evMap,capitanDni,equipo){
     for(let i=0;i<(ev.ta||0);i++)icons+='🟨';
     if(ev.td)icons+='🟧';
     if(ev.tr)icons+='🟥';
-    return`<div class="prow-m${hasEv?' has-ev':''}${expulsado?' expulsado':''}"><span class="prow-mnum" style="cursor:pointer;text-decoration:underline dotted;" onclick="editarNumeroJugador('${escJs(equipo)}','${escJs(j.dni)}')" title="Tocá para corregir el número">${j.numero||'—'}</span><div class="prow-minfo"><div class="prow-mname">${esc(j.nombre)}</div><div class="prow-mdni">${fmtDni(j.dni)}</div></div>${esCap?'<span class="prow-cap">C</span>':''}${icons?`<span class="prow-mev">${icons}</span>`:''}</div>`;
+    return`<div class="prow-m${hasEv?' has-ev':''}${expulsado?' expulsado':''}"><span class="prow-mnum" style="cursor:pointer;text-decoration:underline dotted;" onclick="editarNumeroJugador('${escJs(equipo)}','${escJs(j.dni)}')" title="Tocá para corregir el número">${j.numero||'—'}</span><div class="prow-minfo"><div class="prow-mname">${esc(j.nombre)}</div><div class="prow-mdni">${fmtDni(j.dni)}</div></div>${esCap?'<span class="prow-cap">C</span>':''}${icons?`<span class="prow-mev">${icons}</span>`:''}<span class="prow-mout" onclick="quitarJugadorPartido('${escJs(equipo)}','${escJs(j.dni)}')" title="Sacar de la cancha">✕</span></div>`;
   }).join('');
 }
 // Corregir el número de camiseta de un jugador YA confirmado en la alineación -- antes solo se
@@ -1917,6 +1918,29 @@ function editarNumeroJugador(equipo,dni){
   toast('✓ Número actualizado');
   db.collection('partidos').doc(st.partidoId).update({[campo]:alin})
     .catch(e=>{ console.error('editarNumeroJugador:',e); if(navigator.onLine)toast('⚠ No se guardó — reintentá con señal.',6000); });
+}
+
+// Sacar a un jugador de la cancha en pleno partido (cambio del técnico, no expulsión -- para
+// eso ya está la tarjeta roja). Los goles/tarjetas que ya tenga cargados NO se tocan (viven en
+// `eventos`, separado de la alineación): quedan en la planilla igual que en la vida real.
+function quitarJugadorPartido(equipo,dni){
+  const alin=equipo==='local'?st.alineacionLocal:st.alineacionVisitante;
+  const j=alin.find(x=>x.dni===dni);
+  if(!j)return;
+  if(!confirm('¿Sacar a '+(j.nombre||dni)+' de la cancha?\n\nLos goles/tarjetas que ya tenga cargados quedan igual en la planilla.'))return;
+  const nuevaAlin=alin.filter(x=>x.dni!==dni);
+  if(equipo==='local')st.alineacionLocal=nuevaAlin;else st.alineacionVisitante=nuevaAlin;
+  st.partido[equipo==='local'?'alineacionLocal':'alineacionVisitante']=nuevaAlin;
+  const capCampo=equipo==='local'?'capitanLocalDni':'capitanVisitanteDni';
+  const eraCapitan=st.partido[capCampo]===dni;
+  if(eraCapitan)st.partido[capCampo]='';
+  renderListasPartido();
+  toast('✓ '+(j.nombre||dni)+' sacado de la cancha'+(eraCapitan?' — quedó sin capitán, elegí uno nuevo':''),eraCapitan?5000:2500);
+  const campo=equipo==='local'?'alineacionLocal':'alineacionVisitante';
+  const updates={[campo]:nuevaAlin};
+  if(eraCapitan)updates[capCampo]='';
+  db.collection('partidos').doc(st.partidoId).update(updates)
+    .catch(e=>{ console.error('quitarJugadorPartido:',e); if(navigator.onLine)toast('⚠ No se guardó — reintentá con señal.',6000); });
 }
 
 function actualizarEscudos(){
