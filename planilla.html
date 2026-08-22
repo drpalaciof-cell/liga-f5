@@ -1524,11 +1524,10 @@ function refrescarPartidoEnSegundoPlano(id){
 async function iniciarAlineacion(){
   const localOk=st.alineacionLocal.length>0;
   const visitanteOk=st.alineacionVisitante.length>0;
-  // Antes esto siempre arrancaba por el equipo local -- a pedido del usuario, si ninguno de los
-  // dos equipos cargó todavía, se le pregunta al planillero con cuál arrancar (a veces un
-  // equipo está listo con su lista y capitán antes que el otro, y no tiene sentido hacerlo
-  // esperar al que todavía no llegó).
-  if(!localOk&&!visitanteOk){elegirEquipoPrimero();return;}
+  // A pedido explícito del usuario (22/08): se saca la pantalla "¿Quién arranca?" -- si
+  // los dos equipos ya cargaron desde su panel, esto ya va derecho a irAPartido() (rama de
+  // abajo); esta rama solo entra cuando falta cargar al menos uno a mano, y en ese caso
+  // arranca directo por el local en vez de preguntar con cuál seguir primero.
   if(!localOk){await mostrarAlineacion('local');}
   else if(!visitanteOk){await mostrarAlineacion('visitante');}
   else{irAPartido();}

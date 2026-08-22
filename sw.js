@@ -311,7 +311,10 @@
 // DESPUES de esa foto (el caso normal, se supone que la cargan con anticipacion), el
 // planillero abria el partido con la copia vieja sin alineacion. Ahora relee fresco (mismo
 // limite de 3,5s de getRapido).
-const CACHE = 'ligaf5-v55';
+// v56: a pedido explicito del usuario, se saca la pantalla "¿Quien arranca?" -- cuando
+// ninguno de los dos equipos cargo alineacion todavia, ahora arranca directo por el local
+// en vez de preguntar con cual seguir primero.
+const CACHE = 'ligaf5-v56';
 const ASSETS = [
   './index.html',
   './planilla.html',
