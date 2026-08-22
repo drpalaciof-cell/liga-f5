@@ -324,7 +324,10 @@
 // guardado -- aparecia como "no se guardo, reintenta con senal" sin ser un problema de
 // senal, y pasaba SIEMPRE en ese dispositivo. Ahora se fuerza signOut() antes de entrar si
 // hay una sesion no-anonima.
-const CACHE = 'ligaf5-v58';
+// v59: el error de "no se guardo la alineacion" ahora muestra el codigo real de Firestore
+// (permission-denied / unavailable / etc.) en vez de un mensaje generico -- para diagnosticar
+// de una vez si sigue pasando despues del fix de sesion de v58.
+const CACHE = 'ligaf5-v59';
 const ASSETS = [
   './index.html',
   './planilla.html',
