@@ -4,11 +4,19 @@ service cloud.firestore {
     function autenticado() {
       return request.auth != null;
     }
+    // OJO (bug real encontrado en producción el 22/08, probado directo contra la base):
+    // `request.auth.token.role` con punto revienta la evaluación de la regla cuando la
+    // sesión no tiene NINGÚN custom claim -- que es EXACTAMENTE el caso del planillero
+    // (entra con signInAnonymously(), sin claims). Eso tira abajo toda la cadena `||` que
+    // depende de esto, y el planillero quedaba SIN PODER GUARDAR NADA (goles, tarjetas,
+    // cerrar planilla) desde que se agregó este patrón -- confirmado con una escritura de
+    // prueba real, anónima, contra la base. `.get('role','')` es seguro con ausencia total
+    // de claims, igual que ya se usaba en resource.data.get('estado','') más abajo.
     function isAdmin() {
-      return autenticado() && request.auth.token.role == 'admin';
+      return autenticado() && request.auth.token.get('role','') == 'admin';
     }
     function isEquipoPropio(id) {
-      return autenticado() && request.auth.token.role == 'equipo' && request.auth.token.equipoId == id;
+      return autenticado() && request.auth.token.get('role','') == 'equipo' && request.auth.token.get('equipoId','') == id;
     }
     // Campos que solo las acciones de admin pueden tocar (aprobar/rechazar
     // pago o seguro, habilitación tardía). Un equipo puede seguir editando su
@@ -82,8 +90,9 @@ service cloud.firestore {
     // partido, incluida la del rival.
     function equipoTocaSuAlineacion() {
       let tocados = request.resource.data.diff(resource.data).affectedKeys();
-      let esLocal = request.auth.token.equipoId == resource.data.equipoLocalId;
-      let esVisitante = request.auth.token.equipoId == resource.data.equipoVisitanteId;
+      let miEquipoId = request.auth.token.get('equipoId','');
+      let esLocal = miEquipoId == resource.data.equipoLocalId;
+      let esVisitante = miEquipoId == resource.data.equipoVisitanteId;
       return (esLocal || esVisitante) && tocados.hasOnly(
         esLocal ? ['alineacionLocal', 'capitanLocalDni'] : ['alineacionVisitante', 'capitanVisitanteDni']
       );
@@ -95,7 +104,7 @@ service cloud.firestore {
       // planillero ni un equipo pueden modificarla. Solo el admin puede
       // corregir un error después, desde "Editar resultado".
       allow update: if isAdmin() || (autenticado() && resource.data.get('estado','') != 'cerrado'
-        && (request.auth.token.role == 'equipo' ? equipoTocaSuAlineacion() : soloCamposPlanilla()));
+        && (request.auth.token.get('role','') == 'equipo' ? equipoTocaSuAlineacion() : soloCamposPlanilla()));
       allow delete: if isAdmin();
     }
     // Pagos semanales de arancel. Un equipo carga el suyo (estado 'pagado' al
@@ -103,8 +112,8 @@ service cloud.firestore {
     // propios (filtrados por equipoId); el admin ve y gestiona todos, incluido
     // rechazar un comprobante mal cargado.
     match /aranceles/{id} {
-      allow read: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && resource.data.equipoId == request.auth.token.equipoId);
-      allow create: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && request.resource.data.equipoId == request.auth.token.equipoId && request.resource.data.estado == 'pagado');
+      allow read: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && resource.data.equipoId == request.auth.token.get('equipoId',''));
+      allow create: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && request.resource.data.equipoId == request.auth.token.get('equipoId','') && request.resource.data.estado == 'pagado');
       allow update, delete: if isAdmin();
     }
     // Pago de una sanción de un jugador (roja, doble amarilla, acumulación de amarillas).
@@ -112,8 +121,8 @@ service cloud.firestore {
     // propios; nunca puede ponerse 'aprobado' solo. Aprobar es lo que levanta la suspensión
     // (escribe en equipos/{id}.sancionesPagadas), así que queda sólo del lado del admin.
     match /pagosSanciones/{id} {
-      allow read: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && resource.data.equipoId == request.auth.token.equipoId);
-      allow create: if isAdmin() || (autenticado() && request.auth.token.role == 'equipo' && request.resource.data.equipoId == request.auth.token.equipoId && request.resource.data.estado == 'pagado');
+      allow read: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && resource.data.equipoId == request.auth.token.get('equipoId',''));
+      allow create: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && request.resource.data.equipoId == request.auth.token.get('equipoId','') && request.resource.data.estado == 'pagado');
       allow update, delete: if isAdmin();
     }
     match /avisos/{id} {
