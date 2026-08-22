@@ -305,21 +305,7 @@
 //     suspensiones se aplican a la SIGUIENTE; lo unico que cambia el mismo dia
 //     (sancionesPagadas) vive en el documento del equipo, que si se refresca.
 // Ademas cerrarFechaPlanillero() ya no espera el ack del servidor.
-// v55: fix urgente en produccion (22/08) -- abrirPartido() usaba la foto de _pCache
-// (tomada al entrar a "Ver partidos") tal cual para decidir si mostrar "quien arranca"
-// o ir directo al partido. Si el equipo cargaba su alineacion DESPUES de esa foto -- el
-// caso normal, se supone que la cargan con anticipacion -- el planillero abria el
-// partido con la copia vieja sin alineacion. Ahora relee fresco (mismo limite de 3,5s
-// de getRapido) antes de decidir. De paso, la regla de Firestore de partidos tambien
-// tenia un bug (exigia el string literal 'pendiente' pero un partido recien creado por
-// el fixture nunca tiene ese campo seteado) que bloqueaba directamente el guardado de
-// la alineacion del equipo -- corregido aparte en firestore.rules.
-// v56: boton "🧑‍⚖️ Árbitros" en el header de screen-partido, con su propio modal. Antes
-// cargar los arbitros SOLO era posible durante la carga manual de la alineacion local
-// (arbitros-section) -- si los dos equipos ya venian con la planilla lista desde su
-// panel (v51), el partido entraba directo a jugar y esa pantalla nunca aparecia, asi
-// que no quedaba forma de anotarlos.
-const CACHE = 'ligaf5-v56';
+const CACHE = 'ligaf5-v54';
 const ASSETS = [
   './index.html',
   './planilla.html',
