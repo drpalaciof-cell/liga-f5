@@ -305,7 +305,16 @@
 //     suspensiones se aplican a la SIGUIENTE; lo unico que cambia el mismo dia
 //     (sancionesPagadas) vive en el documento del equipo, que si se refresca.
 // Ademas cerrarFechaPlanillero() ya no espera el ack del servidor.
-const CACHE = 'ligaf5-v54';
+// v55: fix urgente en produccion (22/08) -- abrirPartido() usaba la foto de _pCache
+// (tomada al entrar a "Ver partidos") tal cual para decidir si mostrar "quien arranca"
+// o ir directo al partido. Si el equipo cargaba su alineacion DESPUES de esa foto -- el
+// caso normal, se supone que la cargan con anticipacion -- el planillero abria el
+// partido con la copia vieja sin alineacion. Ahora relee fresco (mismo limite de 3,5s
+// de getRapido) antes de decidir. De paso, la regla de Firestore de partidos tambien
+// tenia un bug (exigia el string literal 'pendiente' pero un partido recien creado por
+// el fixture nunca tiene ese campo seteado) que bloqueaba directamente el guardado de
+// la alineacion del equipo -- corregido aparte en firestore.rules.
+const CACHE = 'ligaf5-v55';
 const ASSETS = [
   './index.html',
   './planilla.html',

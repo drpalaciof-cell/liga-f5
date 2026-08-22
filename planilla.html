@@ -1418,9 +1418,18 @@ async function abrirPartido(id,cardEl){
   if(st.unsub){st.unsub();st.unsub=null;} // por si quedó una escucha viva de un partido anterior
   if(cardEl){cardEl.style.opacity='0.5';cardEl.style.pointerEvents='none';}
   try{
-    // Usar caché si existe, sino fetch
-    let data=_pCache[id];
-    if(!data){const doc=await getRapido(db.collection('partidos').doc(id));if(!doc.exists){toast('Partido no encontrado.');return;}data={id:doc.id,...doc.data()};_pCache[id]=data;}
+    // Antes usaba _pCache tal cual (la foto tomada al entrar a "Ver partidos") sin volver a
+    // consultar. Si un equipo cargaba su alineación DESPUÉS de esa foto -- el caso normal: la
+    // idea es que la carguen con anticipación, antes de que el planillero llegue a la cancha --
+    // el planillero abría el partido con la copia vieja sin alineación y arrancaba preguntando
+    // "¿quién arranca?" en vez de ir directo a jugar. El refresco de atrás lo corregía solo unos
+    // segundos después, pero si el planillero ya había tocado algo para entonces, se perdía esa
+    // corrección. Ahora relee fresco (mismo límite de 3,5s de getRapido: no se cuelga con mala
+    // señal, y sin señal cae al mismo caché que antes).
+    const doc=await getRapido(db.collection('partidos').doc(id));
+    if(!doc.exists){toast('Partido no encontrado.');return;}
+    const data={id:doc.id,...doc.data()};
+    _pCache[id]=data;
     st.partido=data;st.partidoId=id;
     st.alineacionLocal=st.partido.alineacionLocal||[];
     st.alineacionVisitante=st.partido.alineacionVisitante||[];
