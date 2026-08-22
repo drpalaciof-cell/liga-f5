@@ -317,7 +317,14 @@
 // v57: numero de version visible (esquina inferior derecha) en planilla.html -- en pleno
 // incidente en produccion no habia forma de confirmar por captura si una tablet ya habia
 // bajado el deploy nuevo o seguia con JS viejo en cache.
-const CACHE = 'ligaf5-v57';
+// v58: BUG real encontrado -- signInAnonymously() es un no-op si el navegador ya tiene una
+// sesion activa (anonima o no). Si la tablet del planillero se uso alguna vez para entrar
+// como equipo/admin y nadie cerro sesion (cerrar la pestana no cierra la sesion), el
+// planillero quedaba escribiendo con esas credenciales viejas y Firestore rechazaba el
+// guardado -- aparecia como "no se guardo, reintenta con senal" sin ser un problema de
+// senal, y pasaba SIEMPRE en ese dispositivo. Ahora se fuerza signOut() antes de entrar si
+// hay una sesion no-anonima.
+const CACHE = 'ligaf5-v58';
 const ASSETS = [
   './index.html',
   './planilla.html',
