@@ -94,8 +94,13 @@ service cloud.firestore {
       // Una vez cerrado el partido, la planilla queda tal cual — ni el
       // planillero ni un equipo pueden modificarla. Solo el admin puede
       // corregir un error después, desde "Editar resultado".
-      allow update: if isAdmin() || (autenticado() && resource.data.get('estado','') != 'cerrado'
-        && (request.auth.token.role == 'equipo' ? equipoTocaSuAlineacion() : soloCamposPlanilla()));
+      // El equipo solo carga su alineación mientras el partido está 'pendiente'
+      // (igual que ya hace la UI, que le saca el botón de guardar apenas cambia
+      // de estado): endurecido para que esto valga también si alguien escribe
+      // directo por la API en vez de por la app.
+      allow update: if isAdmin()
+        || (autenticado() && request.auth.token.role == 'equipo' && resource.data.get('estado','') == 'pendiente' && equipoTocaSuAlineacion())
+        || (autenticado() && request.auth.token.role != 'equipo' && resource.data.get('estado','') != 'cerrado' && soloCamposPlanilla());
       allow delete: if isAdmin();
     }
     // Pagos semanales de arancel. Un equipo carga el suyo (estado 'pagado' al
