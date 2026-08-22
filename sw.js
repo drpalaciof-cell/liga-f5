@@ -314,7 +314,10 @@
 // v56: a pedido explicito del usuario, se saca la pantalla "¿Quien arranca?" -- cuando
 // ninguno de los dos equipos cargo alineacion todavia, ahora arranca directo por el local
 // en vez de preguntar con cual seguir primero.
-const CACHE = 'ligaf5-v56';
+// v57: numero de version visible (esquina inferior derecha) en planilla.html -- en pleno
+// incidente en produccion no habia forma de confirmar por captura si una tablet ya habia
+// bajado el deploy nuevo o seguia con JS viejo en cache.
+const CACHE = 'ligaf5-v57';
 const ASSETS = [
   './index.html',
   './planilla.html',
