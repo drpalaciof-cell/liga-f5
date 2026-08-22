@@ -305,7 +305,13 @@
 //     suspensiones se aplican a la SIGUIENTE; lo unico que cambia el mismo dia
 //     (sancionesPagadas) vive en el documento del equipo, que si se refresca.
 // Ademas cerrarFechaPlanillero() ya no espera el ack del servidor.
-const CACHE = 'ligaf5-v54';
+// v55: fix de un bug PREEXISTENTE (no introducido hoy, confirmado con capturas reales en
+// produccion el 22/08) -- abrirPartido() usaba la foto de _pCache tal cual para decidir si
+// mostrar "quien arranca" o ir directo al partido. Si el equipo cargaba su alineacion
+// DESPUES de esa foto (el caso normal, se supone que la cargan con anticipacion), el
+// planillero abria el partido con la copia vieja sin alineacion. Ahora relee fresco (mismo
+// limite de 3,5s de getRapido).
+const CACHE = 'ligaf5-v55';
 const ASSETS = [
   './index.html',
   './planilla.html',
