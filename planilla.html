@@ -896,6 +896,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
       <span class="ph-periodo" id="ph-periodo">1° TIEMPO</span>
       <span id="ph-crono" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:17px;color:var(--orange);letter-spacing:.5px;"></span>
     </div>
+    <button class="topbar-back" onclick="abrirModalArbitros()" title="Árbitros">🧑‍⚖️</button>
   </div>
 
   <!-- COLUMNAS: control de equipo + lista de jugadores -->
@@ -1083,6 +1084,32 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
     <div id="mag-lista" class="modal-body" style="max-height:55vh;"></div>
     <div style="padding:8px 10px 4px;">
       <button class="btn btn-ghost btn-sm" style="width:100%;" onclick="cerrarModal('modal-agregar-jug')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal árbitros -- antes esto SOLO se podía cargar durante la carga manual de la
+     alineación local (arbitros-section); si los dos equipos ya venían con la planilla
+     cargada desde su panel, el partido entra directo a jugar y esa pantalla nunca
+     aparecía, así que no quedaba forma de anotar quién arbitró. -->
+<div class="modal-overlay" id="modal-arbitros" onclick="if(event.target===this)cerrarModal('modal-arbitros')">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h3>Árbitros del partido</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-arbitros')">✕</button>
+    </div>
+    <div style="padding:0 10px;">
+      <div class="arb-row">
+        <label class="arb-label">Principal</label>
+        <input class="planillero-inp" id="marb1-input" type="text" autocomplete="off" placeholder="Nombre del árbitro principal" style="height:48px;">
+      </div>
+      <div class="arb-row" style="margin-top:8px;">
+        <label class="arb-label">Asistente</label>
+        <input class="planillero-inp" id="marb2-input" type="text" autocomplete="off" placeholder="Nombre del árbitro asistente" style="height:48px;">
+      </div>
+    </div>
+    <div style="padding:14px 10px 4px;">
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="guardarArbitrosModal()">Guardar</button>
     </div>
   </div>
 </div>
@@ -2504,6 +2531,26 @@ function cerrarPlanilla(){
 function abrirModal(id){document.getElementById(id).classList.add('open');}
 function cerrarModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+
+// Único lugar para cargar árbitros cuando el partido entra directo a jugar (los dos equipos
+// ya venían con la alineación cargada desde su panel) -- mismo default por cancha que ya
+// usaba arbitros-section durante la carga manual.
+function abrirModalArbitros(){
+  const p=st.partido||{};
+  const arbCancha=_avisosData||{};
+  document.getElementById('marb1-input').value=p.arbitro1||arbCancha.arbitro1||'';
+  document.getElementById('marb2-input').value=p.arbitro2||arbCancha.arbitro2||'';
+  abrirModal('modal-arbitros');
+}
+function guardarArbitrosModal(){
+  const arbitro1=(document.getElementById('marb1-input').value||'').trim();
+  const arbitro2=(document.getElementById('marb2-input').value||'').trim();
+  st.partido.arbitro1=arbitro1;st.partido.arbitro2=arbitro2;
+  cerrarModal('modal-arbitros');
+  toast('Árbitros guardados ✓');
+  db.collection('partidos').doc(st.partidoId).update({arbitro1,arbitro2}).catch(e=>{console.error('guardarArbitros:',e);if(navigator.onLine)toast('⚠ No se guardaron los árbitros — reintentá con señal.',5000);});
+  if(st.cancha&&(arbitro1||arbitro2)){db.collection('avisosPlanilla').doc(String(st.cancha)).set({arbitro1,arbitro2},{merge:true}).catch(()=>{});}
+}
 
 // iOS Safari no soporta overscroll-behavior — este fix evita el rubber-band
 // manteniendo el scroll siempre 1px alejado de los límites absolutos

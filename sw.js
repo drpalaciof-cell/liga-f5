@@ -314,7 +314,12 @@
 // tenia un bug (exigia el string literal 'pendiente' pero un partido recien creado por
 // el fixture nunca tiene ese campo seteado) que bloqueaba directamente el guardado de
 // la alineacion del equipo -- corregido aparte en firestore.rules.
-const CACHE = 'ligaf5-v55';
+// v56: boton "🧑‍⚖️ Árbitros" en el header de screen-partido, con su propio modal. Antes
+// cargar los arbitros SOLO era posible durante la carga manual de la alineacion local
+// (arbitros-section) -- si los dos equipos ya venian con la planilla lista desde su
+// panel (v51), el partido entraba directo a jugar y esa pantalla nunca aparecia, asi
+// que no quedaba forma de anotarlos.
+const CACHE = 'ligaf5-v56';
 const ASSETS = [
   './index.html',
   './planilla.html',
