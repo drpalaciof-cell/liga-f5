@@ -97,9 +97,16 @@ service cloud.firestore {
       // El equipo solo carga su alineación mientras el partido está 'pendiente'
       // (igual que ya hace la UI, que le saca el botón de guardar apenas cambia
       // de estado): endurecido para que esto valga también si alguien escribe
-      // directo por la API en vez de por la app.
+      // directo por la API en vez de por la app. OJO: un partido recién creado
+      // por el fixture NO tiene el campo 'estado' todavía (basePartido() no lo
+      // setea) -- TODA la app lo trata como 'pendiente' via `p.estado||'pendiente'`,
+      // así que la regla tiene que aceptar también el campo ausente/vacío o
+      // rechaza la carga de alineación de cualquier partido que el planillero
+      // todavía no abrió (bug real, encontrado en producción el 22/08).
       allow update: if isAdmin()
-        || (autenticado() && request.auth.token.role == 'equipo' && resource.data.get('estado','') == 'pendiente' && equipoTocaSuAlineacion())
+        || (autenticado() && request.auth.token.role == 'equipo'
+            && (resource.data.get('estado','') == '' || resource.data.get('estado','') == 'pendiente')
+            && equipoTocaSuAlineacion())
         || (autenticado() && request.auth.token.role != 'equipo' && resource.data.get('estado','') != 'cerrado' && soloCamposPlanilla());
       allow delete: if isAdmin();
     }
