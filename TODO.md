@@ -4,6 +4,50 @@
 
 ---
 
+# 🔴 INCIDENTE GRAVE — 2026-08-22, primer día de partidos reales de la fecha 2 (sw v62)
+
+**Resumen para cualquiera que retome esto**: el planillero estuvo **sin poder guardar absolutamente nada** (goles, tarjetas, "arrancó el partido", cerrar planilla) durante buena parte de la fecha, con partidos jugándose en vivo. La causa NO era señal ni caché — era un bug real en `firestore.rules`. Ya está corregido y **verificado contra la base de datos real**, no solo deployado a ciegas.
+
+## La causa raíz
+`request.auth.token.role == 'admin'` (con punto, en `isAdmin()` y en el ternario de `/partidos`) **revienta la evaluación de la regla** cuando la sesión no tiene NINGÚN custom claim — que es exactamente el caso del planillero (`signInAnonymously()`, sin claims). Eso tiraba abajo toda la cadena `||`, y el planillero quedaba sin poder escribir nada, silenciosamente (la app mostraba "Planilla cerrada ✓" igual, porque actualiza el estado local antes de confirmar con el servidor).
+
+**Por qué nadie lo notó antes**: la función `equipoTocaSuAlineacion()`/el ternario que usa este patrón se agregó en v51 (sesión 2026-08-18), y **hoy 22/08 fue el primer día de partidos reales desde entonces** — los partidos de la fecha 1 (15-18/08) se jugaron con reglas anteriores, sin este bug.
+
+**Fix**: `request.auth.token.get('role','')` en vez de `request.auth.token.role` (mismo criterio que ya usaba `resource.data.get('estado','')` en el mismo archivo). Aplica a `isAdmin()`, `isEquipoPropio()`, y los tres lugares en `/aranceles` y `/pagosSanciones` que tenían el mismo patrón.
+
+## Cómo se encontró de verdad (guardar este método para la próxima)
+Después de horas de hipótesis basadas en lo que reportaba el usuario por chat (señal, caché, sesión vieja — todas plausibles, ninguna la causa real), se dejó de adivinar y se hizo una **prueba directa contra Firestore real**, usando el token OAuth que ya tiene `firebase-tools` logueado (en `~/.config/configstore/firebase-tools.json`, campo `tokens.access_token` — sirve para leer/escribir vía la REST API de Firestore con permisos de owner del proyecto, salteando las reglas):
+
+1. Login anónimo REAL vía `identitytoolkit.googleapis.com/v1/accounts:signUp?key=<API_KEY>` (la misma llamada que hace `signInAnonymously()` en el navegador) → da un `idToken`.
+2. Con ese `idToken`, un `PATCH` a `firestore.googleapis.com/v1/.../partidos/{id}` tocando exactamente los campos que toca `guardarPartido()` → esto SÍ pasa por las reglas de verdad, a diferencia de leer con el token de owner.
+3. Antes del fix: `403 PERMISSION_DENIED`. Después: `200 OK`. Confirmado con datos reales, no con lectura de código.
+
+También sirvió para: auditar el estado real de TODOS los partidos (`GET .../partidos?pageSize=300`, paginando con `nextPageToken`) sin depender de lo que mostraba cada tablet, y confirmar en segundos si un gol recién cargado había llegado o no.
+
+**Guardar este script la próxima vez que algo "no ande" y las capturas de pantalla no alcancen** — es mucho más rápido que iterar a ciegas.
+
+## Qué se rompió de más en el camino (y ya se revirtió/corrigió)
+Antes de encontrar la causa real, se probaron varias hipótesis que resultaron ser ruido o directamente regresiones propias — todas ya resueltas, dejo la lista para que quede claro qué NO hace falta re-investigar:
+- Un "endurecimiento" de la regla del equipo (exigir `estado=='pendiente'` literal) bloqueaba la carga de CUALQUIER partido nuevo (el fixture no setea `estado` al crear) — revertido.
+- Un fetch extra agregado a `abrirPartido()` para el caso "el equipo cargó antes que el planillero entrara" rompió la sincronización entre dispositivos de un partido YA EN CURSO — revertido a `_pCache` simple.
+- `getRapido()` subió su límite de 3,5s a **7s** (confirmado que 3,5s corta de más con muchos dispositivos en la cancha).
+- El botón 🧑‍⚖️ Árbitros (agregado y luego perdido en un `git reset --hard` de emergencia) — repuesto.
+- Bug real de sesión encontrado y corregido de paso: `signInAnonymously()` es un no-op si el navegador YA tiene una sesión no-anónima guardada (de una prueba como equipo/admin en esa misma tablet) — ahora se fuerza `signOut()` primero.
+
+## Funciones nuevas de esta sesión (todas en `screen-partido`, sw v55-v62)
+- **Sacar la pantalla "¿Quién arranca?"**: si ninguno de los dos equipos cargó, arranca directo por el local.
+- **Botón ✕ en cada jugador** de la planilla en vivo, para sacarlo de la cancha (cambio del técnico) — los goles/tarjetas que ya tenga quedan igual, no se tocan.
+- **Tocar el cronómetro** (arriba, al lado de "1° TIEMPO"/"2° TIEMPO") para corregir el minuto real — necesario porque `horaArranque` de varios partidos de hoy quedó mal (se guardó recién cuando el guardado, roto, volvió a andar).
+- **Número de versión visible** (esquina inferior derecha de `planilla.html`, ej. `v62`) — agregado para poder confirmar por captura si una tablet ya bajó el deploy nuevo, sin adivinar.
+- Mensajes de error de guardado ahora muestran el código real de Firestore (`e.code`), no un genérico "reintentá con señal".
+
+## Pendiente / a tener en cuenta
+- **Algunos partidos de hoy pueden tener datos incompletos o perdidos** de la franja horaria en que el guardado estuvo roto (aprox. antes de las 19:29). Si algún resultado no cierra, corregir a mano desde "Editar resultado" (admin).
+- `KRATOS F.C vs FONTANA FC` (cancha 1) quedó `cerrado` con marcador 11-1 pero **sin alineación ni eventos cargados** — probablemente se cerró a mano por el incidente. Revisar si hace falta completar la planilla real ahí.
+- Antes de volver a tocar `firestore.rules` en el futuro, **probar con el método de arriba antes de deployar**, no solo `--dry-run` (que solo valida sintaxis, no el comportamiento real de la regla).
+
+---
+
 # 👉 RETOMAR ACÁ — traspaso del 2026-08-21 (PC de la ATP → computadora personal)
 
 **Primero de todo: `git pull`.** Todo lo de esta sesión está pusheado a `origin/main` (último commit: *"Auditoria: el planillero no debe necesitar internet en la cancha"*). Nada quedó sin commitear.
