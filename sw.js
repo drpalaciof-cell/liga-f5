@@ -338,7 +338,17 @@
 // v62: boton ✕ en cada jugador de la planilla en vivo para sacarlo de la cancha (cambio del
 // tecnico, no expulsion) -- los goles/tarjetas que ya tenga cargados quedan en la planilla
 // igual, viven en `eventos` separado de la alineacion.
-const CACHE = 'ligaf5-v62';
+// v63: la fecha 3 de Primera se posterga (se juega al terminar la fase) y las dos divisiones
+// pasan a jugar la fecha 4 juntas. Se agrega `fechasPostergadas` en config/general (formato
+// 'Primera|3'): el planillero SALTEA esa fecha al elegir la activa -- antes Primera quedaba
+// clavada en la 3 y Segunda mostraba la 4, dos divisiones en fechas distintas el mismo dia.
+// En el fixture la fecha SIGUE apareciendo, rotulada '(postergada)', para que los equipos vean
+// contra quien juegan pero nadie se presente. Los partidos NO se tocan: cuando se juegue, se
+// saca de la lista y vuelven solos.
+// v63: las sanciones ahora dicen SIEMPRE de que fecha salio cada tarjeta ('🟨 fechas 1, 2').
+// Antes solo se veia el contador y no habia forma de discutir una sancion con el jugador ni
+// de detectar una tarjeta mal cargada.
+const CACHE = 'ligaf5-v63';
 const ASSETS = [
   './index.html',
   './planilla.html',

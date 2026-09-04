@@ -735,7 +735,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v62</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v63</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -1258,9 +1258,12 @@ async function cargarDivisionesCanchas(){
     // mezclan divisiones/zonas de fechas futuras con las de hoy en la misma cancha (ej. cancha 1
     // es Primera en una fecha impar pero Segunda Zona B+Interzonal en la siguiente par). Hay que
     // acotar esto a la fecha activa (la más baja con partidos sin jugar), igual que cargarLista().
-    const fechasPend=[...new Set(todos.map(p=>Number(p.numeroFecha)).filter(f=>!isNaN(f)))].sort((a,b)=>a-b);
+    // Las fechas postergadas no cuentan para elegir la fecha activa (ver esPostergada).
+    const _cfg=await getCfg();
+    const vigentes=todos.filter(p=>!esPostergada(_cfg,p.division,p.numeroFecha));
+    const fechasPend=[...new Set(vigentes.map(p=>Number(p.numeroFecha)).filter(f=>!isNaN(f)))].sort((a,b)=>a-b);
     const fechaActiva=fechasPend.length?fechasPend[0]:null;
-    const deHoy=fechaActiva!=null?todos.filter(p=>Number(p.numeroFecha)===fechaActiva):todos;
+    const deHoy=fechaActiva!=null?vigentes.filter(p=>Number(p.numeroFecha)===fechaActiva):vigentes;
     const byCancha={};
     deHoy.forEach(p=>{
       const c=Number(p.cancha);
@@ -1325,6 +1328,25 @@ async function getCfg(){
   try{const d=await getRapido(db.collection('config').doc('general'));_cfgCache=d.exists?d.data():{};}catch(e){_cfgCache={};}
   return _cfgCache;
 }
+// ── Fechas postergadas ───────────────────────────────────────────────────────
+// La fecha 3 de Primera se postergó (se juega al terminar la fase) y Segunda ya iba por la 4.
+// La "fecha activa" del planillero es la MÁS BAJA sin jugar, así que Primera se quedaba
+// clavada en la 3 mientras Segunda mostraba la 4 — dos divisiones en fechas distintas el
+// mismo día. Marcando la fecha como postergada, el planillero la saltea y las dos arrancan
+// en la 4. Los partidos NO se tocan: cuando se juegue, se saca de la lista y vuelven solos.
+//
+// Formato en config/general: fechasPostergadas: ['Primera|3']
+function esPostergada(cfg, division, numeroFecha){
+  const lista=(cfg&&cfg.fechasPostergadas)||[];
+  if(!lista.length)return false;
+  const div=String(division||'').trim().toLowerCase();
+  const f=Number(numeroFecha);
+  return lista.some(x=>{
+    const [d,n]=String(x).split('|');
+    return String(d||'').trim().toLowerCase()===div && Number(n)===f;
+  });
+}
+
 let _abriendo=false; // BUG4: lock para evitar race condition con doble tap
 
 // Suspensiones por tarjetas (roja directa, doble amarilla, acumulación de 3 amarillas) — antes esto
@@ -1439,7 +1461,9 @@ async function cargarLista(){
       return getRapido(db.collection('equipos').doc(id)).then(d=>{if(d.exists)_eCache[id]=d.data();}).catch(()=>{});
     }));
     // Fecha activa: la más baja con partidos pendientes o en curso (no cerrados, no jugados en sim viejo)
-    const activos=todos.filter(p=>p.estado!=='cerrado'&&!(p.jugado===true&&!p.estado));
+    const _cfgL=await getCfg();
+    const activos=todos.filter(p=>p.estado!=='cerrado'&&!(p.jugado===true&&!p.estado)
+      && !esPostergada(_cfgL,p.division,p.numeroFecha));
     const fechasActivas=[...new Set(activos.map(p=>p.numeroFecha||0))].sort((a,b)=>Number(a)-Number(b));
     const fechaActiva=fechasActivas.length?fechasActivas[0]:null;
     let partidos=fechaActiva!=null?todos.filter(p=>(p.numeroFecha||0)===fechaActiva):activos;

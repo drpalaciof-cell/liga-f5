@@ -1,3 +1,58 @@
+# 2026-09-04 — Fecha 3 de Primera postergada + fechas de las tarjetas (sw v63)
+
+## Unificar las dos divisiones en la fecha 4
+
+La fecha 3 de Primera se posterga: se juega recién al terminar toda la fase. Segunda ya venía
+jugando la 3, así que ahora **las dos juegan la fecha 4 juntas**.
+
+El planillero elegía la fecha activa como **la más baja sin jugar**, y lo hacía por cancha: por
+eso Primera quedaba clavada en la 3 mientras Segunda mostraba la 4 — dos divisiones en fechas
+distintas el mismo día.
+
+**Solución**: campo `fechasPostergadas` en `config/general` (array, formato `'Primera|3'`).
+
+- `planilla.html`: saltea esas fechas al calcular la activa, en los **dos** lugares que la
+  calculan (el selector de canchas y `cargarLista()`).
+- `index.html`: en el fixture la fecha **sigue apareciendo**, rotulada `(postergada)` — los
+  equipos tienen que poder ver contra quién juegan, pero nadie se tiene que presentar. Se
+  aplicó en los tres lugares que rotulan fechas (fixture por zonas, fixture simple y las
+  pastillas de la solapa Partidos).
+
+**Los partidos NO se tocaron.** Cuando se juegue la fecha 3, se saca `'Primera|3'` de la lista y
+vuelven solos. Es un solo campo de config, en vez de 6 documentos dados vuelta dos veces.
+
+Verificado contra la base real **antes** de deployar: Primera pasa de fecha activa 3 → 4,
+Segunda queda en 4, y el planillero muestra los 17 partidos de la fecha 4 (cancha 1 Segunda,
+cancha 2 Primera, cancha 3 Segunda).
+
+## Las sanciones dicen de qué fecha salió cada tarjeta
+
+Antes sólo se veía el contador (`🟨 3`) sin saber de dónde salía: no había forma de discutir una
+sanción con el jugador ni de detectar una tarjeta mal cargada. Ahora, debajo de los badges, sale
+`🟨 fechas 1, 2 · 🟥 fecha 2` — tanto en el panel de admin como en el del equipo.
+
+Se guardan `fechasAmarillas` / `fechasRojas` / `fechasDobles` en los **tres** lugares que arman
+el conteo de tarjetas.
+
+## Auditoría del incidente del 22/08 (revisada hoy)
+
+La nota anterior decía *"algunos partidos pueden tener datos incompletos o perdidos"*. Medido
+contra Firestore real: **es menos de lo que se temía**.
+
+- **Fecha 1: 17/17 partidos completos** (eventos, alineación y firmas).
+- **Fecha 2: 14/17 completos.** Tres se cargaron a mano desde admin y quedaron sin alineación,
+  sin tarjetas y sin firmas: `KRATOS 11-1 FONTANA`, `ELOSRA 4-12 BEER UNITED` y
+  `FRANJAMIGOS 5-4 DEPORTIVO CONTI`.
+- **Un solo dato falta de verdad**: en `ELOSRA 4-12 BEER UNITED` el marcador da 16 goles y los
+  goleadores suman 14 — **faltan 2 goles por asignar**.
+- `KRATOS`, que la nota anterior marcaba como el peor caso, **tiene los 12 goles bien asignados**.
+
+**Trampa al auditar**: cada entrada de `goleadores` tiene un campo `cantidad`, así que una
+entrada puede valer 3 goles. Contando entradas daban 52 goles huérfanos; sumando `cantidad`, son
+2. Sumar siempre `cantidad`, nunca contar el largo del array.
+
+---
+
 # TODO — Liga F5
 
 > Se actualiza cada sesión para no depender de la memoria del chat.

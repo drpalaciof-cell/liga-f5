@@ -653,6 +653,10 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
   .fx-team{font-size:13.5px;}
   .fx-teams{gap:8px;}
 }
+
+    /* Fecha postergada en el fixture y fechas de las tarjetas en sanciones */
+    .fx-postergada{font-size:.72em;font-weight:600;opacity:.85;letter-spacing:.02em;}
+    .tarj-fechas{font-size:11px;color:var(--muted);line-height:1.5;margin-top:2px;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -2144,7 +2148,52 @@ function switchDivisionTab(div) {
 // Escucha en vivo: cuando un planillero cierra un partido (o el admin carga
 // un resultado a mano), posiciones/goleadores/fixture se actualizan solos
 // en cualquier pantalla que los tenga abiertos, sin recargar la página.
+// ── Fechas postergadas ───────────────────────────────────────────────────────
+// La fecha 3 de Primera se postergó: se juega recién al terminar la fase, y mientras tanto
+// Primera pasa directo a la 4 para ir a la par de Segunda. En el fixture la fecha SIGUE
+// APARECIENDO —los equipos tienen que poder ver contra quién juegan— pero rotulada como
+// postergada, para que nadie se presente al partido.
+//
+// Formato en config/general: fechasPostergadas: ['Primera|3']
+let _fechasPostergadas = [];
+async function cargarFechasPostergadas() {
+  try {
+    const d = await db.collection('config').doc('general').get();
+    _fechasPostergadas = (d.exists && d.data().fechasPostergadas) || [];
+  } catch (e) { _fechasPostergadas = []; }
+}
+function esFechaPostergada(nf, division) {
+  if (!_fechasPostergadas.length) return false;
+  const div = String(division || state.divisionActiva || '').trim().toLowerCase();
+  return _fechasPostergadas.some(x => {
+    const [d, n] = String(x).split('|');
+    return String(d || '').trim().toLowerCase() === div && Number(n) === Number(nf);
+  });
+}
+/** Rótulo de una fecha para el fixture, con el aviso de postergada si corresponde. */
+function tituloFecha(nf, division) {
+  return `Fecha ${nf}${esFechaPostergada(nf, division) ? ' <span class="fx-postergada">(postergada)</span>' : ''}`;
+}
+
+/**
+ * De qué fechas salieron las tarjetas de un jugador.
+ *
+ * Pedido del usuario (2026-09-04): "las sanciones: aclarar siempre en qué fecha se le sacó
+ * las tarjetas". Antes sólo se veía el contador ("🟨 3"), sin saber de dónde salía: no había
+ * forma de discutir una sanción con el jugador ni de detectar una tarjeta mal cargada.
+ */
+function fechasTarjetasHtml(p) {
+  const partes = [];
+  const lista = (arr) => [...new Set(arr || [])].sort((a, b) => a - b).join(', ');
+  if ((p.fechasAmarillas || []).length) partes.push(`🟨 fecha${p.fechasAmarillas.length > 1 ? 's' : ''} ${lista(p.fechasAmarillas)}`);
+  if ((p.fechasDobles || []).length)    partes.push(`🟨🟨 fecha${p.fechasDobles.length > 1 ? 's' : ''} ${lista(p.fechasDobles)}`);
+  if ((p.fechasRojas || []).length)     partes.push(`🟥 fecha${p.fechasRojas.length > 1 ? 's' : ''} ${lista(p.fechasRojas)}`);
+  if (!partes.length) return '';
+  return `<div class="tarj-fechas">${partes.join(' &nbsp;·&nbsp; ')}</div>`;
+}
+
 function cargarPartidosPublico() {
+  cargarFechasPostergadas();
   if (state._partidosUnsub) { state._partidosUnsub(); state._partidosUnsub = null; }
   return new Promise(resolve => {
     let primeraCarga = true;
@@ -2342,7 +2391,7 @@ function renderFechasFixture(partidosGrupo, equiposGrupo) {
     const partidos = ordenarPorHorario(partidosGrupo.filter(p => p.numeroFecha === nf));
     const byeHtml = fxByeHtml(equiposGrupo, nf);
     const rows = partidos.map(fxMatchHtml).join('');
-    return `<div class="fecha-group"><div class="fecha-group-title">Fecha ${nf}</div>${rows}${byeHtml}</div>`;
+    return `<div class="fecha-group"><div class="fecha-group-title">${tituloFecha(nf)}</div>${rows}${byeHtml}</div>`;
   }).join('');
 }
 function renderFixturePublico() {
@@ -2388,7 +2437,7 @@ function renderFixturePublico() {
         ${partidos.map(fxMatchHtml).join('')}${fxByeHtml(equiposZona, nf)}
       </div>`;
     }).join('');
-    return `<section class="fx-fecha"><div class="fx-fecha-title"><span>Fecha ${nf}</span></div><div class="fx-cols">${cols}</div></section>`;
+    return `<section class="fx-fecha"><div class="fx-fecha-title"><span>${tituloFecha(nf)}</span></div><div class="fx-cols">${cols}</div></section>`;
   }).join('');
 
   wrap.innerHTML = tabs + cabecera + bloques;
@@ -2404,7 +2453,7 @@ function renderPartidosPublico() {
   const fechas = [...new Set(state.partidosCache.map(p => p.numeroFecha))].sort((a, b) => a - b);
   if (fechas.length === 0) { pills.innerHTML = ''; wrap.innerHTML = `<div class="empty-state">Todavía no hay partidos cargados en esta división.</div>`; return; }
   if (!state.fechaPublicaActiva || !fechas.includes(state.fechaPublicaActiva)) state.fechaPublicaActiva = fechas[fechas.length - 1];
-  pills.innerHTML = fechas.map(nf => `<button class="tab-btn ${nf === state.fechaPublicaActiva ? 'active' : ''}" onclick="seleccionarFechaPublica(${nf})">Fecha ${nf}</button>`).join('');
+  pills.innerHTML = fechas.map(nf => `<button class="tab-btn ${nf === state.fechaPublicaActiva ? 'active' : ''}" onclick="seleccionarFechaPublica(${nf})">${tituloFecha(nf)}</button>`).join('');
   const partidos = ordenarPorHorario(state.partidosCache.filter(p => p.numeroFecha === state.fechaPublicaActiva));
   wrap.innerHTML = partidos.map(p => {
     const eventosEquipo = (equipoId) => {
@@ -3000,11 +3049,12 @@ async function renderPlanillaEquipo() {
       // Tarjetas de MIS jugadores en toda la división, para saber quién está suspendido.
       if (!x.jugado) return;
       (x.tarjetas || []).filter(t => t.equipoId === state.equipoId && t.dni).forEach(t => {
-        if (!cardMap[t.dni]) cardMap[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, amarillas: 0, rojas: 0, expulsiones: 0, fechaRoja: 0 };
+        if (!cardMap[t.dni]) cardMap[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, amarillas: 0, rojas: 0, expulsiones: 0, fechaRoja: 0, fechasAmarillas: [], fechasRojas: [], fechasDobles: [] };
         const r = cardMap[t.dni];
-        if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; r.fechaRoja = Math.max(r.fechaRoja || 0, Number(x.numeroFecha) || 0); }
-        else if (t.dobleAmarilla) { r.expulsiones++; }
-        else { r.amarillas++; }
+        const F = Number(x.numeroFecha) || 0;
+        if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; r.fechaRoja = Math.max(r.fechaRoja || 0, F); if (F) r.fechasRojas.push(F); }
+        else if (t.dobleAmarilla) { r.expulsiones++; if (F) r.fechasDobles.push(F); }
+        else { r.amarillas++; if (F) r.fechasAmarillas.push(F); }
       });
     });
     const p = mios.filter(x => !x.jugado && x.estado !== 'cerrado')
@@ -3957,13 +4007,20 @@ function calcularTarjetasPorJugador(partidos) {
   const map = {};
   partidos.filter(p => p.jugado).forEach(p => {
     (p.tarjetas || []).forEach(t => {
-      if (!map[t.dni]) map[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, equipoId: t.equipoId, amarillas: 0, rojas: 0, expulsiones: 0, fechaRoja: 0 };
+      if (!map[t.dni]) map[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, equipoId: t.equipoId,
+        amarillas: 0, rojas: 0, expulsiones: 0, fechaRoja: 0,
+        // En qué fecha salió cada tarjeta. Antes sólo se guardaba el CONTADOR, así que el
+        // jugador veía "🟨 3" sin saber de dónde salían, y no había forma de discutir una
+        // sanción ni de detectar una tarjeta mal cargada. Pedido del usuario (2026-09-04):
+        // "las sanciones: aclarar siempre en qué fecha se le sacó las tarjetas".
+        fechasAmarillas: [], fechasRojas: [], fechasDobles: [] };
       const r = map[t.dni];
+      const F = Number(p.numeroFecha) || 0;
       // fechaRoja = la fecha de la ÚLTIMA roja. Es el ancla para saber qué fechas cumple:
       // sin ella no se puede decidir cuándo se levanta la suspensión, solo "sí o no".
-      if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; r.fechaRoja = Math.max(r.fechaRoja || 0, Number(p.numeroFecha) || 0); }
-      else if (t.dobleAmarilla) { r.expulsiones++; } // expulsión, NO suma al contador de acumulación
-      else { r.amarillas++; }
+      if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; r.fechaRoja = Math.max(r.fechaRoja || 0, F); if (F) r.fechasRojas.push(F); }
+      else if (t.dobleAmarilla) { r.expulsiones++; if (F) r.fechasDobles.push(F); } // expulsión, NO suma al contador de acumulación
+      else { r.amarillas++; if (F) r.fechasAmarillas.push(F); }
     });
   });
   return Object.values(map).filter(p => p.amarillas > 0 || p.rojas > 0 || p.expulsiones > 0)
@@ -4145,6 +4202,7 @@ function renderSancionesAdmin() {
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
         <div class="sancion-badges">${badges.join('')}</div>
+        ${fechasTarjetasHtml(p)}
         ${pagoHtml}
         ${compHtml}
         ${suspendido ? `<button class="btn btn-sm" onclick="abrirModalGestionSancion('${p.equipoId}','${p.dni}')">Gestionar</button>` : ''}
@@ -4584,7 +4642,7 @@ async function cargarYMostrarTarjetasEquipo() {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
           <span class="sancion-nombre">${escapeHtml(p.nombre)}</span>
           <div class="sancion-badges" style="flex-shrink:0;">${badges.join('')}</div>
-        </div>${hist}${sancionDesc}
+        </div>${fechasTarjetasHtml(p)}${hist}${sancionDesc}
       </div>`;
     }).join('');
   } catch(e) { console.error(e); wrap.innerHTML = '<p class="muted" style="font-size:13px;">No se pudieron cargar las tarjetas.</p>'; }
