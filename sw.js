@@ -376,7 +376,13 @@
 // escribe si el endpoint cambio. Ademas: cartel de estado en el panel ("🔔 activas" / "🔕 no
 // te van a llegar avisos" con el motivo y el boton para activarlas) y numero de version
 // visible, para saber si el telefono ya bajo el deploy nuevo sin re-agregar la app a ciegas.
-const CACHE = 'ligaf5-v67';
+// v68: LA RECAUDACION DE SANCIONES TAMBIEN ESTABA CONGELADA. Solo contaba como cumplida lo
+// que el admin marcaba A MANO; todo lo demas caia en "pendiente" para siempre, asi que el
+// potencial no bajaba nunca y parecia que quedaba plata por cobrar que ya nadie va a pagar.
+// Ahora, si pasan las fechas de suspension sin pagar, el sistema PRESUME que el jugador opto
+// por cumplir: esa sancion deja de ser cobrable sola. Y el informe se abre FECHA A FECHA,
+// diciendo cuanto se cobro, cuanto queda por cobrar y quienes optaron por cumplir en cada una.
+const CACHE = 'ligaf5-v68';
 const ASSETS = [
   './index.html',
   './planilla.html',

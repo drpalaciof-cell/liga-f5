@@ -657,6 +657,13 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     /* Fecha postergada en el fixture y fechas de las tarjetas en sanciones */
     .fx-postergada{font-size:.72em;font-weight:600;opacity:.85;letter-spacing:.02em;}
     .tarj-fechas{font-size:11px;color:var(--muted);line-height:1.5;margin-top:2px;white-space:nowrap;}
+
+    /* Recaudacion de sanciones fecha a fecha */
+    .rec-fecha{border-top:1px solid var(--line,rgba(255,255,255,.08));padding:8px 0;}
+    .rec-fecha:first-of-type{border-top:none;}
+    .rec-fecha-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12.5px;}
+    .rec-cumplieron{font-size:11.5px;line-height:1.6;margin-top:4px;padding:6px 9px;border-radius:6px;background:rgba(140,140,160,.10);border:1px solid rgba(140,140,160,.24);}
+    .rec-fecha-total{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:2px solid var(--line,rgba(255,255,255,.14));font-size:12.5px;}
 </style>
 </head>
 <body>
@@ -4644,15 +4651,61 @@ async function rechazarPagoSancion(pagoId) {
 // jugador, una doble viva por jugador, y un ciclo por cada 3 amarillas. Contar cada tarjeta
 // suelta daría un "potencial" más alto pero mentiroso: el motor no cobra dos rojas del mismo
 // jugador por separado, así que el pendiente nunca podría llegar a cero.
+/**
+ * Las sanciones de un jugador, cada una con LA FECHA EN QUE SE GENERÓ y hasta cuándo se puede
+ * cobrar.
+ *
+ * `fechaOrigen` = la fecha de la tarjeta que la generó. Sirve para dos cosas: agrupar la
+ * recaudación fecha a fecha, y saber cuándo la sanción ya se cumplió sin pagar.
+ *
+ * `ultimaCobrable` = la última fecha en la que todavía tiene sentido pagar. Pasada ésa, el
+ * jugador ya cumplió la suspensión y esa plata NO se va a cobrar nunca: contarla como
+ * "pendiente" hacía que el objetivo pareciera cobrable para siempre.
+ */
 function sancionesDeJugador(player) {
   const out = [];
-  if (player.rojas > 0) out.push({ tipo: 'roja', ciclo: 1 });
-  if ((player.expulsiones - player.rojas) > 0) out.push({ tipo: 'doble', ciclo: 1 });
+  const ult = (arr) => { const a = (arr || []).slice().sort((x, y) => x - y); return a.length ? a[a.length - 1] : 0; };
+
+  if (player.rojas > 0) {
+    const N = Number(player.fechaRoja) || 0;
+    // La roja se cumple en N+1 y N+2; pagando se salva una. Después de N+2 ya no se cobra.
+    out.push({ tipo: 'roja', ciclo: 1, fechaOrigen: N, ultimaCobrable: N ? N + 2 : 0 });
+  }
+  if ((player.expulsiones - player.rojas) > 0) {
+    const ND = ult(player.fechasDobles);
+    out.push({ tipo: 'doble', ciclo: 1, fechaOrigen: ND, ultimaCobrable: ND ? ND + 1 : 0 });
+  }
   const ciclos = Math.floor(player.amarillas / 3);
-  for (let c = 1; c <= ciclos; c++) out.push({ tipo: 'amarillas', ciclo: c });
+  const fa = (player.fechasAmarillas || []).slice().sort((a, b) => a - b);
+  for (let c = 1; c <= ciclos; c++) {
+    const NA = fa.length > c * 3 - 1 ? fa[c * 3 - 1] : 0;   // la 3ª amarilla del ciclo
+    out.push({ tipo: 'amarillas', ciclo: c, fechaOrigen: NA, ultimaCobrable: NA ? NA + 1 : 0 });
+  }
   return out;
 }
 
+/**
+ * Recaudación por sanciones, FECHA A FECHA y distinguiendo lo que ya no se puede cobrar.
+ *
+ * EL PROBLEMA (usuario, 2026-09-04): "el objetivo quedó como recaudación por siempre, sin
+ * tener en cuenta que el paso de las fechas o el cumplimiento deja de contar como posible
+ * recaudación… si un equipo no adjunta comprobante o no paga, el sistema debe presumir que
+ * optó por no pagar y debe informar eso, pero fecha a fecha, no como una recaudación general".
+ *
+ * Tenía razón: sólo se contaba como cumplida lo que el admin marcaba A MANO. Todo lo demás
+ * caía en pendiente para siempre, así que el potencial no bajaba nunca y parecía que quedaba
+ * plata por cobrar que en realidad ya nadie va a pagar.
+ *
+ * Ahora cada sanción cae en uno de cuatro estados:
+ *   transf / efectivo — se cobró.
+ *   cumplida         — el jugador OPTÓ POR CUMPLIR: pasaron las fechas de suspensión sin
+ *                      pagar. Ya no es cobrable, y se marca sola sin que nadie toque nada.
+ *   pendiente        — la suspensión está en curso: todavía puede pagar. Esto sí es cobrable.
+ *   porAprobar       — cargó el comprobante y falta revisarlo (subconjunto de pendiente).
+ *
+ * porFecha agrupa por la fecha de la tarjeta que generó la sanción, y cumplieron lista
+ * quiénes optaron por cumplir — que es lo que hay que poder ver fecha a fecha.
+ */
 function calcularRecaudacionSanciones() {
   const vacio = () => ({
     cant: 0, potencial: 0,
@@ -4660,33 +4713,53 @@ function calcularRecaudacionSanciones() {
     cumplida: { cant: 0, monto: 0 }, pendiente: { cant: 0, monto: 0 },
     porAprobar: { cant: 0, monto: 0 }
   });
-  const nuevoGrupo = () => ({ total: vacio(), tipos: { roja: vacio(), doble: vacio(), amarillas: vacio() } });
+  const nuevoGrupo = () => ({
+    total: vacio(), tipos: { roja: vacio(), doble: vacio(), amarillas: vacio() },
+    porFecha: {},
+  });
   const grupos = { Primera: nuevoGrupo(), A: nuevoGrupo(), B: nuevoGrupo(), TOTAL: nuevoGrupo() };
   const claveGrupo = eq => eq.division === 'Primera' ? 'Primera'
     : (eq.division === 'Segunda' && (eq.zona === 'A' || eq.zona === 'B')) ? eq.zona : null;
+
+  // La fecha en juego de cada división: es lo que decide si una suspensión ya se cumplió.
+  const fechaDe = {};
+  ['Primera', 'Segunda'].forEach(d => {
+    fechaDe[d] = fechaEnJuego(partidosTotalCache.filter(x => x.division === d)) || 0;
+  });
 
   calcularTarjetasPorJugador(partidosTotalCache).forEach(p => {
     const eq = equiposCacheAdmin.find(e => e.id === p.equipoId);
     if (!eq) return;
     const g = claveGrupo(eq);
     if (!g) return;
+    const F = fechaDe[eq.division] || 0;
     const pagadas = eq.sancionesPagadas || [], cumplidas = eq.sancionesCumplidas || [];
     sancionesDeJugador(p).forEach(s => {
       const monto = SANCION_MONTOS[s.tipo] || 0;
-      // Cada sanción suma a su zona y al total general, y adentro de cada uno a su tipo.
-      const acum = [grupos[g].total, grupos[g].tipos[s.tipo], grupos.TOTAL.total, grupos.TOTAL.tipos[s.tipo]];
+      const fk = s.fechaOrigen || 0;
+      [grupos[g], grupos.TOTAL].forEach(gr => {
+        if (!gr.porFecha[fk]) { gr.porFecha[fk] = vacio(); gr.porFecha[fk].cumplieron = []; }
+      });
+      // Cada sanción suma a su zona, al total general, a su tipo y a su fecha.
+      const acum = [grupos[g].total, grupos[g].tipos[s.tipo], grupos.TOTAL.total, grupos.TOTAL.tipos[s.tipo],
+                    grupos[g].porFecha[fk], grupos.TOTAL.porFecha[fk]];
       const sumar = (campo, cant, m) => acum.forEach(a => { a[campo].cant += cant; a[campo].monto += m; });
       acum.forEach(a => { a.cant++; a.potencial += monto; });
 
       const pag = pagadas.find(x => x.dni === p.dni && x.tipo === s.tipo && (x.ciclo || 1) === s.ciclo);
       const cum = cumplidas.find(x => x.dni === p.dni && x.tipo === s.tipo && (x.ciclo || 1) === s.ciclo);
+      // Se le pasó el plazo: cumplió la suspensión sin pagar. Esa plata ya no entra.
+      const vencida = !pag && !cum && s.ultimaCobrable && F && F > s.ultimaCobrable;
+
       if (pag) {
-        // Con pagoId vino por la app: hay comprobante aprobado y un monto declarado real.
+        // Con pagoId vino por la app: hay comprobante y un monto declarado real.
         // Sin pagoId lo registró el admin a mano desde "Gestionar" = cobrado en la cancha.
         const doc = pag.pagoId ? pagosSancionesCache.find(x => x.id === pag.pagoId) : null;
         sumar(pag.pagoId ? 'transf' : 'efectivo', 1, doc ? (doc.montoDeclarado || monto) : monto);
-      } else if (cum) {
+      } else if (cum || vencida) {
         sumar('cumplida', 1, monto);
+        const quien = { nombre: p.nombre || p.dni, equipo: eq.nombre || '', tipo: s.tipo, fecha: fk, auto: !!vencida };
+        [grupos[g].porFecha[fk], grupos.TOTAL.porFecha[fk]].forEach(a => a.cumplieron.push(quien));
       } else {
         sumar('pendiente', 1, monto);
         const esperando = pagosSancionesCache.find(x => x.dni === p.dni && x.tipo === s.tipo && (x.ciclo || 1) === s.ciclo && x.estado === 'pagado');
@@ -4754,6 +4827,57 @@ function _tarjetaRecaudacion(label, g, destacado) {
   </div>`;
 }
 
+
+/**
+ * Desglose fecha a fecha: qué se cobró de cada fecha y quiénes optaron por cumplir.
+ *
+ * Pedido del usuario (2026-09-04): la recaudación no puede ser un total que queda por cobrar
+ * para siempre. Cuando pasan las fechas de suspensión sin que paguen, el jugador eligió
+ * cumplir y esa plata ya no entra: hay que verlo por fecha y saber QUIÉNES fueron.
+ */
+function _desglosePorFecha(grupo) {
+  const fechas = Object.keys(grupo.porFecha || {}).map(Number)
+    .filter(f => f > 0).sort((a, b) => a - b);
+  if (!fechas.length) return '';
+  const T = { roja: '🟥 roja', doble: '🟨🟨 doble', amarillas: '🟨 3 amarillas' };
+
+  const filas = fechas.map(f => {
+    const d = grupo.porFecha[f];
+    const cobrado = d.transf.monto + d.efectivo.monto;
+    const cumplieron = d.cumplieron || [];
+    const listaCumplieron = cumplieron.length
+      ? '<div class="rec-cumplieron">' +
+        '<strong>Optaron por cumplir (' + cumplieron.length + ') — no se cobra:</strong> ' +
+        cumplieron.map(c => escapeHtml(c.nombre) + ' <span class="muted">(' + escapeHtml(c.equipo) + ', ' + (T[c.tipo] || c.tipo) + ')</span>').join(' · ') +
+        '</div>'
+      : '';
+    return '<div class="rec-fecha">' +
+      '<div class="rec-fecha-head">' +
+        '<strong>Fecha ' + f + '</strong>' +
+        '<span class="muted">' + d.cant + ' sanción(es)</span>' +
+        '<span style="margin-left:auto;">' +
+          '<span style="color:var(--ok);font-weight:700;">' + fmtPesos(cobrado) + ' cobrado</span>' +
+          (d.pendiente.monto ? ' <span style="color:var(--warn);">· ' + fmtPesos(d.pendiente.monto) + ' por cobrar</span>' : '') +
+          (d.cumplida.monto ? ' <span class="muted">· ' + fmtPesos(d.cumplida.monto) + ' no entra</span>' : '') +
+        '</span>' +
+      '</div>' + listaCumplieron +
+    '</div>';
+  }).join('');
+
+  const totalCobrable = fechas.reduce((a, f) => a + grupo.porFecha[f].pendiente.monto, 0);
+  const totalPerdido = fechas.reduce((a, f) => a + grupo.porFecha[f].cumplida.monto, 0);
+
+  return '<div class="glass section-card" style="padding:14px 16px;margin-top:10px;">' +
+    '<h3 style="margin-bottom:2px;">Fecha por fecha</h3>' +
+    '<p class="muted" style="font-size:11.5px;margin-bottom:10px;">Una sanción deja de ser cobrable cuando pasan las fechas de suspensión sin que paguen: ahí el jugador optó por cumplir. Sólo lo de <strong>por cobrar</strong> puede todavía entrar.</p>' +
+    filas +
+    '<div class="rec-fecha-total">' +
+      '<span style="color:var(--warn);font-weight:700;">Todavía se puede cobrar: ' + fmtPesos(totalCobrable) + '</span>' +
+      '<span class="muted" style="margin-left:auto;">Ya no entra (cumplieron): ' + fmtPesos(totalPerdido) + '</span>' +
+    '</div>' +
+  '</div>';
+}
+
 function renderRecaudacionSanciones() {
   const box = document.getElementById('sanciones-recaudacion-cont');
   if (!box) return;
@@ -4762,6 +4886,7 @@ function renderRecaudacionSanciones() {
   const g = calcularRecaudacionSanciones();
   if (!g.TOTAL.total.cant) { box.innerHTML = '<p class="empty-state">Todavía no hay sanciones registradas en el torneo.</p>'; return; }
   box.innerHTML = _tarjetaRecaudacion('📊 TOTAL del torneo', g.TOTAL, true)
+    + _desglosePorFecha(g.TOTAL)
     + _tarjetaRecaudacion('🥇 Primera', g.Primera)
     + _tarjetaRecaudacion('🥈 Segunda — Zona A', g.A)
     + _tarjetaRecaudacion('🥈 Segunda — Zona B', g.B)
@@ -8906,7 +9031,7 @@ auth.onAuthStateChanged(user => {
 /* ── PUSH NOTIFICATIONS ── */
 // Versión de la app, la misma que el service worker. Se muestra en el panel para poder
 // confirmar si este dispositivo ya bajó el deploy nuevo, sin adivinar.
-const APP_VERSION = '67';
+const APP_VERSION = '68';
 const VAPID_PUBLIC = 'BDZe4cNkg6SdSMRcaFej2v7dVwBli5FFxIe8i460m7jLIbvMdGATsuCQ2PZjxGjlBvHfM7TPqLwrt4L3M_9DgpU';
 function _b64ToUint8(b64) {
   const pad = '='.repeat((4 - b64.length % 4) % 4);
