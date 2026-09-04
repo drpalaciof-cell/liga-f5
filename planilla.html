@@ -735,7 +735,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v65</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v66</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -1366,12 +1366,15 @@ async function cargarTarjetasDivision(division){
       if(!p.jugado) return;
       (p.tarjetas||[]).forEach(t=>{
         if(!t.dni) return;
-        if(!map[t.dni])map[t.dni]={dni:t.dni,rojas:0,amarillas:0,expulsiones:0,fechaRoja:0};
+        if(!map[t.dni])map[t.dni]={dni:t.dni,rojas:0,amarillas:0,expulsiones:0,fechaRoja:0,fechasDobles:[],fechasAmarillas:[]};
         const r=map[t.dni];
+        const F=Number(p.numeroFecha)||0;
         // fechaRoja = fecha de la ULTIMA roja; es el ancla para saber que fechas cumple.
-        if(t.tipo==='roja'){r.rojas++;r.expulsiones++;r.fechaRoja=Math.max(r.fechaRoja||0,Number(p.numeroFecha)||0);}
-        else if(t.dobleAmarilla){r.expulsiones++;}
-        else{r.amarillas++;}
+        // Las fechas de las dobles y de las amarillas hacen falta por lo mismo: sin ellas la
+        // suspension no se puede levantar sola y queda congelada para siempre.
+        if(t.tipo==='roja'){r.rojas++;r.expulsiones++;r.fechaRoja=Math.max(r.fechaRoja||0,F);}
+        else if(t.dobleAmarilla){r.expulsiones++;if(F)r.fechasDobles.push(F);}
+        else{r.amarillas++;if(F)r.fechasAmarillas.push(F);}
       });
     });
     _tarjetasCache[division]=map;
@@ -1412,16 +1415,32 @@ function getSancionesActivas(counts, eq, numeroFecha){
     }
     if(bloquea) items.push({label:'🟥 Roja directa',desc});
   }
+  // Doble amarilla: 1 fecha, la SIGUIENTE a la que la vio. Muchos eligen cumplir en vez de
+  // pagar, y antes eso no se contemplaba: bloqueaba para siempre hasta que el admin marcara
+  // "cumplió" a mano. Doble en la fecha 4 -> cumple la 5 -> desde la 6 juega, sin que nadie
+  // toque nada.
   const nDobles=counts.expulsiones-counts.rojas;
   if(nDobles>0 && !hasPag('doble') && !hasCum('doble')){
-    items.push({label:'🟨🟨 Doble amarilla',desc:'1 fecha de suspensión'});
+    const fd=(counts.fechasDobles||[]).slice().sort((a,b)=>a-b);
+    const ND=fd.length?fd[fd.length-1]:0;   // la última doble es la que manda
+    const F=Number(numeroFecha)||0;
+    // Sin la fecha de la doble (dato viejo) se bloquea siempre: es el criterio seguro.
+    const bloquea = (ND&&F) ? (F===ND+1) : true;
+    if(bloquea) items.push({label:'🟨🟨 Doble amarilla',desc:ND?('Cumple la fecha '+(ND+1)):'1 fecha de suspensión'});
   }
+  // Acumulación de 3 amarillas: misma idea. El ciclo k se cierra con la 3k-ésima amarilla, y
+  // se cumple en la fecha siguiente a ésa.
   if(counts.amarillas>=3){
     const ciclos=Math.floor(counts.amarillas/3);
     const nPag=pagadas.filter(p=>p.dni===counts.dni&&p.tipo==='amarillas').length;
     const nCum=cumplidas.filter(p=>p.dni===counts.dni&&p.tipo==='amarillas').length;
     if(nPag+nCum<ciclos){
-      items.push({label:'🟨 Acumulación de amarillas',desc:'1 fecha de suspensión'});
+      const fa=(counts.fechasAmarillas||[]).slice().sort((a,b)=>a-b);
+      const idx=(nPag+nCum+1)*3-1;          // la 3ª amarilla del ciclo pendiente
+      const NA=fa.length>idx?fa[idx]:0;
+      const F=Number(numeroFecha)||0;
+      const bloquea = (NA&&F) ? (F===NA+1) : true;
+      if(bloquea) items.push({label:'🟨 Acumulación de amarillas',desc:NA?('Cumple la fecha '+(NA+1)):'1 fecha de suspensión'});
     }
   }
   return items;

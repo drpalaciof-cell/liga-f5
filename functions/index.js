@@ -323,3 +323,32 @@ exports.cerrarPlazoSeguro = onSchedule(
     await cfgRef.update({ avisoSeguroCierreEnviado: true });
   }
 );
+
+// Un equipo carga el pago de una sanción → push al admin.
+//
+// Pedido del usuario (2026-09-04): "cuando alguien paga su sanción, ¿me llega notificación?
+// Porque sucede que pagan, yo no gestiono o no apruebo, y quedan inhabilitados, y tengo que
+// entrar a ver cada rato".
+//
+// El aviso existía sólo DENTRO de la pestaña Sanciones del panel de admin y filtrado por
+// división: había que entrar, ir a esa pestaña y estar parado en la división correcta. Mientras
+// tanto el jugador ya pagó y sigue sin poder jugar, que es lo peor de los dos lados.
+//
+// Reusa enviarPush() y la suscripción 'admin' que ya existen para los mensajes y los avisos de
+// planilla, así que no hace falta ninguna infraestructura nueva.
+exports.enviarPushPagoSancion = onDocumentCreated('pagosSanciones/{pagoId}', async (event) => {
+  ensureVapid();
+  const p = event.data && event.data.data();
+  if (!p) return;
+  // Sólo el pago recién cargado por el equipo. Los estados 'aprobado'/'rechazado' los pone el
+  // admin editando el mismo documento, y eso no crea uno nuevo.
+  if (p.estado !== 'pagado') return;
+
+  const MONTOS = { roja: 'roja directa', doble: 'doble amarilla', amarillas: 'acumulación de amarillas' };
+  const monto = Number(p.montoDeclarado || 0).toLocaleString('es-AR');
+  await enviarPush('admin', {
+    title: 'Liga F5 · Pago de sanción',
+    body: `${p.jugadorNombre || p.dni || 'Un jugador'} (${p.equipoNombre || 'equipo'}) pagó $${monto} — ${MONTOS[p.tipo] || p.tipo}. Falta aprobarlo para habilitarlo.`,
+    rol: 'admin',
+  });
+});

@@ -358,7 +358,16 @@
 // El panel de admin (renderSancionesAdmin) ya las tenia, pero la lista de amonestados del panel
 // del equipo (renderSancionesEquipo) armaba su propio cardMap sin las fechas. Regla que deja el
 // usuario: al agregar un dato, ponerlo en TODOS los lugares que muestran lo mismo, de una.
-const CACHE = 'ligaf5-v65';
+// v66: LAS SUSPENSIONES SE LEVANTAN SOLAS. La doble amarilla y la acumulacion de 3 amarillas
+// bloqueaban PARA SIEMPRE hasta que el admin marcara "cumplio" a mano -- solo la roja miraba
+// la fecha. Muchos eligen cumplir en vez de pagar, asi que quedaban congelados. Ahora cada
+// sancion sabe en que fecha se cumple: doble en la 4 -> cumple la 5 -> desde la 6 juega.
+// v66: el pago de una sancion HABILITA EN EL ACTO. Antes habia que esperar la aprobacion del
+// admin, y si se demoraba el jugador pagaba y se perdia el partido igual. La entrada se
+// escribe en equipos.sancionesPagadas (que es lo unico que lee el planillero) marcada como
+// pendienteRevision; si el admin rechaza, se le saca. Ademas push al admin al cargarse el pago
+// y contador en las pestanas del panel.
+const CACHE = 'ligaf5-v66';
 const ASSETS = [
   './index.html',
   './planilla.html',
