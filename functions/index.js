@@ -352,3 +352,68 @@ exports.enviarPushPagoSancion = onDocumentCreated('pagosSanciones/{pagoId}', asy
     rol: 'admin',
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TODA INTERACCIÓN DE UN EQUIPO LLEGA AL ADMIN — sobre todo los pagos.
+//
+//  Pedido del usuario (2026-09-04): "quiero que me llegue toda interacción de equipos al
+//  sistema, más aún cuando es pagos".
+//
+//  Auditoría de lo que un equipo escribe y qué avisaba antes:
+//     mensajes / respuestas ......... ✔ ya avisaba (enviarNotificacionPush)
+//     pago de sanción ............... ✗ → enviarPushPagoSancion (arriba)
+//     pago del arancel semanal ...... ✗ → enviarPushArancel
+//     pago de inscripción ........... ✗ → enviarPushCambiosEquipo
+//     pago del saldo ................ ✗ → enviarPushCambiosEquipo
+//     comprobante de seguro médico .. ✗ → enviarPushCambiosEquipo
+//
+//  Los tres últimos viven en campos del MISMO documento equipos/{id}, así que van en un solo
+//  trigger que compara antes/después: un trigger por campo dispararía tres veces por guardado.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const pesos = (n) => '$' + Number(n || 0).toLocaleString('es-AR');
+
+// El equipo carga el pago del arancel de una fecha.
+exports.enviarPushArancel = onDocumentCreated('aranceles/{id}', async (event) => {
+  ensureVapid();
+  const a = event.data && event.data.data();
+  if (!a) return;
+  await enviarPush('admin', {
+    title: 'Liga F5 · Pago de arancel',
+    body: `${a.equipoNombre || 'Un equipo'} cargó ${pesos(a.montoDeclarado)} de la fecha ${a.fecha || '?'}${a.fueraDeHora ? ' (fuera de hora)' : ''}. Falta revisarlo.`,
+    rol: 'admin',
+  });
+});
+
+// Inscripción, saldo y seguro médico: todos son campos de equipos/{id}.
+exports.enviarPushCambiosEquipo = onDocumentWritten('equipos/{id}', async (event) => {
+  ensureVapid();
+  const antes = event.data.before.exists ? event.data.before.data() : {};
+  const desp = event.data.after.exists ? event.data.after.data() : null;
+  if (!desp) return;
+  const nombre = desp.nombre || 'Un equipo';
+
+  const avisos = [];
+
+  // Pasó a 'pendiente' = el equipo acaba de cargar un comprobante nuevo. Los otros estados
+  // ('aprobado', 'rechazado') los pone el admin, y no tiene sentido avisarse a sí mismo.
+  if (antes.pagoEstado !== 'pendiente' && desp.pagoEstado === 'pendiente') {
+    avisos.push(`${nombre} cargó el pago de inscripción: ${pesos(desp.pagoMontoDeclarado)}.`);
+  }
+  if (antes.pagoSaldoEstado !== 'pendiente' && desp.pagoSaldoEstado === 'pendiente') {
+    avisos.push(`${nombre} cargó el pago del saldo: ${pesos(desp.pagoSaldoMontoDeclarado)}.`);
+  }
+
+  // Seguro médico: la lista de transacciones sólo crece cuando el equipo sube un comprobante.
+  const nAntes = (antes.segurosTransacciones || []).length;
+  const nDesp = (desp.segurosTransacciones || []).length;
+  if (nDesp > nAntes) {
+    const ult = desp.segurosTransacciones[nDesp - 1] || {};
+    const cuantos = (ult.jugadores || ult.dnis || []).length;
+    avisos.push(`${nombre} cargó un pago de seguro médico${cuantos ? ` para ${cuantos} jugador(es)` : ''}.`);
+  }
+
+  for (const body of avisos) {
+    await enviarPush('admin', { title: 'Liga F5 · Pago de un equipo', body, rol: 'admin' });
+  }
+});

@@ -1,3 +1,25 @@
+
+# ⚠ PENDIENTE — deployar las FUNCTIONS desde la otra PC
+
+Se agregaron **tres triggers de notificación** que todavía NO están deployados, porque en la PC
+de ATP no existe `functions/.env` con las claves VAPID y deployar functions desde ahí rompería
+todas las notificaciones push.
+
+    cd "LIGA APP"
+    git pull
+    firebase deploy --only functions
+
+Los tres (en `functions/index.js`):
+
+- `enviarPushPagoSancion` — un equipo carga el pago de una sanción.
+- `enviarPushArancel` — un equipo carga el pago del arancel de una fecha.
+- `enviarPushCambiosEquipo` — inscripción, saldo y seguro médico (los tres son campos del
+  mismo documento `equipos/{id}`, por eso van en un trigger solo).
+
+Hasta que se deployen, el aviso de pagos de sanción se ve igual **dentro** del panel: contador
+en la pestaña Torneo y en la sub-pestaña Sanciones, contando las dos divisiones.
+
+---
 # 2026-09-04 — Fecha 3 de Primera postergada + fechas de las tarjetas (sw v63)
 
 ## Unificar las dos divisiones en la fecha 4
