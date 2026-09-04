@@ -348,7 +348,13 @@
 // v63: las sanciones ahora dicen SIEMPRE de que fecha salio cada tarjeta ('🟨 fechas 1, 2').
 // Antes solo se veia el contador y no habia forma de discutir una sancion con el jugador ni
 // de detectar una tarjeta mal cargada.
-const CACHE = 'ligaf5-v63';
+// v64: la fecha postergada tambien se saltea en la PAGINA PUBLICA. Faltaban dos lugares:
+// "En vivo" usaba la misma logica de "fecha mas baja sin jugar" pero global, asi que se quedaba
+// mostrando la fecha 3 (los 6 de Primera sin jugar) en vez de la 4 que se estaba jugando; y
+// "Partidos" abria en la ULTIMA fecha del fixture (la 11) o en la que hubiera quedado pegada de
+// antes, en vez de la que se juega. Ahora las dos usan fechaEnJuego(), el mismo criterio que el
+// planillero, y "Partidos" se resetea al cambiar de division.
+const CACHE = 'ligaf5-v64';
 const ASSETS = [
   './index.html',
   './planilla.html',

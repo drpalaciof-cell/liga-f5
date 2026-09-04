@@ -2156,11 +2156,20 @@ function switchDivisionTab(div) {
 //
 // Formato en config/general: fechasPostergadas: ['Primera|3']
 let _fechasPostergadas = [];
+let _postergadasListas = false;
 async function cargarFechasPostergadas() {
+  if (_postergadasListas) return;
   try {
     const d = await db.collection('config').doc('general').get();
     _fechasPostergadas = (d.exists && d.data().fechasPostergadas) || [];
   } catch (e) { _fechasPostergadas = []; }
+  _postergadasListas = true;
+  // La config llega async y las pantallas pueden haberse dibujado antes con la lista vacía
+  // (mostrando la fecha postergada como si fuera la de hoy). Se redibuja al tenerla.
+  if (_fechasPostergadas.length) {
+    try { renderContentTabActivo(); } catch (e) {}
+    try { renderEnVivoPublico(); renderEnVivoAdmin(); } catch (e) {}
+  }
 }
 function esFechaPostergada(nf, division) {
   if (!_fechasPostergadas.length) return false;
@@ -2173,6 +2182,20 @@ function esFechaPostergada(nf, division) {
 /** Rótulo de una fecha para el fixture, con el aviso de postergada si corresponde. */
 function tituloFecha(nf, division) {
   return `Fecha ${nf}${esFechaPostergada(nf, division) ? ' <span class="fx-postergada">(postergada)</span>' : ''}`;
+}
+
+/**
+ * La fecha que se está jugando: la más baja sin jugar, salteando las postergadas.
+ *
+ * Es el mismo criterio que usa el planillero, para que la página pública y la cancha no
+ * muestren fechas distintas. Si ya se jugó todo, devuelve null y el que llama decide.
+ */
+function fechaEnJuego(partidos) {
+  const pend = (partidos || [])
+    .filter(p => !p.jugado && !esFechaPostergada(p.numeroFecha, p.division))
+    .map(p => Number(p.numeroFecha))
+    .filter(f => !isNaN(f));
+  return pend.length ? Math.min(...pend) : null;
 }
 
 /**
@@ -2452,7 +2475,14 @@ function renderPartidosPublico() {
   const wrap = document.getElementById('partidos-publico-wrap');
   const fechas = [...new Set(state.partidosCache.map(p => p.numeroFecha))].sort((a, b) => a - b);
   if (fechas.length === 0) { pills.innerHTML = ''; wrap.innerHTML = `<div class="empty-state">Todavía no hay partidos cargados en esta división.</div>`; return; }
-  if (!state.fechaPublicaActiva || !fechas.includes(state.fechaPublicaActiva)) state.fechaPublicaActiva = fechas[fechas.length - 1];
+  // Al entrar (o al cambiar de división) se abre en LA FECHA QUE SE ESTÁ JUGANDO: la más baja
+  // sin jugar, salteando las postergadas. Antes se abría en la última del fixture (la 11), y si
+  // el usuario había mirado otra fecha se quedaba pegada ahí aunque cambiara de división.
+  if (!state.fechaPublicaActiva || !fechas.includes(state.fechaPublicaActiva) ||
+      state._fechaPublicaDiv !== state.divisionActiva) {
+    state.fechaPublicaActiva = fechaEnJuego(state.partidosCache) || fechas[fechas.length - 1];
+    state._fechaPublicaDiv = state.divisionActiva;
+  }
   pills.innerHTML = fechas.map(nf => `<button class="tab-btn ${nf === state.fechaPublicaActiva ? 'active' : ''}" onclick="seleccionarFechaPublica(${nf})">${tituloFecha(nf)}</button>`).join('');
   const partidos = ordenarPorHorario(state.partidosCache.filter(p => p.numeroFecha === state.fechaPublicaActiva));
   wrap.innerHTML = partidos.map(p => {
@@ -6842,6 +6872,7 @@ async function borrarFixtureTotal() {
 let partidosTotalCache = [];
 let partidosTotalUnsub = null;
 function cargarPartidosTotal() {
+  cargarFechasPostergadas();
   if (partidosTotalUnsub) return;
   partidosTotalUnsub = db.collection('partidos').onSnapshot(snap => {
     partidosTotalCache = [];
@@ -6932,10 +6963,15 @@ function faseCrono(p) {
 function renderEnVivoCards(contId, isAdmin) {
   const cont = document.getElementById(contId);
   if (!cont) return;
-  const pendientes = partidosTotalCache.filter(p => !p.jugado);
+  // Las fechas postergadas no cuentan: si no, "En vivo" se queda clavado en una fecha que no
+  // se va a jugar. Pasó con la fecha 3 de Primera — como estaba pendiente y era la más baja,
+  // En vivo mostraba esos 6 partidos y no los de la fecha 4 que se estaban jugando de verdad.
+  const pendientes = partidosTotalCache.filter(p => !p.jugado && !esFechaPostergada(p.numeroFecha, p.division));
   const fechasPend = [...new Set(pendientes.map(p => Number(p.numeroFecha)).filter(f => !isNaN(f)))].sort((a, b) => a - b);
   const fechaActiva = fechasPend.length ? fechasPend[0] : null;
-  const deHoy = fechaActiva != null ? partidosTotalCache.filter(p => Number(p.numeroFecha) === fechaActiva) : [];
+  const deHoy = fechaActiva != null
+    ? partidosTotalCache.filter(p => Number(p.numeroFecha) === fechaActiva && !esFechaPostergada(p.numeroFecha, p.division))
+    : [];
   if (!deHoy.length) { cont.innerHTML = `<div class="empty-state">No hay ninguna fecha en curso ahora mismo.</div>`; return; }
   const labels = { esperando_inicio: '⏸ Esperando arranque', primer_tiempo: '🔴 1er tiempo', entretiempo: '⏸ Entretiempo (ET)', segundo_tiempo: '🔴 2do tiempo', cerrado: '🏁 Terminado' };
   const EN_CURSO = ['esperando_inicio', 'primer_tiempo', 'entretiempo', 'segundo_tiempo', 'cerrado'];
