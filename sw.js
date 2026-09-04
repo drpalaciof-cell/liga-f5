@@ -354,7 +354,11 @@
 // "Partidos" abria en la ULTIMA fecha del fixture (la 11) o en la que hubiera quedado pegada de
 // antes, en vez de la que se juega. Ahora las dos usan fechaEnJuego(), el mismo criterio que el
 // planillero, y "Partidos" se resetea al cambiar de division.
-const CACHE = 'ligaf5-v64';
+// v65: las fechas de las tarjetas faltaban en dos de los CUATRO lugares que arman el conteo.
+// El panel de admin (renderSancionesAdmin) ya las tenia, pero la lista de amonestados del panel
+// del equipo (renderSancionesEquipo) armaba su propio cardMap sin las fechas. Regla que deja el
+// usuario: al agregar un dato, ponerlo en TODOS los lugares que muestran lo mismo, de una.
+const CACHE = 'ligaf5-v65';
 const ASSETS = [
   './index.html',
   './planilla.html',

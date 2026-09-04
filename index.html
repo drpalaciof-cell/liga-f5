@@ -4690,11 +4690,12 @@ async function renderSancionesEquipo() {
       if (!p.jugado) return;
       if (p.equipoLocalId !== state.equipoId && p.equipoVisitanteId !== state.equipoId) return;
       (p.tarjetas || []).filter(t => t.equipoId === state.equipoId).forEach(t => {
-        if (!cardMap[t.dni]) cardMap[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, amarillas: 0, rojas: 0, expulsiones: 0 };
+        if (!cardMap[t.dni]) cardMap[t.dni] = { dni: t.dni, nombre: t.jugadorNombre, amarillas: 0, rojas: 0, expulsiones: 0, fechaRoja: 0, fechasAmarillas: [], fechasRojas: [], fechasDobles: [] };
         const r = cardMap[t.dni];
-        if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; }
-        else if (t.dobleAmarilla) { r.expulsiones++; }
-        else { r.amarillas++; }
+        const F = Number(p.numeroFecha) || 0;
+        if (t.tipo === 'roja') { r.rojas++; r.expulsiones++; r.fechaRoja = Math.max(r.fechaRoja || 0, F); if (F) r.fechasRojas.push(F); }
+        else if (t.dobleAmarilla) { r.expulsiones++; if (F) r.fechasDobles.push(F); }
+        else { r.amarillas++; if (F) r.fechasAmarillas.push(F); }
       });
     });
 
@@ -4802,7 +4803,7 @@ async function renderSancionesEquipo() {
           <div style="display:flex;gap:5px;align-items:center;">
             <span class="badge-amarilla">🟨 ${p.amarillas}</span>${alerta}
           </div>
-        </div>`;
+        </div>${fechasTarjetasHtml(p)}`;
       }).join('');
     } else {
       html += `<p class="muted" style="font-size:13px;text-align:center;padding:8px 0 4px;">Ningún jugador con amarillas pendientes.</p>`;
