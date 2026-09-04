@@ -1242,6 +1242,15 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
          vea SIEMPRE sin importar en qué pestaña del admin esté (a pedido del usuario). -->
     <div id="llamada-organizador-banner" style="display:none;"></div>
 
+    <!-- Estado de las notificaciones + versión. En iPhone el push se corta solo al re-agregar
+         la app a la pantalla de inicio (el endpoint cambia) y antes eso se descubría recién
+         cuando un pago no avisaba. Acá se ve de entrada, y la versión permite saber si el
+         teléfono ya bajó el deploy nuevo sin tener que adivinar. -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:8px;">
+      <span id="estado-push-admin"></span>
+      <span class="muted" style="margin-left:auto;font-size:10px;" id="version-app"></span>
+    </div>
+
     <div class="tabs-admin">
       <button class="tab-btn active" data-tab="torneo" onclick="switchAdminTab('torneo')">🏆 Torneo Clausura<span class="msg-tab-badge" id="sanc-torneo-badge"></span></button>
       <button class="tab-btn" data-tab="envivo" onclick="switchAdminTab('envivo')">🔴 En vivo</button>
@@ -3973,6 +3982,17 @@ async function renderPanelAdmin() {
   const banner = document.getElementById('admin-notif-banner');
   if (banner) banner.style.display = ('PushManager' in window && Notification.permission !== 'granted') ? 'flex' : 'none';
   document.getElementById('pa-usuario').textContent = state.admin;
+  // Versión que tiene ESTE dispositivo. En el celular no había forma de saber si ya bajó el
+  // deploy nuevo, y por eso se terminaba re-agregando la app a la pantalla de inicio.
+  const vEl = document.getElementById('version-app');
+  if (vEl) {
+    vEl.textContent = 'v' + APP_VERSION;
+    navigator.serviceWorker?.ready?.then(() => {}).catch(() => {});
+  }
+  // Revisa la suscripción push cada vez que se abre el panel: si el endpoint cambió (app
+  // re-agregada en el iPhone), se corrige acá sin esperar al próximo login.
+  subscribirPush('admin', null);
+  renderEstadoPush();
   await cargarRolPanelControl();
   aplicarModoPanelControl();
   volverATorneoHome();
@@ -8884,6 +8904,9 @@ auth.onAuthStateChanged(user => {
 });
 
 /* ── PUSH NOTIFICATIONS ── */
+// Versión de la app, la misma que el service worker. Se muestra en el panel para poder
+// confirmar si este dispositivo ya bajó el deploy nuevo, sin adivinar.
+const APP_VERSION = '67';
 const VAPID_PUBLIC = 'BDZe4cNkg6SdSMRcaFej2v7dVwBli5FFxIe8i460m7jLIbvMdGATsuCQ2PZjxGjlBvHfM7TPqLwrt4L3M_9DgpU';
 function _b64ToUint8(b64) {
   const pad = '='.repeat((4 - b64.length % 4) % 4);
@@ -8892,22 +8915,88 @@ function _b64ToUint8(b64) {
   for (let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
   return arr;
 }
+// Estado de las notificaciones, para poder mostrarlo en pantalla en vez de que se descubra
+// cuando un pago no avisó.
+let _estadoPush = { ok: false, motivo: 'sin verificar' };
+
+/**
+ * Registra (o refresca) la suscripción push.
+ *
+ * POR QUÉ SE LLAMA TANTAS VECES. En iPhone el push sólo funciona con la app agregada a la
+ * pantalla de inicio, y al volver a agregarla queda una instalación NUEVA con otro endpoint.
+ * El endpoint viejo muere: el primer envío da 410 y el servidor borra la suscripción — desde
+ * ahí no llega nada más. Antes esto sólo se rehacía al INICIAR SESIÓN, así que entre que se
+ * re-agregaba la app y el siguiente login no llegaba ningún aviso, sin que nada lo dijera.
+ *
+ * Ahora se revisa al abrir el panel, cada vez que la app vuelve a primer plano y cuando se
+ * activa un service worker nuevo. Sólo escribe en Firestore si el endpoint CAMBIÓ, así que
+ * llamarla seguido no cuesta nada.
+ */
 async function subscribirPush(rol, equipoId) {
-  if (!('PushManager' in window) || !('serviceWorker' in navigator)) return;
+  if (!('PushManager' in window) || !('serviceWorker' in navigator)) {
+    _estadoPush = { ok: false, motivo: 'Este navegador no soporta notificaciones' };
+    return _estadoPush;
+  }
   try {
-    const perm = Notification.permission;
-    if (perm !== 'granted') return;
+    if (Notification.permission === 'denied') {
+      _estadoPush = { ok: false, motivo: 'Bloqueadas en el navegador' };
+      return _estadoPush;
+    }
+    if (Notification.permission !== 'granted') {
+      _estadoPush = { ok: false, motivo: 'Falta activarlas' };
+      return _estadoPush;
+    }
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: _b64ToUint8(VAPID_PUBLIC) });
     const docId = rol === 'admin' ? 'admin' : 'equipo_' + equipoId;
-    await db.collection('pushSubscriptions').doc(docId).set({
-      subscription: JSON.parse(JSON.stringify(sub)),
-      rol, equipoId: equipoId || null,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch(e) { console.warn('Push subscription failed:', e); }
+    const ref = db.collection('pushSubscriptions').doc(docId);
+
+    // Sólo se escribe si cambió el endpoint (o si el documento no está): al re-agregar la app
+    // el endpoint es otro, y ése es justo el caso que hay que corregir.
+    let guardado = null;
+    try { const d = await ref.get(); guardado = d.exists ? ((d.data().subscription || {}).endpoint || null) : null; } catch (e) {}
+    if (guardado !== sub.endpoint) {
+      await ref.set({
+        subscription: JSON.parse(JSON.stringify(sub)),
+        rol, equipoId: equipoId || null,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      console.log('Push: suscripción actualizada (endpoint nuevo)');
+    }
+    _estadoPush = { ok: true, motivo: 'Activas' };
+    renderEstadoPush();
+    return _estadoPush;
+  } catch(e) {
+    console.warn('Push subscription failed:', e);
+    _estadoPush = { ok: false, motivo: 'No se pudo registrar: ' + (e.message || e) };
+    renderEstadoPush();
+    return _estadoPush;
+  }
 }
+
+/**
+ * Cartel del estado de las notificaciones en el panel de admin.
+ *
+ * Si el push se rompe, el admin tiene que enterarse ACÁ y no cuando un pago no le avisó.
+ */
+function renderEstadoPush() {
+  const el = document.getElementById('estado-push-admin');
+  if (!el) return;
+  el.innerHTML = _estadoPush.ok
+    ? '<span style="color:var(--ok);font-weight:700;">🔔 Notificaciones activas</span>'
+    : '<span style="color:var(--warn);font-weight:700;">🔕 No te van a llegar avisos</span>' +
+      '<span class="muted" style="margin-left:6px;">' + escapeHtml(_estadoPush.motivo) + '</span>' +
+      ' <button class="btn btn-sm" style="margin-left:6px;" onclick="activarNotificaciones(\'admin\')">Activar</button>';
+}
+
+// Al volver a primer plano: en iPhone es el momento en que suele haber cambiado el endpoint
+// (se re-agregó la app, o el sistema la reinstaló con la versión nueva).
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (state.admin) subscribirPush('admin', null);
+  else if (state.equipoId) subscribirPush('equipo', state.equipoId);
+});
 async function activarNotificaciones(rol) {
   if (!('PushManager' in window)) {
     const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);

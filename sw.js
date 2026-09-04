@@ -367,7 +367,16 @@
 // escribe en equipos.sancionesPagadas (que es lo unico que lee el planillero) marcada como
 // pendienteRevision; si el admin rechaza, se le saca. Ademas push al admin al cargarse el pago
 // y contador en las pestanas del panel.
-const CACHE = 'ligaf5-v66';
+// v67: NOTIFICACIONES QUE SE CORTABAN SOLAS. En iPhone el push solo anda con la app agregada
+// a la pantalla de inicio, y al volver a agregarla queda una instalacion nueva con OTRO
+// endpoint: el viejo muere, el primer envio da 410 y el servidor borra la suscripcion --
+// desde ahi no llega nada mas. La re-suscripcion solo corria AL INICIAR SESION, asi que entre
+// que se re-agregaba la app y el siguiente login no llegaba ningun aviso y nada lo decia.
+// Ahora se revisa al abrir el panel y cada vez que la app vuelve a primer plano, y solo
+// escribe si el endpoint cambio. Ademas: cartel de estado en el panel ("🔔 activas" / "🔕 no
+// te van a llegar avisos" con el motivo y el boton para activarlas) y numero de version
+// visible, para saber si el telefono ya bajo el deploy nuevo sin re-agregar la app a ciegas.
+const CACHE = 'ligaf5-v67';
 const ASSETS = [
   './index.html',
   './planilla.html',
