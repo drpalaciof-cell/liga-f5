@@ -382,7 +382,16 @@
 // Ahora, si pasan las fechas de suspension sin pagar, el sistema PRESUME que el jugador opto
 // por cumplir: esa sancion deja de ser cobrable sola. Y el informe se abre FECHA A FECHA,
 // diciendo cuanto se cobro, cuanto queda por cobrar y quienes optaron por cumplir en cada una.
-const CACHE = 'ligaf5-v68';
+// v69: LA FECHA POSTERGADA NO SE COBRA. La fecha 3 de Primera se postergo y les seguia
+// apareciendo a los 12 equipos como deuda: nadie debe una fecha que no se jugo. Ahora el
+// arancel lee el MISMO campo config/general.fechasPostergadas que ya usaban el planillero y
+// el fixture desde la v63 -- un solo lugar, no dos listas que se desincronizan. La fecha sale
+// rotulada "⏸ Postergada", no suma a la deuda y no se puede pagar; si alguien la pago antes
+// de que se postergara el pago se muestra igual, aclarando que queda a su favor. En el panel
+// del admin no se lista "Faltan" para esa fecha, que era lo que hacia parecer que 12 equipos
+// debian. Ademas: el pago de la fecha 3 de EL CLAN se valido como fecha 4 (pago antes de que
+// se postergara y no habia pagado la 4), con constancia en el propio pago.
+const CACHE = 'ligaf5-v69';
 const ASSETS = [
   './index.html',
   './planilla.html',

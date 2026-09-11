@@ -1,3 +1,57 @@
+# 2026-09-11 — La fecha postergada no se cobra (sw v69)
+
+La fecha 3 de Primera se postergó (v63), pero **el arancel la seguía cobrando**: a los 12
+equipos les figuraba como deuda una fecha que no se jugó.
+
+El campo `fechasPostergadas` de `config/general` ya existía desde la v63 y lo usaban el
+planillero y el fixture. El arancel no lo miraba. Ahora lo lee **del mismo lugar** — no se creó
+una segunda lista que se pueda desincronizar.
+
+- **Panel del equipo**: la fecha sale rotulada "Postergada", no suma a la deuda y no tiene
+  botón de Pagar. Si el equipo la había pagado antes de que se postergara, el pago **se sigue
+  mostrando**, aclarando que queda a su favor. Esa plata no se pierde de vista.
+- **Panel del admin**: para una fecha postergada no se lista "Faltan" — era lo que hacía
+  parecer que 12 equipos debían. Sale un cartel explicando la situación y, si alguien la pagó,
+  esos pagos se listan igual.
+
+Tocado en `index.html`: `_cargarCfgArancel` (ahora trae `postergadas`), la función nueva
+`_arancelFechaPostergada(fecha, division)`, `renderPagosEquipo` y `renderArancelesAdmin`.
+
+## El pago de EL CLAN
+
+EL CLAN había pagado la fecha 3 el 28/08, antes de que se postergara, y no tenía pago de la
+fecha 4. Ese pago **se validó como fecha 4** (doc `tLNE6ioqJV6mS7MHtfa7` de `aranceles`), con
+constancia en el propio documento: `reasignadoDe: 3`, `reasignadoMotivo` y `reasignadoEn`. Sin
+esa constancia, dentro de un mes nadie iba a entender por qué un pago del 28/08 figura en la
+fecha 4.
+
+Quedó: pagó 1, 2, 4 — debe la 5, igual que el resto.
+
+## Estado de Primera después del cambio
+
+| Equipo | Debe |
+|---|---|
+| STRONGEST TEAM | al día |
+| BEER UNITED | 5 |
+| EL CLAN FC | 5 |
+| EL REJUNTE FC | 5 |
+| ELOSRA | 5 |
+| IMPERIO VERDE | 5 (pagó la 3 → crédito) |
+| INSTITUTO F.C | 5 |
+| LA SUB 21 | 5 |
+| MITOMANOS | 5 |
+| ROTENS FC | 5 |
+| RURAL 55 | 5 (pagó la 3 → crédito) |
+| VALENCIA | 4 y 5 |
+
+## Dos cosas que quedaron pendientes de decisión
+
+1. **IMPERIO VERDE y RURAL 55 pagaron la 3 Y la 4.** Les queda un pago a favor. No se tocó:
+   cuando la fecha 3 se juegue, ya la tienen paga. Si se decide que valga para la 5, es mover
+   esos dos pagos igual que el de El Clan.
+2. **VALENCIA no pagó ni la 3 ni la 4** — sólo la 1 y la 2. Debe la 4 y la 5.
+
+---
 
 # ⚠ PENDIENTE — deployar las FUNCTIONS desde la otra PC
 

@@ -2821,7 +2821,7 @@ const ARANCEL_MONTO = 50000, ARANCEL_MONTO_TARDE = 55000;
 const fmtPesos = (n) => '$ ' + (Number(n) || 0).toLocaleString('es-AR');
 let _cfgArancel = { fecha: null, vence: null };
 async function _cargarCfgArancel() {
-  try { const d = await db.collection('config').doc('general').get(); const c = d.exists ? d.data() : {}; _cfgArancel = { fecha: c.arancelFechaActual || null, vence: c.arancelVence || null }; } catch (e) {}
+  try { const d = await db.collection('config').doc('general').get(); const c = d.exists ? d.data() : {}; _cfgArancel = { fecha: c.arancelFechaActual || null, vence: c.arancelVence || null, postergadas: Array.isArray(c.fechasPostergadas) ? c.fechasPostergadas : [] }; } catch (e) {}
   return _cfgArancel;
 }
 function verImagenGrandeEquipo(src) { openModal(`<img src="${src}" style="max-width:100%;border-radius:8px;">`); }
@@ -2853,8 +2853,25 @@ async function renderPagosEquipo() {
     // ninguna forma de hacerlo y la deuda no se veía por ningún lado.
     const filas = [];
     let deuda = 0, nDeuda = 0;
+    const divEq = (state.equipo && state.equipo.division) || '';
     for (let f = fecha; f >= 1; f--) {
       const st = _estadoArancelFecha(pagos, f);
+      const postergada = _arancelFechaPostergada(f, divEq);
+
+      // Postergada: no se cobra, no suma deuda y no se puede pagar. Si igual la pagó
+      // antes de que se postergara, se muestra el pago — esa plata está y no se pierde.
+      if (postergada) {
+        filas.push(`<div class="list-row" style="align-items:center;opacity:.75;">
+          <div style="flex:1;min-width:0;">
+            <strong>Fecha ${f}</strong> <span class="badge">⏸ Postergada</span>
+            <div class="muted" style="font-size:12px;">${st.estado === 'pagado'
+              ? `Ya la habías pagado (${fmtPesos(st.pago.montoDeclarado)}) — queda a tu favor`
+              : 'No se jugó, así que no se cobra'}</div>
+          </div>
+        </div>`);
+        continue;
+      }
+
       const m = _montoArancelFecha(f, fecha, vencido);
       const esActual = f === fecha;
       if (st.estado !== 'pagado') { deuda += m; nDeuda++; }
@@ -2902,6 +2919,15 @@ function _estadoArancelFecha(pagos, f) {
 // Una fecha anterior a la abierta ya venció sí o sí, así que va al monto de fuera de hora.
 function _montoArancelFecha(f, fechaActual, vencidaActual) {
   return (f < fechaActual || (f === fechaActual && vencidaActual)) ? ARANCEL_MONTO_TARDE : ARANCEL_MONTO;
+}
+// UNA FECHA POSTERGADA NO SE COBRA. La fecha 3 de Primera se postergó y les seguía
+// apareciendo a los 12 equipos como deuda: nadie debe una fecha que no se jugó.
+// Se usa el MISMO campo `config/general.fechasPostergadas` (formato 'Primera|3') que ya
+// usaban el planillero y el fixture desde la v63 — así se saca de un solo lugar y no
+// quedan dos listas que se pueden desincronizar.
+function _arancelFechaPostergada(f, division) {
+  const lista = (_cfgArancel && _cfgArancel.postergadas) || [];
+  return lista.includes(`${division}|${f}`);
 }
 function abrirModalPagarArancel(f) {
   const vencido = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
@@ -3001,6 +3027,11 @@ async function renderArancelesAdmin() {
   document.getElementById('aranceles-fecha-sel').innerHTML = `Ver fecha: <select onchange="seleccionarArancelFecha(this.value)" style="padding:5px 8px;border-radius:8px;">${Array.from({ length: 11 }, (_, i) => i + 1).map(f => `<option value="${f}" ${f === fechaV ? 'selected' : ''}>Fecha ${f}${f === _cfgArancel.fecha ? ' (actual)' : ''}</option>`).join('')}</select>`;
   const equipos = tab === 'Primera' ? equiposCacheAdmin.filter(e => e.division === 'Primera') : equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona === tab);
   const total = equipos.length;
+  // Una fecha postergada no se cobra: no tiene sentido mostrar "faltan 12" de algo que
+  // nadie debe. Se muestra el cartel y, si alguien la pagó antes de que se postergara,
+  // esos pagos se listan igual — la plata está y no se pierde de vista.
+  const divTab = tab === 'Primera' ? 'Primera' : 'Segunda';
+  const esPostergada = _arancelFechaPostergada(fechaV, divTab);
   const pagosFecha = arancelesCache.filter(p => p.fecha === fechaV && p.estado !== 'rechazado' && (tab === 'Primera' ? p.division === 'Primera' : (p.division === 'Segunda' && p.zona === tab)));
   const pagadoIds = new Set(pagosFecha.map(p => p.equipoId));
   const pagados = equipos.filter(e => pagadoIds.has(e.id)).length;
@@ -3026,8 +3057,12 @@ async function renderArancelesAdmin() {
         <div>Pagaron fuera de hora: <strong>${fueraHora}</strong></div>
       </div>
     </div>
+    ${esPostergada ? `<div style="background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.35);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:13.5px;">
+      ⏸ <strong>Fecha ${fechaV} postergada</strong> — no se cobra y nadie la debe.
+      ${pagados ? `${pagados} equipo(s) la habían pagado antes de que se postergara: esa plata queda a favor.` : ''}
+    </div>` : ''}
     <h4 style="margin:10px 0 6px;">✅ Pagaron (${pagados})</h4>${filasPagaron || '<p class="muted">Nadie pagó todavía en esta fecha.</p>'}
-    <h4 style="margin:16px 0 6px;">⏳ Faltan (${total - pagados})</h4>${filasFaltan || '<p class="muted" style="color:var(--ok);">¡Todos pagaron!</p>'}`;
+    ${esPostergada ? '' : `<h4 style="margin:16px 0 6px;">⏳ Faltan (${total - pagados})</h4>${filasFaltan || '<p class="muted" style="color:var(--ok);">¡Todos pagaron!</p>'}`}`;
 }
 async function rechazarArancel(id) {
   if (!confirm('¿Rechazar este pago? El equipo lo verá como rechazado y deberá volver a cargarlo.')) return;
