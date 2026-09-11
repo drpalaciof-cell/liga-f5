@@ -114,7 +114,16 @@ service cloud.firestore {
     match /aranceles/{id} {
       allow read: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && resource.data.equipoId == request.auth.token.get('equipoId',''));
       allow create: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && request.resource.data.equipoId == request.auth.token.get('equipoId','') && request.resource.data.estado == 'pagado');
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin();
+      // El equipo puede BORRAR su propio pago porque se equivocan de imagen seguido (suben
+      // el comprobante de otra fecha, o una foto que no es). Antes tenían que pedirle al
+      // admin que lo rechazara y el comprobante equivocado quedaba igual en la base.
+      // Borrarse un pago propio sólo los perjudica a ellos: vuelven a deber esa fecha.
+      // Lo que NO pueden tocar es un pago con constancia de la organización (los que se
+      // reconocieron a mano cuando se postergó una fecha) — ése es registro nuestro.
+      allow delete: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo'
+        && resource.data.equipoId == request.auth.token.get('equipoId','')
+        && !('reasignadoDe' in resource.data) && !('reconocidoMotivo' in resource.data));
     }
     // Pago de una sanción de un jugador (roja, doble amarilla, acumulación de amarillas).
     // Mismo criterio que aranceles: el equipo crea el suyo en estado 'pagado' y sólo ve los

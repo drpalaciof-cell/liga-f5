@@ -1,3 +1,58 @@
+# 2026-09-11 — Carnets de los que entraron después + borrar un comprobante mal subido (sw v70)
+
+⚠ **Esta versión necesita `firebase deploy --only hosting,firestore:rules`** — cambió una regla.
+
+## El carnet de un jugador agregado después
+
+La edad va impresa en el carnet, así que sin edad no hay carnet. El problema: **la edad sólo
+se podía cargar desde el panel del equipo**. Un jugador que el admin agrega después de la
+inscripción quedaba sin edad, y desde el panel del admin no había ningún campo para
+ponérsela — el botón "Ver carnet" salía deshabilitado y ahí moría. Tres agujeros, los tres
+tapados:
+
+1. **El admin ahora carga la edad** en el mismo renglón del jugador, en el mismo campo
+   `jugadoresEdad` que usa el delegado. Un solo lugar donde vive el dato, no dos. El botón de
+   carnet ya no se deshabilita por falta de edad (sí sigue deshabilitado si no hay DNI, que
+   es la clave con la que se guardan foto y edad).
+2. **El delegado no veía al jugador nuevo.** `state.equipo` se carga una sola vez, al iniciar
+   sesión, y en el celular la sesión queda abierta días. Ahora al abrir la pestaña Carnet se
+   vuelve a traer el equipo: se dibuja primero con lo que hay y se redibuja con lo fresco,
+   avisando cuántos jugadores se sumaron. Mismo criterio que ya se usaba para las fotos.
+3. **Un jugador sin edad bloqueaba a todo el equipo.** `abrirVentanaCarnets` cortaba la
+   descarga completa. Ahora, si hay algunos listos, ofrece bajar esos y dice cuáles quedan
+   afuera; si no hay ninguno listo, avisa qué falta como antes.
+
+## Borrar un comprobante de arancel mal subido
+
+Se equivocan seguido: suben el comprobante de otra fecha, o una foto que no es. Hasta ahora
+había que escribirle al admin para que lo **rechazara**, y la imagen equivocada quedaba igual
+en la base ocupando lugar.
+
+- **El equipo** borra el suyo desde la pestaña 📎 Comprobantes, en la tarjeta 🎟️ Comprobantes
+  de arancel (que hasta ahora decía "Próximamente"). El cartel avisa que al borrarlo esa fecha
+  vuelve a figurar impaga. Borrarse un pago propio sólo los perjudica a ellos.
+- **El admin** tiene ahora 🗑 aparte de ✕ Rechazar. **No son lo mismo y las dos hacen falta**:
+  rechazar deja el registro y el equipo ve que se lo rechazaron (sirve cuando pagó de menos o
+  fuera de término); borrar lo saca del todo, imagen incluida.
+- **Los pagos reconocidos a mano por la organización** (El Clan, Valencia) no tienen botón de
+  borrar del lado del equipo, y la regla de Firestore lo bloquea aunque lo intenten por otro
+  lado. Ese registro es nuestro.
+
+La regla de `aranceles` pasó de `allow update, delete: if isAdmin()` a permitir el `delete`
+del equipo sobre su propio pago, salvo que tenga `reasignadoDe` o `reconocidoMotivo`.
+
+## Los 69 pagos duplicados: borrados
+
+Se borraron los 69 registros de más (INSTITUTO F.C tenía 46 veces el mismo pago de la fecha
+4). En cada grupo quedó **uno**: el más viejo que tuviera imagen. Todos los que quedaron
+tienen comprobante. Quedó un respaldo en JSON fuera del repo por si aparece algo.
+
+Verificado después: **cero duplicados en toda la liga.**
+
+**Falta todavía tapar el agujero que los creó** — pinta a doble envío del botón de Pagar sin
+traba. Que INSTITUTO F.C generara 46 registros con la misma hora no es un usuario apretando
+46 veces.
+
 # 2026-09-11 — La fecha postergada no se cobra (sw v69)
 
 La fecha 3 de Primera se postergó (v63), pero **el arancel la seguía cobrando**: a los 12

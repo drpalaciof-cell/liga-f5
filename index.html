@@ -1193,7 +1193,8 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       </div>
       <div class="glass section-card">
         <h3>🎟️ Comprobantes de arancel</h3>
-        <p class="wizard-help" style="margin-bottom:0;">Próximamente — todavía no está habilitada la carga de arancel.</p>
+        <p class="wizard-help" style="margin-bottom:0;">Si subiste el comprobante equivocado, borralo acá y volvé a cargarlo desde la pestaña "Pagos". Ojo: al borrarlo esa fecha te vuelve a figurar como impaga.</p>
+        <div id="pe-comp-arancel-list" style="margin-top:12px;"></div>
       </div>
     </div>
 
@@ -3056,7 +3057,8 @@ async function renderArancelesAdmin() {
       <div style="flex:1;min-width:0;"><span style="color:var(--ok);font-weight:800;">✅ ${escapeHtml(e.nombre)}</span> · ${fmtPesos(p.montoDeclarado)} ${p.fueraDeHora ? '<span class="badge badge-warn">Fuera de hora</span>' : ''}
         <div class="muted" style="font-size:12px;">${escapeHtml(p.nombreTransferencia || '')} · ${p.creadoEn ? new Date(p.creadoEn).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</div>
         ${_notaPagoReasignado(p)}</div>
-      <button class="btn btn-sm btn-danger" onclick="rechazarArancel('${p.id}')">✕ Rechazar</button>
+      <button class="btn btn-sm" onclick="rechazarArancel('${p.id}')">✕ Rechazar</button>
+      <button class="btn btn-sm btn-danger" title="Borrarlo del todo — para cuando subieron la imagen equivocada" onclick="borrarArancelAdmin('${p.id}','${escapeHtml(e.nombre)}',${p.fecha})">🗑</button>
     </div>`;
   }).join('');
   const filasFaltan = equipos.filter(e => !pagadoIds.has(e.id)).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '')).map(e => `<div class="list-row" style="align-items:center;border-left:4px solid var(--danger);padding-left:10px;background:rgba(248,113,113,.06);border-radius:8px;margin-bottom:5px;"><div style="flex:1;font-weight:800;color:var(--danger);">❌ ${escapeHtml(e.nombre)}</div><span class="badge badge-danger">Falta pagar</span></div>`).join('');
@@ -3079,6 +3081,15 @@ async function renderArancelesAdmin() {
 async function rechazarArancel(id) {
   if (!confirm('¿Rechazar este pago? El equipo lo verá como rechazado y deberá volver a cargarlo.')) return;
   try { await db.collection('aranceles').doc(id).update({ estado: 'rechazado' }); showToast('Pago rechazado.', 'ok'); } catch (e) { console.error(e); showToast('No se pudo rechazar.', 'error'); }
+}
+// Rechazar y borrar no son lo mismo y las dos hacen falta. Rechazar deja el registro y el
+// equipo ve que se lo rechazaron (sirve cuando pagó de menos o fuera de término). Borrar lo
+// saca del todo, imagen incluida: es para cuando subieron el comprobante equivocado y no
+// tiene sentido guardarlo — así además no queda ocupando lugar en la base.
+async function borrarArancelAdmin(id, equipoNombre, fecha) {
+  if (!confirm(`¿Borrar el pago de la Fecha ${fecha} de ${equipoNombre}?\n\nSe borra el registro y la imagen. El equipo va a volver a figurar como impago en esa fecha y va a poder cargarlo de nuevo.\n\nSi lo que querés es dejar constancia de que estaba mal, usá "Rechazar" en vez de esto.`)) return;
+  try { await db.collection('aranceles').doc(id).delete(); showToast('Pago borrado.', 'ok'); }
+  catch (e) { console.error(e); showToast('No se pudo borrar el pago.', 'error'); }
 }
 // ---- Mantenimiento: liberar memoria borrando comprobantes viejos ----
 async function limpiarComprobantesViejos() {
@@ -3303,7 +3314,7 @@ function switchPanelEquipoTab(tab, renderSanc = true) {
   if (tab === 'sanciones' && renderSanc) renderSancionesEquipo();
   if (tab === 'pagos') renderPagosEquipo();
   if (tab === 'planilla') renderPlanillaEquipo();
-  if (tab === 'carnet') renderCarnetTab();
+  if (tab === 'carnet') { renderCarnetTab(); refrescarEquipoParaCarnet(); }
   if (tab === 'partidos') renderPartidosEquipo();
   if (tab === 'listabf') renderListaBFPanel();
   if (tab === 'comprobantes') renderComprobantesPanel();
@@ -3567,11 +3578,14 @@ function verComprobanteSeguroPropio(txId) {
 /* ===================== COMPROBANTES (equipo) — ver/borrar lo que subió ===================== */
 const comprobanteRowEquipo = (f) => `
   <div class="list-row" style="align-items:center;">
-    <img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrande('${f.comprobante}')">
+    ${f.comprobante
+      ? `<img src="${f.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrande('${f.comprobante}')">`
+      : `<div class="receipt-thumb" style="display:flex;align-items:center;justify-content:center;font-size:9.5px;text-align:center;line-height:1.2;color:var(--text-dim);border:1.5px dashed rgba(255,255,255,.2);">sin<br>imagen</div>`}
     <div style="flex:1;min-width:0;">
       <strong>${escapeHtml(f.etiqueta)}</strong> · $${(f.monto || 0).toLocaleString('es-AR')}
       ${f.borrarOnclick && f.estado !== 'aprobado' ? `<button class="btn btn-sm btn-danger" style="padding:1px 7px;font-size:10.5px;margin-left:6px;" onclick="${f.borrarOnclick}">🗑 Borrar</button>` : ''}
       <div class="muted" style="font-size:12px;margin-top:2px;">${f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : '-'} · Transferiste: ${escapeHtml(f.nombreTransferencia) || 'sin dato'}</div>
+      ${f.nota || ''}
     </div>
     ${badgeEstadoComprobante(f.estado)}
   </div>`;
@@ -3607,6 +3621,42 @@ async function renderComprobantesPanel() {
       ? `<p class="muted" style="font-size:12.5px;">Todavía no subiste ningún comprobante de seguro.</p>`
       : seguroHistorial.map(t => comprobanteRowEquipo({ comprobante: t.comprobante, monto: t.montoDeclarado != null ? t.montoDeclarado : t.dnis.length * MONTO_SEGURO_POR_JUGADOR, fecha: t.fechaCarga, nombreTransferencia: t.nombreTransferencia, estado: t.estado, etiqueta: `${t.dnis.length} jugador(es)${t.montoDeclarado == null ? ' · estimado' : ''}`, borrarOnclick: t.id ? `eliminarComprobantePropio('seguro','${t.id}')` : null })).join('');
   }
+
+  // Los aranceles no viven en el documento del equipo sino en su propia colección, así que
+  // hay que ir a buscarlos. Un pago que la organización reconoció a mano no lleva botón de
+  // borrar: ese registro es nuestro, no de ellos (la regla de Firestore lo bloquea igual).
+  const arWrap = document.getElementById('pe-comp-arancel-list');
+  if (arWrap) {
+    arWrap.innerHTML = `<p class="muted" style="font-size:12.5px;">Cargando…</p>`;
+    let aranceles = [];
+    try {
+      const snap = await db.collection('aranceles').where('equipoId', '==', state.equipoId).get();
+      snap.forEach(d => aranceles.push({ id: d.id, ...d.data() }));
+    } catch (e) { console.error(e); }
+    aranceles.sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+    arWrap.innerHTML = aranceles.length === 0
+      ? `<p class="muted" style="font-size:12.5px;">Todavía no subiste ningún comprobante de arancel.</p>`
+      : aranceles.map(p => {
+          const deLaOrga = !!(p.reasignadoDe || p.reconocidoMotivo);
+          return comprobanteRowEquipo({
+            comprobante: p.comprobante, monto: p.montoDeclarado, fecha: p.creadoEn,
+            nombreTransferencia: p.nombreTransferencia, estado: p.estado,
+            etiqueta: `Fecha ${p.fecha}`, nota: _notaPagoReasignado(p),
+            borrarOnclick: deLaOrga ? null : `eliminarComprobanteArancelPropio('${p.id}',${p.fecha})`,
+          });
+        }).join('');
+  }
+}
+// El equipo se equivoca de imagen seguido (sube el comprobante de otra fecha, o una foto que
+// no es). Antes tenía que escribirle al admin para que lo rechazara, y el comprobante
+// equivocado quedaba igual en la base ocupando lugar. Ahora lo borra y lo vuelve a cargar.
+async function eliminarComprobanteArancelPropio(id, fecha) {
+  if (!confirm(`¿Borrar el comprobante de la Fecha ${fecha}?\n\nEsa fecha te va a volver a figurar como IMPAGA hasta que subas el correcto desde la pestaña "Pagos".\n\nNo se puede deshacer.`)) return;
+  try {
+    await db.collection('aranceles').doc(id).delete();
+    showToast('Comprobante borrado. Volvé a subir el correcto desde "Pagos".', 'ok');
+    renderComprobantesPanel();
+  } catch (e) { console.error(e); showToast('No se pudo borrar el comprobante.', 'error'); }
 }
 async function eliminarComprobantePropio(tipo, txId) {
   if (!confirm('¿Eliminar este comprobante? No se puede deshacer.\n\nDespués podés subir el correcto desde la pestaña "Mi equipo".')) return;
@@ -5391,6 +5441,29 @@ async function adminSubirFotoJugador(equipoId, dni, input) {
     verDetalleEquipoAdmin(equipoId);
   } catch(e) { console.error(e); showToast(mensajeErrorComprobante(e), 'error'); }
 }
+// La edad es obligatoria para el carnet, pero hasta ahora SOLO se podía cargar desde el panel
+// del equipo. Un jugador agregado por el admin después de la inscripción quedaba sin edad y
+// sin forma de ponérsela desde acá: el botón de carnet salía deshabilitado y no había campo.
+// Ahora el admin la carga en el mismo renglón, en el mismo campo `jugadoresEdad` que usa el
+// delegado — un solo lugar donde vive el dato, no dos.
+async function adminGuardarEdadJugador(equipoId, dni, valor) {
+  const n = parseInt(valor, 10);
+  if (valor !== '' && (!Number.isFinite(n) || n < 15 || n > 65)) { showToast('La edad tiene que estar entre 15 y 65.', 'error'); return; }
+  try {
+    const doc = await db.collection('equipos').doc(equipoId).get();
+    if (!doc.exists) { showToast('No se encontró el equipo.', 'error'); return; }
+    const edades = doc.data().jugadoresEdad || {};
+    if (valor === '') delete edades[dni]; else edades[dni] = String(n);
+    await db.collection('equipos').doc(equipoId).update({ jugadoresEdad: edades });
+    // Las dos cachés del panel del admin salen del mismo documento; si no se actualizan, el
+    // botón de carnet sigue leyendo la edad vieja hasta recargar la página.
+    [pagosCacheAdmin, equiposCacheAdmin].forEach(c => {
+      const e = (c || []).find(x => x.id === equipoId);
+      if (e) e.jugadoresEdad = edades;
+    });
+    showToast(valor === '' ? 'Edad borrada.' : '✅ Edad guardada.', 'ok');
+  } catch (e) { console.error(e); showToast('No se pudo guardar la edad.', 'error'); }
+}
 // Para liberar espacio de un equipo — borra la foto de UN jugador puntual, en los dos
 // lugares posibles (subcolección nueva y campo viejo embebido, por si es de antes de la
 // migración y todavía no se tocó).
@@ -5410,6 +5483,22 @@ async function adminBorrarFotoJugador(equipoId, dni) {
 // circuito de la colección `pagosSanciones` (ver "PAGO DE SANCIONES"). El mapa viejo se
 // sigue LEYENDO para no perder lo ya cargado, pero ya no se escribe.
 
+// `state.equipo` se carga UNA sola vez, al iniciar sesión. En el celular la sesión queda
+// abierta días, así que un jugador que el admin agrega después no aparecía en esta pestaña y
+// el delegado no tenía forma de hacerle el carnet. Se vuelve a traer el equipo al abrir la
+// pestaña — primero se dibuja con lo que hay (no se deja la pantalla en blanco) y se
+// redibuja cuando llega lo fresco.
+async function refrescarEquipoParaCarnet() {
+  try {
+    const doc = await db.collection('equipos').doc(state.equipoId).get();
+    if (!doc.exists) return;
+    const antes = (state.equipo.jugadores || []).length;
+    state.equipo = doc.data();
+    const ahora = (state.equipo.jugadores || []).length;
+    renderCarnetTab();
+    if (ahora > antes) showToast(`Se sumaron ${ahora - antes} jugador(es) a tu lista.`, 'info');
+  } catch (e) { console.error(e); }
+}
 function renderCarnetTab() {
   const wrap = document.getElementById('pe-carnet-content');
   if (!wrap) return;
@@ -5492,11 +5581,20 @@ function abrirVentanaCarnets(jugadores, eq) {
   const fotos = eq.fotosJugadores || {};
   const edades = eq.jugadoresEdad || {};
 
+  // La edad va impresa en el carnet, así que sin edad no hay carnet. Pero antes UN jugador
+  // sin edad (típico: el que el admin agregó después) bloqueaba la descarga de TODO el
+  // equipo, y no había manera de sacar los que sí estaban listos. Ahora: si es uno solo, se
+  // avisa qué falta; si son varios, se ofrece bajar los que están y se dice cuáles quedan.
   const sinEdad = jugadores.filter(j => !edades[j.dni]);
   if (sinEdad.length > 0) {
     const nombres = sinEdad.map(j => `${j.apellido || ''} ${j.nombre || ''}`.trim() || j.dni).join(', ');
-    showToast(`Completá la edad de: ${nombres} antes de descargar el carnet.`, 'error');
-    return;
+    const listos = jugadores.filter(j => edades[j.dni]);
+    if (listos.length === 0) {
+      showToast(`Completá la edad de: ${nombres} antes de descargar el carnet.`, 'error');
+      return;
+    }
+    if (!confirm(`Falta la edad de ${sinEdad.length} jugador(es):\n\n${nombres}\n\nEsos no pueden salir en el carnet.\n\n¿Descargar igual los ${listos.length} que están completos?`)) return;
+    jugadores = listos;
   }
 
   const base = new URL('assets/', window.location.href).href;
@@ -8455,11 +8553,15 @@ async function verDetalleEquipoAdmin(id, esActualizacionEnVivo = false) {
             ${fotoTag}
             <div style="flex:1;min-width:0;">
               <strong>${escapeHtml(j.apellido || '')} ${escapeHtml(j.nombre || '')}</strong>
-              <div class="muted" style="font-size:12px;margin-top:2px;">DNI ${escapeHtml(j.dni) || '-'} · ${edad ? edad + ' años' : 'falta cargar edad'}</div>
+              <div class="muted" style="font-size:12px;margin-top:2px;">DNI ${escapeHtml(j.dni) || '-'}</div>
             </div>
+            ${j.dni ? `<input type="number" min="15" max="65" placeholder="Edad" value="${escapeHtml(String(edad || ''))}"
+              title="Edad del jugador — hace falta para el carnet"
+              style="width:74px;padding:5px 6px;text-align:center;${edad ? '' : 'border-color:var(--danger);'}"
+              onchange="adminGuardarEdadJugador('${id}','${escapeHtml(j.dni)}',this.value)">` : ''}
             ${foto ? '<span class="badge badge-ok">Con foto</span>' : '<span class="badge badge-warn">Sin foto</span>'}
             ${foto ? `<button class="btn btn-sm btn-danger" onclick="adminBorrarFotoJugador('${id}','${escapeHtml(j.dni)}')">🗑</button>` : ''}
-            <button class="btn btn-sm" ${(!j.dni || !edad) ? 'disabled title="Falta DNI o edad"' : ''} onclick="generarCarnetIndividualAdmin('${id}','${escapeHtml(j.dni)}')">🖨️ Ver carnet</button>
+            <button class="btn btn-sm" ${!j.dni ? 'disabled title="Este jugador no tiene DNI cargado"' : ''} onclick="generarCarnetIndividualAdmin('${id}','${escapeHtml(j.dni)}')">🖨️ Ver carnet</button>
           </div>`;
         }).join('');
     const avisoSeguroEstimadoHtml = tieneTandaSeguroEstimada(eq)

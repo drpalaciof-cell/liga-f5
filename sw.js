@@ -394,7 +394,22 @@
 // VALENCIA, que pago la 3 pero no tenia el comprobante cargado: se le reconocio la fecha 4
 // dejando escrito que no hay imagen. Todo pago que figura en una fecha distinta de la que se
 // pago ahora muestra una linea explicando por que, en el panel del equipo Y en el del admin.
-const CACHE = 'ligaf5-v69';
+// v70: CARNETS DE LOS QUE ENTRARON DESPUES + BORRAR UN COMPROBANTE DE ARANCEL MAL SUBIDO.
+// (1) La edad es obligatoria para el carnet pero SOLO se podia cargar desde el panel del
+// equipo, asi que un jugador agregado por el admin despues de la inscripcion quedaba sin
+// edad y sin forma de ponersela: el boton de carnet salia deshabilitado y no habia campo.
+// Ahora el admin la carga en el mismo renglon, en el mismo campo jugadoresEdad. (2) Del lado
+// del delegado, state.equipo se cargaba una sola vez al iniciar sesion, asi que el jugador
+// nuevo ni aparecia en la pestana Carnet; ahora se vuelve a traer el equipo al abrirla. (3)
+// Un solo jugador sin edad bloqueaba la descarga de TODO el equipo; ahora se ofrece bajar los
+// que estan completos y se dice cuales quedan afuera. (4) El equipo puede borrar su propio
+// comprobante de arancel y volver a cargarlo (se equivocan de imagen seguido); antes tenia
+// que pedirle al admin que lo rechazara y la imagen equivocada quedaba igual en la base. El
+// admin tambien tiene ahora un boton de borrar aparte del de rechazar: rechazar deja
+// constancia, borrar lo saca del todo. Los pagos reconocidos a mano por la organizacion no
+// se pueden borrar desde el equipo (regla de Firestore).
+// ⚠ ESTA VERSION NECESITA: firebase deploy --only hosting,firestore:rules
+const CACHE = 'ligaf5-v70';
 const ASSETS = [
   './index.html',
   './planilla.html',
