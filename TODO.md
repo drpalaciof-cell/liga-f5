@@ -27,6 +27,20 @@ fecha 4.
 
 Quedó: pagó 1, 2, 4 — debe la 5, igual que el resto.
 
+## El caso de VALENCIA
+
+VALENCIA también pagó la fecha 3 antes de que se postergara, pero **ese pago nunca entró al
+sistema**: sólo tenía cargadas la 1 y la 2. No había nada que mover. Se le creó el pago de la
+fecha 4 (doc `7u6MXBEjc5Q23ZBR0lvl`) con `reconocidoMotivo` y `reconocidoEn`, dejando dicho
+que **no hay comprobante** — no se inventa una imagen que no existe.
+
+## Todo pago corrido dice por qué
+
+Un pago que figura en una fecha distinta de la que se pagó parece un error si no se explica.
+`_notaPagoReasignado(p)` agrega la línea ("Pago hecho para la Fecha 3; se reconoce en esta
+fecha porque aquella se postergó") y se usa en **los dos** lugares que muestran pagos: el
+historial del panel del equipo y el listado del panel del admin.
+
 ## Estado de Primera después del cambio
 
 | Equipo | Debe |
@@ -36,20 +50,44 @@ Quedó: pagó 1, 2, 4 — debe la 5, igual que el resto.
 | EL CLAN FC | 5 |
 | EL REJUNTE FC | 5 |
 | ELOSRA | 5 |
-| IMPERIO VERDE | 5 (pagó la 3 → crédito) |
+| IMPERIO VERDE | 5 |
 | INSTITUTO F.C | 5 |
 | LA SUB 21 | 5 |
 | MITOMANOS | 5 |
 | ROTENS FC | 5 |
-| RURAL 55 | 5 (pagó la 3 → crédito) |
-| VALENCIA | 4 y 5 |
+| RURAL 55 | 5 |
+| VALENCIA | 5 |
 
-## Dos cosas que quedaron pendientes de decisión
+## PENDIENTE — pagos duplicados en la base (69 registros de más)
 
-1. **IMPERIO VERDE y RURAL 55 pagaron la 3 Y la 4.** Les queda un pago a favor. No se tocó:
-   cuando la fecha 3 se juegue, ya la tienen paga. Si se decide que valga para la 5, es mover
-   esos dos pagos igual que el de El Clan.
-2. **VALENCIA no pagó ni la 3 ni la 4** — sólo la 1 y la 2. Debe la 4 y la 5.
+Apareció al revisar esto; **no se tocó nada**. Hay equipos con el mismo pago cargado muchas
+veces (mismo equipo, misma fecha, mismo monto, misma hora):
+
+| Equipo | Fecha | Registros | De más |
+|---|---|---|---|
+| INSTITUTO F.C (Primera) | 4 | 46 | 45 |
+| DEFENSORES DEL OBRERO (Segunda) | 3 | 15 | 14 |
+| LORESVA F.C (Segunda) | 3 | 3 | 2 |
+| CONTADORES (Segunda) | 3 | 3 | 2 |
+| LA SUB 21 (Primera) | 4 | 2 | 1 |
+| STRONGEST TEAM (Primera) | 5 | 2 | 1 |
+| STRONGEST TEAM (Primera) | 1 | 2 | 1 |
+| EL REJUNTE FC (Primera) | 4 | 2 | 1 |
+| EL REJUNTE FC (Primera) | 2 | 2 | 1 |
+| LA CAMORRA (Segunda) | 4 | 2 | 1 |
+
+No cambia quién debe (alcanza con un pago vivo para estar al día), pero **sí infla lo
+recaudado**: `renderArancelesAdmin` suma el `montoDeclarado` de todos los pagos de la fecha,
+así que INSTITUTO F.C figura aportando 46 × $50.000. Son dos cosas distintas y faltan las dos:
+borrar los sobrantes (irreversible, hay que confirmarlo) y **tapar el agujero que los crea** —
+pinta a doble envío del botón de Pagar sin traba.
+
+## Una cosa que quedó pendiente de decisión
+
+**IMPERIO VERDE y RURAL 55 tienen cargados dos pagos: la 3 Y la 4**, con distinta fecha y
+distinto monto (Imperio: $80.000 el 29/08 y $50.000 el 05/09). Ninguno se tocó. Si el de la
+fecha 3 era el mismo pago cargado dos veces, hay que borrar uno; si eran dos pagos de verdad,
+les queda plata a favor para cuando la fecha 3 se juegue. **Hay que mirar los comprobantes.**
 
 ---
 

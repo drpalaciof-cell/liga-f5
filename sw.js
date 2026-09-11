@@ -390,7 +390,10 @@
 // de que se postergara el pago se muestra igual, aclarando que queda a su favor. En el panel
 // del admin no se lista "Faltan" para esa fecha, que era lo que hacia parecer que 12 equipos
 // debian. Ademas: el pago de la fecha 3 de EL CLAN se valido como fecha 4 (pago antes de que
-// se postergara y no habia pagado la 4), con constancia en el propio pago.
+// se postergara y no habia pagado la 4), con constancia en el propio pago. Lo mismo para
+// VALENCIA, que pago la 3 pero no tenia el comprobante cargado: se le reconocio la fecha 4
+// dejando escrito que no hay imagen. Todo pago que figura en una fecha distinta de la que se
+// pago ahora muestra una linea explicando por que, en el panel del equipo Y en el del admin.
 const CACHE = 'ligaf5-v69';
 const ASSETS = [
   './index.html',

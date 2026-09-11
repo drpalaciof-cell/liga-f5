@@ -2901,7 +2901,8 @@ async function renderPagosEquipo() {
     <div class="list-row" style="align-items:center;">
       ${p.comprobante ? `<img src="${p.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrandeEquipo('${p.comprobante}')">` : ''}
       <div style="flex:1;min-width:0;"><strong>Fecha ${p.fecha}</strong> · ${fmtPesos(p.montoDeclarado)} ${p.fueraDeHora ? '<span class="badge badge-warn">Fuera de hora</span>' : ''}
-        <div class="muted" style="font-size:12px;">${escapeHtml(p.nombreTransferencia || '')} · ${p.creadoEn ? new Date(p.creadoEn).toLocaleDateString('es-AR') : ''}</div></div>
+        <div class="muted" style="font-size:12px;">${escapeHtml(p.nombreTransferencia || '')} · ${p.creadoEn ? new Date(p.creadoEn).toLocaleDateString('es-AR') : ''}</div>
+        ${_notaPagoReasignado(p)}</div>
       ${p.estado === 'rechazado' ? '<span class="badge badge-danger">Rechazado</span>' : '<span class="badge badge-ok">Pagado</span>'}
     </div>`).join('')}</div>` : '';
   const sancionesCard = `<div class="glass section-card"><h3>🟥 Sanciones</h3><p class="muted" style="margin-bottom:8px;">Tarjetas acumuladas, rojas y doble amarilla de tu equipo.</p><button class="btn btn-sm" onclick="switchPanelEquipoTab('sanciones')">Ver mis sanciones →</button></div>`;
@@ -2928,6 +2929,16 @@ function _montoArancelFecha(f, fechaActual, vencidaActual) {
 function _arancelFechaPostergada(f, division) {
   const lista = (_cfgArancel && _cfgArancel.postergadas) || [];
   return lista.includes(`${division}|${f}`);
+}
+// Un pago puede figurar en una fecha distinta de la que se pagó (se pagó la 3, se postergó,
+// se le reconoció en la 4). Sin decir por qué, dentro de un mes ese pago parece un error.
+// La nota va en los DOS lugares que muestran pagos: el panel del equipo y el del admin.
+function _notaPagoReasignado(p) {
+  if (!p || (!p.reasignadoDe && !p.reconocidoMotivo)) return '';
+  const txt = p.reasignadoDe
+    ? `Pago hecho para la Fecha ${p.reasignadoDe}; se reconoce en esta fecha porque aquella se postergó.`
+    : p.reconocidoMotivo;
+  return `<div class="muted" style="font-size:11.5px;font-style:italic;margin-top:2px;">↪ ${escapeHtml(txt)}</div>`;
 }
 function abrirModalPagarArancel(f) {
   const vencido = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
@@ -3043,7 +3054,8 @@ async function renderArancelesAdmin() {
     return `<div class="list-row" style="align-items:center;border-left:4px solid var(--ok);padding-left:10px;background:rgba(74,222,128,.06);border-radius:8px;margin-bottom:5px;">
       ${p.comprobante ? `<img src="${p.comprobante}" class="receipt-thumb" style="cursor:pointer;" onclick="verImagenGrande('${p.comprobante}')">` : ''}
       <div style="flex:1;min-width:0;"><span style="color:var(--ok);font-weight:800;">✅ ${escapeHtml(e.nombre)}</span> · ${fmtPesos(p.montoDeclarado)} ${p.fueraDeHora ? '<span class="badge badge-warn">Fuera de hora</span>' : ''}
-        <div class="muted" style="font-size:12px;">${escapeHtml(p.nombreTransferencia || '')} · ${p.creadoEn ? new Date(p.creadoEn).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</div></div>
+        <div class="muted" style="font-size:12px;">${escapeHtml(p.nombreTransferencia || '')} · ${p.creadoEn ? new Date(p.creadoEn).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</div>
+        ${_notaPagoReasignado(p)}</div>
       <button class="btn btn-sm btn-danger" onclick="rechazarArancel('${p.id}')">✕ Rechazar</button>
     </div>`;
   }).join('');
