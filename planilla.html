@@ -735,7 +735,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v68</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v71</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -988,6 +988,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <button class="btn-fin-tiempo" id="btn-arranque" style="display:none;background:var(--green);">▶ ARRANCÓ</button>
         <button class="btn-fin-tiempo" id="btn-halftime" onclick="finPrimerTiempo()">🔔 FIN DEL 1° TIEMPO</button>
         <button class="btn-fin-partido" id="btn-fin" onclick="finPartido()" style="display:none;">🏁 FIN DEL PARTIDO</button>
+        <button class="btn-undo visible" id="btn-deshacer-entretiempo" onclick="deshacerFinPrimerTiempo()" style="display:none;margin-top:6px;">↩️ Fue sin querer — reiniciar el 1° tiempo</button>
       </div>
       <button class="btn-add-eq" id="footer-add-visitante" onclick="abrirModalAgregarJugador('visitante')" style="display:none;">
         <span class="add-ico">➕</span>VISIT.
@@ -1136,6 +1137,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
     </div>
     <div style="padding:14px 10px 4px;">
       <button class="btn btn-primary btn-sm" style="width:100%;" onclick="guardarCorreccionCrono()">Guardar</button>
+      <button class="btn btn-sm" style="width:100%;margin-top:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);" onclick="document.getElementById('crono-min-input').value=0;guardarCorreccionCrono();">↩️ Reiniciar a 0:00</button>
     </div>
   </div>
 </div>
@@ -2157,8 +2159,9 @@ function actualizarGateArranque(){
   const btnArr=document.getElementById('btn-arranque');
   const btnHalf=document.getElementById('btn-halftime');
   const btnFin=document.getElementById('btn-fin');
+  const btnDeshacer=document.getElementById('btn-deshacer-entretiempo');
   const estado=st.partido&&st.partido.estado;
-  btnArr.style.display='none';btnHalf.style.display='none';btnFin.style.display='none';
+  btnArr.style.display='none';btnHalf.style.display='none';btnFin.style.display='none';btnDeshacer.style.display='none';
   if(estado==='esperando_inicio'){
     btnArr.textContent='▶ ARRANCÓ EL PARTIDO';
     btnArr.onclick=confirmarArranque;
@@ -2167,6 +2170,7 @@ function actualizarGateArranque(){
     btnArr.textContent='▶ ARRANCÓ EL 2° TIEMPO';
     btnArr.onclick=confirmarArranque2T;
     btnArr.style.display='';
+    btnDeshacer.style.display='';
   }else if(st.tiempoActual===1){
     btnHalf.style.display='';
   }else{
@@ -2227,6 +2231,23 @@ function finPrimerTiempo(){
   actualizarBotonesAgregarJugador();actualizarGateArranque();
   db.collection('partidos').doc(st.partidoId).update({estado:'entretiempo',horaFin1T});
   toast('Fin del 1° tiempo — entretiempo');
+  _cambiandoTiempo=false;
+}
+// Deshace un "FIN DEL 1° TIEMPO" tocado sin querer -- vuelve el partido a primer_tiempo y
+// reinicia el cronómetro a 0:00 (se puede corregir el minuto real después, tocando el
+// cronómetro). NO toca goles/tarjetas/minutos ya cargados, solo el estado y la hora de arranque.
+function deshacerFinPrimerTiempo(){
+  if(_cambiandoTiempo)return;
+  _cambiandoTiempo=true;
+  if(!confirm('¿Fue sin querer? Esto vuelve el partido al 1° tiempo y reinicia el cronómetro a 0:00.\n\nLos goles y tarjetas ya cargados NO se tocan.')){_cambiandoTiempo=false;return;}
+  const horaArranque=new Date().toISOString();
+  st.partido.estado='primer_tiempo';
+  st.partido.horaArranque=horaArranque;
+  st.partido.horaFin1T=null;
+  st.partido.pausaAcumulada1T=0;st.partido.pausaActiva=false;st.partido.pausaDesde=null;
+  actualizarBotonesAgregarJugador();actualizarGateArranque();
+  db.collection('partidos').doc(st.partidoId).update({estado:'primer_tiempo',horaArranque,horaFin1T:null,pausaAcumulada1T:0,pausaActiva:false,pausaDesde:null});
+  toast('↩️ Volvió al 1° tiempo — cronómetro reiniciado a 0:00',4000);
   _cambiandoTiempo=false;
 }
 function confirmarArranque2T(){

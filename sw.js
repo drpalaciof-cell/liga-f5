@@ -408,8 +408,13 @@
 // admin tambien tiene ahora un boton de borrar aparte del de rechazar: rechazar deja
 // constancia, borrar lo saca del todo. Los pagos reconocidos a mano por la organizacion no
 // se pueden borrar desde el equipo (regla de Firestore).
-// ⚠ ESTA VERSION NECESITA: firebase deploy --only hosting,firestore:rules
-const CACHE = 'ligaf5-v70';
+// ⚠ v70 NECESITA: firebase deploy --only hosting,firestore:rules (cambio una regla)
+// v71: planilla.html -- boton para deshacer un "FIN DEL 1er TIEMPO" tocado sin querer (vuelve
+// a primer_tiempo y reinicia el cronometro a 0:00, sin tocar goles/tarjetas ya cargados) +
+// boton "Reiniciar a 0:00" en el modal de corregir cronometro, para el mismo caso durante el
+// 1er o el 2do tiempo (no hacia falta tocar el estado, ya funcionaba con fase primer_tiempo/
+// segundo_tiempo, pero no habia forma de resetear a 0 sin escribir el minuto a mano).
+const CACHE = 'ligaf5-v71';
 const ASSETS = [
   './index.html',
   './planilla.html',

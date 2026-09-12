@@ -1,3 +1,26 @@
+# 2026-09-12 — Deshacer un "FIN DEL 1° TIEMPO" tocado sin querer (sw v71)
+
+Reportado por el usuario: el planillero tocó "FIN DEL 1° TIEMPO" sin querer, el partido quedó
+en pantalla de entretiempo, pero seguía jugándose el 1er tiempo de verdad. No había forma de
+volver atrás — solo se podía avanzar a "ARRANCÓ EL 2° TIEMPO".
+
+- **Nuevo botón** "↩️ Fue sin querer — reiniciar el 1° tiempo", visible solo en estado
+  `entretiempo`, al lado de "ARRANCÓ EL 2° TIEMPO". Vuelve el partido a `primer_tiempo` y
+  reinicia el cronómetro a 0:00 (se corrige el minuto real después, tocando el cronómetro
+  como ya se podía hacer). **No toca goles/tarjetas/minutos/alineación ya cargados** — a
+  pedido explícito del usuario, esto es solo deshacer el cambio de estado y reiniciar el
+  reloj, no resetear la planilla.
+- **Mismo criterio para cuando el partido YA está corriendo** (1er o 2do tiempo): en el modal
+  de "tocar el cronómetro para corregir el minuto" (existía desde el incidente del 22/08) se
+  agregó un botón "↩️ Reiniciar a 0:00", para no tener que escribir el minuto a mano cuando lo
+  que se quiere es arrancar de cero.
+
+Tocado en `planilla.html`: función nueva `deshacerFinPrimerTiempo()`, botón en
+`actualizarGateArranque()`, botón nuevo en `modal-crono`. `sw.js` a v71 (sin cambios de
+`firestore.rules` — no hace falta redeployar reglas para esta versión).
+
+---
+
 # 2026-09-11 — Carnets de los que entraron después + borrar un comprobante mal subido (sw v70)
 
 ⚠ **Esta versión necesita `firebase deploy --only hosting,firestore:rules`** — cambió una regla.
