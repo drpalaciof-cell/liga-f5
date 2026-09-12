@@ -414,7 +414,8 @@
 // boton "Reiniciar a 0:00" en el modal de corregir cronometro, para el mismo caso durante el
 // 1er o el 2do tiempo (no hacia falta tocar el estado, ya funcionaba con fase primer_tiempo/
 // segundo_tiempo, pero no habia forma de resetear a 0 sin escribir el minuto a mano).
-const CACHE = 'ligaf5-v71';
+// v72: texto del boton de v71 mas corto ("Reiniciar el 1er tiempo", sin el "Fue sin querer").
+const CACHE = 'ligaf5-v72';
 const ASSETS = [
   './index.html',
   './planilla.html',
