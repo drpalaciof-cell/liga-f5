@@ -1,3 +1,21 @@
+# 2026-09-13 (cont.) — Corregir espaciado: el número de posición quedaba pegado al escudo (sw v74)
+
+El usuario mandó una captura real de la v73 ya en producción: se veía apretado, sobre todo
+el número de posición (#) prácticamente tocando el escudo, y pidió más calidad/prolijidad en
+general (mandó una segunda captura de referencia con buen espaciado).
+
+- Más padding en toda la tabla (filas más altas: `7px 4px` en vez de `5px 2px`).
+- La columna `#` ahora tiene `padding-right:8px` propio y la columna Equipo `padding-left:6px`
+  — separación clara entre el número y el escudo, no dependía antes de nada más que el
+  padding genérico de 2px de cada celda.
+- Gap escudo↔nombre de 5px a 8px, PTS de 12.5px a 13.5px, pastillas de "Últimas" de 13px a
+  15px — un poco más de presencia en todo, como pedía la referencia.
+- Prioridad explícita: que se vea bien en el ancho real de celular (390-430px, que es donde
+  el usuario probó) por sobre que entre sin truncar en un 360px — a ese tamaño el nombre del
+  equipo trunca más de lo ideal, pero no es el caso común.
+
+---
+
 # 2026-09-13 — Tabla de posiciones rediseñada + descargar como imagen (sw v73)
 
 Pedido del usuario: la tabla pública de posiciones estaba muy ancha para hacer captura y

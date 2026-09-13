@@ -420,7 +420,11 @@
 // "Ultimas" (forma de los ultimos 5 partidos, V/E/D). Boton "Descargar imagen" en cada tarjeta
 // de posiciones y en la de goleadores -- usa html2canvas (ya cargado para los PDF de planilla)
 // para bajar exactamente lo que se ve en pantalla, sin el boton, como PNG.
-const CACHE = 'ligaf5-v73';
+// v74: la v73 quedo con el numero de posicion pegado al escudo (a pedido del usuario, que
+// mando captura real) -- mas padding ahi, filas mas altas, PTS y las pastillas de "Ultimas"
+// un poco mas grandes. Se prioriza que se vea bien en el ancho real de celular (390-430px,
+// que es donde probo el usuario) por sobre que entre perfecto en un 360px sin truncar nombres.
+const CACHE = 'ligaf5-v74';
 const ASSETS = [
   './index.html',
   './planilla.html',

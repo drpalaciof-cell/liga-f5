@@ -391,30 +391,32 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 /* Tarjeta angosta a propósito -- pensada para entrar en una captura de historia de IG
    (9:16) sin tener que recortar nada, y para que el botón de abajo descargue exactamente
    lo mismo que se ve acá. */
-.posiciones-card, .goleadores-card{max-width:430px;margin-left:auto;margin-right:auto;padding:12px 10px 6px;}
-.pos-card-actions{display:flex;justify-content:flex-end;margin-bottom:8px;}
+.posiciones-card, .goleadores-card{max-width:440px;margin-left:auto;margin-right:auto;padding:14px 12px 8px;}
+.pos-card-actions{display:flex;justify-content:flex-end;margin-bottom:10px;}
 .pos-download-btn{font-size:11.5px;padding:6px 12px;}
-.posiciones-table{table-layout:fixed;font-size:11px;}
-.posiciones-table th{padding:5px 2px;font-size:8.5px;letter-spacing:.01em;}
-.posiciones-table td{padding:5px 2px;}
+.posiciones-table{table-layout:fixed;font-size:11.5px;}
+.posiciones-table th{padding:7px 4px;font-size:9px;letter-spacing:.01em;}
+.posiciones-table td{padding:7px 4px;}
 .posiciones-table th, .posiciones-table td{text-align:center;}
-.posiciones-table th:nth-child(1), .posiciones-table td:nth-child(1){width:14px;}
-.posiciones-table th:nth-child(2), .posiciones-table td:nth-child(2){text-align:left;}
-.posiciones-table th:nth-child(3), .posiciones-table td:nth-child(3){width:22px;}
-.posiciones-table th:nth-child(4), .posiciones-table td:nth-child(4){width:14px;}
-.posiciones-table th:nth-child(5), .posiciones-table td:nth-child(5){width:32px;}
-.posiciones-table th:nth-child(6), .posiciones-table td:nth-child(6){width:18px;}
+/* La columna de posición necesita su propio padding-right de sobra -- pegada al escudo
+   quedaba invisible como número de posición, a pedido explícito del usuario. */
+.posiciones-table th:nth-child(1), .posiciones-table td:nth-child(1){width:26px;padding-right:8px;}
+.posiciones-table th:nth-child(2), .posiciones-table td:nth-child(2){text-align:left;padding-left:6px;}
+.posiciones-table th:nth-child(3), .posiciones-table td:nth-child(3){width:26px;}
+.posiciones-table th:nth-child(4), .posiciones-table td:nth-child(4){width:16px;}
+.posiciones-table th:nth-child(5), .posiciones-table td:nth-child(5){width:36px;}
+.posiciones-table th:nth-child(6), .posiciones-table td:nth-child(6){width:20px;}
 .posiciones-table th:nth-child(7), .posiciones-table td:nth-child(7),
 .posiciones-table th:nth-child(8), .posiciones-table td:nth-child(8),
-.posiciones-table th:nth-child(9), .posiciones-table td:nth-child(9){width:13px;}
-.posiciones-table th:nth-child(10), .posiciones-table td:nth-child(10){width:72px;}
-.posiciones-table .equipo-cell{display:flex;align-items:center;gap:5px;min-width:0;}
+.posiciones-table th:nth-child(9), .posiciones-table td:nth-child(9){width:14px;}
+.posiciones-table th:nth-child(10), .posiciones-table td:nth-child(10){width:88px;}
+.posiciones-table .equipo-cell{display:flex;align-items:center;gap:8px;min-width:0;}
 .posiciones-table .equipo-cell span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .posiciones-table .equipo-shield-mini{width:28px;height:28px;border-radius:7px;object-fit:cover;flex-shrink:0;}
-.posiciones-table .pts-cell strong{font-size:12.5px;color:var(--division-color,var(--cyan));}
+.posiciones-table .pts-cell strong{font-size:13.5px;color:var(--division-color,var(--cyan));}
 .posiciones-table .gol-cell{font-variant-numeric:tabular-nums;color:var(--text-dim);}
-.forma-row{display:flex;gap:1px;justify-content:center;}
-.forma-pill{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:4px;font-size:8px;font-weight:800;flex-shrink:0;}
+.forma-row{display:flex;gap:2px;justify-content:center;}
+.forma-pill{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:4px;font-size:8.5px;font-weight:800;flex-shrink:0;}
 .forma-v{background:var(--ok);color:#052e12;}
 .forma-e{background:var(--warn);color:#2b1900;}
 .forma-d{background:var(--danger);color:#2c0606;}
