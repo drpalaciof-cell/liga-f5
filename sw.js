@@ -432,7 +432,10 @@
 // table-layout:fixed para que el nombre del equipo NUNCA trunque -- ahora la tarjeta puede
 // crecer (max-width subio a 640px) y, si no entra en un celular muy angosto, scrollea
 // horizontal en vez de cortar el nombre.
-const CACHE = 'ligaf5-v75';
+// v76: index.html -- reordenar columnas de la tabla de posiciones: PTS, J, Ultimas, G, E, P,
+// Gol, +/- (antes Ultimas quedaba al final y con nombres completos no entraba en pantalla).
+// Ahora lo mas importante a simple vista entra sin scroll horizontal en un celular angosto.
+const CACHE = 'ligaf5-v76';
 const ASSETS = [
   './index.html',
   './planilla.html',

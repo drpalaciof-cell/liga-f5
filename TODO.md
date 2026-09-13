@@ -1,3 +1,13 @@
+# 2026-09-13 (cont. 3) — Reordenar columnas: Últimas antes que Gol/+/- (sw v76)
+
+Con el nombre completo del equipo (sin truncar, de la v75) la tabla no entraba entera en un
+celular angosto y "Últimas" quedaba fuera de la vista sin hacer scroll. Nuevo orden de
+columnas, a pedido del usuario: **PTS · J · Últimas · G · E · P · Gol · +/-** (antes Gol y
++/- iban pegados a J, y Últimas quedaba al final). Así lo que más importa a simple vista
+(puntos, partidos jugados, forma reciente) entra sin scroll horizontal.
+
+---
+
 # 2026-09-13 (cont. 2) — Sacar "Descargar imagen", escudo flotante, logo de división, nombre completo (sw v75)
 
 Tres pedidos seguidos del usuario sobre la tabla de posiciones, todos en la misma tanda:
