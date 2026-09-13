@@ -444,7 +444,9 @@
 // nitido. Escudo del equipo tambien en la tabla de goleadores, recortada a un top 10 visible
 // (el que hace goles y entra despues aparece solo, la lista completa sigue ordenada). Y
 // "Ultimas" pasa de 5 a 4 resultados.
-const CACHE = 'ligaf5-v77';
+// v78: escudos de los dos equipos en el Fixture (fxMatchHtml) y en la solapa Partidos
+// (renderPartidosPublico), pegados al marcador/al "vs".
+const CACHE = 'ligaf5-v78';
 const ASSETS = [
   './index.html',
   './planilla.html',

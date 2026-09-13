@@ -1,3 +1,12 @@
+# 2026-09-13 (cont. 5) — Escudos también en el Fixture y en Partidos (sw v78)
+
+`fxMatchHtml()` (solapa Fixture) y `renderPartidosPublico()` (solapa Partidos) ahora muestran
+el escudo de cada equipo pegado al marcador/al "vs" — local: nombre + escudo hacia la
+derecha; visitante: escudo + nombre hacia la izquierda, ambos escudos quedan más cerca del
+resultado que del borde de la tarjeta.
+
+---
+
 # 2026-09-13 (cont. 4) — Escudos nuevos de Primera, goleadores con escudo y top 10, Últimas a 4 (sw v77)
 
 El usuario mandó los escudos reales (PNG con transparencia de verdad) de los 12 equipos de
