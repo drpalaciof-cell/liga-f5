@@ -410,7 +410,11 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
    object-fit:contain (nunca recorta ni estira, aunque el PNG no sea cuadrado) +
    mix-blend-mode:screen (funde el fondo negro del PNG con el fondo oscuro de la tarjeta,
    así no queda un recuadro visible alrededor del escudo). */
-.posiciones-table .equipo-shield-mini{width:28px;height:28px;object-fit:contain;flex-shrink:0;mix-blend-mode:screen;}
+/* Sin mix-blend-mode: los escudos nuevos son PNG con transparencia real (no el truco de
+   fondo negro de escudoEquipoHtml), y blend:screen los lavaba/perdían nitidez contra el
+   tono celeste/naranja de la fila de clasificados. object-fit:contain solo, así quedan
+   arriba y nítidos sobre cualquier fondo de fila. */
+.posiciones-table .equipo-shield-mini{width:28px;height:28px;object-fit:contain;flex-shrink:0;}
 .posiciones-table .pts-cell strong{font-size:13.5px;color:var(--division-color,var(--cyan));}
 .posiciones-table .gol-cell{font-variant-numeric:tabular-nums;color:var(--text-dim);white-space:nowrap;}
 .forma-row{display:flex;gap:2px;justify-content:center;}
@@ -481,6 +485,7 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 .goleadores-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);}
 .goleadores-row:last-child{border-bottom:none;}
 .goleadores-rank{font-family:var(--font-display);font-weight:800;color:var(--text-dim);width:26px;flex-shrink:0;}
+.goleador-shield{width:26px;height:26px;object-fit:contain;flex-shrink:0;}
 .goleadores-goles{font-family:var(--font-display);font-weight:800;font-size:18px;color:var(--division-color,var(--cyan));}
 .fecha-pills{display:flex;gap:8px;justify-content:center;margin-bottom:22px;flex-wrap:wrap;}
 .fecha-pills .tab-btn{font-size:12.5px;padding:7px 15px;}
@@ -2318,7 +2323,7 @@ function calcularTablaPosiciones(equipos, partidos) {
       if (gv > gl) { visitante.pg++; visitante.pts += 3; visitante.historial.push('V'); } else if (gv < gl) { visitante.pp++; visitante.historial.push('D'); } else { visitante.pe++; visitante.pts++; visitante.historial.push('E'); }
     }
   });
-  tabla.forEach(t => { t.dg = t.gf - t.gc; t.ultimas = t.historial.slice(-5); });
+  tabla.forEach(t => { t.dg = t.gf - t.gc; t.ultimas = t.historial.slice(-4); });
   tabla.sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf);
   return tabla;
 }
@@ -2430,11 +2435,15 @@ function renderGoleadoresPublico() {
   const wrap = document.getElementById('goleadores-wrap');
   const lista = calcularGoleadores();
   if (lista.length === 0) { wrap.innerHTML = `<div class="empty-state">Todavía no hay goles registrados en esta división.</div>`; return; }
+  // Se ve el top 10 nomas -- el que hace goles y entra al top 10 aparece solo (la lista
+  // completa sigue ordenada por goles, esto solo recorta la vista).
+  const top10 = lista.slice(0, 10);
   wrap.innerHTML = `<div class="glass section-card goleadores-card">
-    ${lista.map((g, i) => {
+    ${top10.map((g, i) => {
     const equipo = state.equiposCache.find(eq => eq.id === g.equipoId);
     return `<div class="goleadores-row">
       <span class="goleadores-rank">${i + 1}°</span>
+      ${equipo && equipo.escudo ? `<img class="goleador-shield" src="${equipo.escudo}">` : ''}
       <span style="flex:1;">${escapeHtml(g.nombre)} <span class="muted" style="font-size:12.5px;">(${escapeHtml(equipo ? equipo.nombre : '-')})</span></span>
       <span class="goleadores-goles">${g.goles}</span>
     </div>`;

@@ -435,7 +435,16 @@
 // v76: index.html -- reordenar columnas de la tabla de posiciones: PTS, J, Ultimas, G, E, P,
 // Gol, +/- (antes Ultimas quedaba al final y con nombres completos no entraba en pantalla).
 // Ahora lo mas importante a simple vista entra sin scroll horizontal en un celular angosto.
-const CACHE = 'ligaf5-v76';
+// v77: 12 equipos de Primera con escudo PNG transparente de verdad, reemplazando lo que
+// cada equipo hubiera subido antes (recortado el margen vacio para que todos midan igual
+// dentro del mismo cuadro, y guardado en Firestore via el token owner de firebase-tools --
+// mismo metodo ya documentado en TODO.md). Se saca mix-blend-mode:screen de la tabla de
+// posiciones: con transparencia real, ese blend lavaba el color contra el tono celeste/rojo
+// de las filas de clasificados/descenso -- object-fit:contain solo alcanza y queda mas
+// nitido. Escudo del equipo tambien en la tabla de goleadores, recortada a un top 10 visible
+// (el que hace goles y entra despues aparece solo, la lista completa sigue ordenada). Y
+// "Ultimas" pasa de 5 a 4 resultados.
+const CACHE = 'ligaf5-v77';
 const ASSETS = [
   './index.html',
   './planilla.html',

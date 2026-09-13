@@ -1,3 +1,41 @@
+# 2026-09-13 (cont. 4) — Escudos nuevos de Primera, goleadores con escudo y top 10, Últimas a 4 (sw v77)
+
+El usuario mandó los escudos reales (PNG con transparencia de verdad) de los 12 equipos de
+Primera, para reemplazar lo que cada equipo hubiera subido por su cuenta.
+
+- **Escudos actualizados en Firestore** (`equipos/{id}.escudo`) para: Elosra, El Rejunte FC,
+  Imperio Verde, Rural 55, El Clan FC, Instituto F.C, La Sub 21, Mitomanos, Rotens FC,
+  Strongest Team, Valencia, Beer United — los 12 equipos de Primera, ninguno de Segunda.
+  Hecho con un script Node (`sharp`) fuera del repo: recorta el margen transparente sobrante
+  de cada imagen (así todos ocupan el mismo espacio visual dentro del cuadro del escudo — el
+  de Rural 55 se veía más chico por tener más aire alrededor en el archivo original), lo
+  redimensiona a 300×300 conservando la transparencia real (PNG, no JPEG — a diferencia de
+  `resizeImageFile()` que usa el resto del sitio, que aplana a JPEG y pierde el canal alfa) y
+  sube el resultado (16-51KB cada uno) a Firestore usando el token OAuth de `firebase-tools`
+  ya logueado (mismo método documentado más abajo, en el incidente del 22/08).
+  **Las imágenes originales (4K, hasta 6MB cada una) quedaron en `~/Downloads`, no se subió
+  nada de eso — solo la versión recortada y redimensionada.**
+- **Se saca `mix-blend-mode:screen`** de `.posiciones-table .equipo-shield-mini`: con
+  transparencia real (no el truco de fondo negro que sí necesita `escudoEquipoHtml()` en el
+  resto del sitio), ese blend lavaba el color del escudo contra el tono celeste/rojo de las
+  filas de clasificados/descenso — el usuario lo notó explícitamente. Sin blend, `object-fit:
+  contain` alcanza y el escudo queda nítido arriba de cualquier tono de fila.
+- **Escudo del equipo también en la tabla de goleadores**, al lado del nombre.
+- **Goleadores: top 10 visible nomás** (`lista.slice(0, 10)`) — el cálculo completo sigue
+  ordenado por goles, así que un jugador que entra al top 10 después de hacer un gol aparece
+  solo, sin tocar código de nuevo.
+- **"Últimas" pasa de 5 a 4 resultados** por equipo.
+
+⚠ **Pendiente para el resto de los equipos** (los 22 de Segunda no recibieron escudo nuevo):
+si sus imágenes actuales tienen fondo negro, `escudoEquipoHtml()` los sigue mostrando bien en
+el resto del sitio (ese sí usa blend:screen), pero en la tabla de posiciones (sin blend ahora)
+un escudo con fondo NO transparente se va a ver con su fondo real (blanco, de color, etc.) —
+no es un bug nuevo, es la consecuencia esperada de sacar el blend. Si de Segunda también se
+quejan de escudos con fondo feo en la tabla, la solución es la misma: pedir el PNG
+transparente y reemplazarlo, no volver a poner el blend.
+
+---
+
 # 2026-09-13 (cont. 3) — Reordenar columnas: Últimas antes que Gol/+/- (sw v76)
 
 Con el nombre completo del equipo (sin truncar, de la v75) la tabla no entraba entera en un
