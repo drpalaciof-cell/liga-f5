@@ -1,3 +1,34 @@
+# 2026-09-13 — Tabla de posiciones rediseñada + descargar como imagen (sw v73)
+
+Pedido del usuario: la tabla pública de posiciones estaba muy ancha para hacer captura y
+subir a una historia de Instagram, y pidió además poder descargarla directamente como imagen
+(idéntica a como se ve en pantalla), igual para la tabla de goleadores.
+
+- **Tarjeta angosta** (max 430px, centrada) en vez de ocupar todo el ancho — pensada para
+  entrar en una captura 9:16 sin recortar nada. Probado a mano que entra sin scroll horizontal
+  incluso en un celular de 360px de ancho (el Android más chico típico).
+- **Columnas reordenadas**: PTS pasa a ser la primera columna de stats (antes era la última),
+  después J · Gol (GF:GC junto) · +/- · G · E · P.
+- **Escudos más grandes** (28px, antes 22px).
+- **Columna nueva "Últimas"**: forma de los últimos 5 partidos de cada equipo (pastillas
+  V verde / E amarillo / D rojo), calculada en `calcularTablaPosiciones` a partir del
+  historial ordenado por `numeroFecha` — dato que no existía antes, no hubo que migrar nada.
+- **Botón "📷 Descargar imagen"** en cada tarjeta (una por zona/división, más la de
+  goleadores), visible para cualquier visitante. Usa `html2canvas` (ya estaba cargado en el
+  sitio, se usa para los PDF de planilla) sobre la tarjeta real de la página — el botón tiene
+  `data-html2canvas-ignore="true"` así que no sale en la imagen descargada. Los escudos son
+  `data:` URLs guardadas en Firestore (no URLs de Storage), así que no hay problema de CORS al
+  capturarlos.
+- Colores: se usó la paleta propia de Liga F5 (cian Primera / naranja Segunda, `--ok`/`--warn`/
+  `--danger` ya existentes para V/E/D), no los colores de la captura de referencia que mandó
+  el usuario — decisión confirmada con él antes de implementar.
+
+Tocado en `index.html`: `calcularTablaPosiciones` (agrega `historial`/`ultimas`),
+`renderTablaPosicionesBlock`, `renderGoleadoresPublico`, función nueva
+`descargarTablaComoImagen()`, CSS de `.posiciones-table`/`.forma-pill`/`.pos-download-btn`.
+
+---
+
 # 2026-09-12 — Deshacer un "FIN DEL 1° TIEMPO" tocado sin querer (sw v71)
 
 Reportado por el usuario: el planillero tocó "FIN DEL 1° TIEMPO" sin querer, el partido quedó

@@ -388,10 +388,37 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 .content-tabs-sub .tab-btn{font-size:13px;padding:8px 17px;}
 .zona-block{margin-bottom:26px;}
 .zona-block-title{font-family:var(--font-display);font-weight:800;font-size:17px;color:var(--division-color,var(--cyan));margin-bottom:10px;text-align:center;}
+/* Tarjeta angosta a propósito -- pensada para entrar en una captura de historia de IG
+   (9:16) sin tener que recortar nada, y para que el botón de abajo descargue exactamente
+   lo mismo que se ve acá. */
+.posiciones-card, .goleadores-card{max-width:430px;margin-left:auto;margin-right:auto;padding:12px 10px 6px;}
+.pos-card-actions{display:flex;justify-content:flex-end;margin-bottom:8px;}
+.pos-download-btn{font-size:11.5px;padding:6px 12px;}
+.posiciones-table{table-layout:fixed;font-size:11px;}
+.posiciones-table th{padding:5px 2px;font-size:8.5px;letter-spacing:.01em;}
+.posiciones-table td{padding:5px 2px;}
 .posiciones-table th, .posiciones-table td{text-align:center;}
+.posiciones-table th:nth-child(1), .posiciones-table td:nth-child(1){width:14px;}
 .posiciones-table th:nth-child(2), .posiciones-table td:nth-child(2){text-align:left;}
-.posiciones-table .equipo-cell{display:flex;align-items:center;gap:8px;}
-.posiciones-table .equipo-shield-mini{width:22px;height:22px;border-radius:6px;object-fit:cover;flex-shrink:0;}
+.posiciones-table th:nth-child(3), .posiciones-table td:nth-child(3){width:22px;}
+.posiciones-table th:nth-child(4), .posiciones-table td:nth-child(4){width:14px;}
+.posiciones-table th:nth-child(5), .posiciones-table td:nth-child(5){width:32px;}
+.posiciones-table th:nth-child(6), .posiciones-table td:nth-child(6){width:18px;}
+.posiciones-table th:nth-child(7), .posiciones-table td:nth-child(7),
+.posiciones-table th:nth-child(8), .posiciones-table td:nth-child(8),
+.posiciones-table th:nth-child(9), .posiciones-table td:nth-child(9){width:13px;}
+.posiciones-table th:nth-child(10), .posiciones-table td:nth-child(10){width:72px;}
+.posiciones-table .equipo-cell{display:flex;align-items:center;gap:5px;min-width:0;}
+.posiciones-table .equipo-cell span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.posiciones-table .equipo-shield-mini{width:28px;height:28px;border-radius:7px;object-fit:cover;flex-shrink:0;}
+.posiciones-table .pts-cell strong{font-size:12.5px;color:var(--division-color,var(--cyan));}
+.posiciones-table .gol-cell{font-variant-numeric:tabular-nums;color:var(--text-dim);}
+.forma-row{display:flex;gap:1px;justify-content:center;}
+.forma-pill{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:4px;font-size:8px;font-weight:800;flex-shrink:0;}
+.forma-v{background:var(--ok);color:#052e12;}
+.forma-e{background:var(--warn);color:#2b1900;}
+.forma-d{background:var(--danger);color:#2c0606;}
+.forma-vacia{color:var(--text-tertiary);font-size:11px;}
 .posiciones-table tr.pos-playoff td{background:rgba(34,211,238,.07);}
 .posiciones-table tr.pos-playoff td:first-child{border-left:3px solid var(--cyan);padding-left:7px;}
 #divisions-wrap[data-division="Segunda"] .posiciones-table tr.pos-playoff td{background:rgba(251,146,60,.09);}
@@ -2270,24 +2297,28 @@ function renderContentTabActivo() {
 // equipos en la tabla (caso interzonal), suma únicamente a ese. Para partidos
 // normales (ambos en la tabla) el comportamiento es el de siempre.
 function calcularTablaPosiciones(equipos, partidos) {
-  const tabla = equipos.map(eq => ({ id: eq.id, nombre: eq.nombre, escudo: eq.escudo, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 }));
+  const tabla = equipos.map(eq => ({ id: eq.id, nombre: eq.nombre, escudo: eq.escudo, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0, historial: [] }));
   const byId = {};
   tabla.forEach(t => byId[t.id] = t);
-  partidos.filter(p => p.jugado).forEach(p => {
+  // Ordenados por fecha para que "historial" (usado para las últimas 5) quede
+  // en orden cronológico real -- para los totales el orden no importa, pero
+  // sin esto el forma-guide saldría mezclado.
+  const jugados = partidos.filter(p => p.jugado).sort((a, b) => (a.numeroFecha || 0) - (b.numeroFecha || 0));
+  jugados.forEach(p => {
     const local = byId[p.equipoLocalId];
     const visitante = byId[p.equipoVisitanteId];
     if (!local && !visitante) return;
     const gl = p.golesLocal ?? 0, gv = p.golesVisitante ?? 0;
     if (local) {
       local.pj++; local.gf += gl; local.gc += gv;
-      if (gl > gv) { local.pg++; local.pts += 3; } else if (gl < gv) { local.pp++; } else { local.pe++; local.pts++; }
+      if (gl > gv) { local.pg++; local.pts += 3; local.historial.push('V'); } else if (gl < gv) { local.pp++; local.historial.push('D'); } else { local.pe++; local.pts++; local.historial.push('E'); }
     }
     if (visitante) {
       visitante.pj++; visitante.gf += gv; visitante.gc += gl;
-      if (gv > gl) { visitante.pg++; visitante.pts += 3; } else if (gv < gl) { visitante.pp++; } else { visitante.pe++; visitante.pts++; }
+      if (gv > gl) { visitante.pg++; visitante.pts += 3; visitante.historial.push('V'); } else if (gv < gl) { visitante.pp++; visitante.historial.push('D'); } else { visitante.pe++; visitante.pts++; visitante.historial.push('E'); }
     }
   });
-  tabla.forEach(t => t.dg = t.gf - t.gc);
+  tabla.forEach(t => { t.dg = t.gf - t.gc; t.ultimas = t.historial.slice(-5); });
   tabla.sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf);
   return tabla;
 }
@@ -2307,6 +2338,9 @@ function calcularPosicionesDivision() {
   // en una sola tabla, sin filtrar por el campo zona.
   return calcularTablaPosiciones(state.equiposCache, state.partidosCache);
 }
+// Letra -> pastilla de color para el forma-guide "Últimas". V=verde/E=amarillo/D=rojo,
+// mismos --ok/--warn/--danger que ya usa el resto del sitio (no colores nuevos).
+const FORMA_LABEL = { V: 'V', E: 'E', D: 'D' };
 function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZona) {
   const total = tabla.length;
   const filas = tabla.map((t, i) => {
@@ -2314,22 +2348,38 @@ function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZo
     let cls = '';
     if (pos <= playoffSlots) cls = 'pos-playoff';
     else if (descensoSlots > 0 && pos > total - descensoSlots) cls = 'pos-descenso';
+    const ultimas = t.ultimas || [];
+    const formaHtml = ultimas.length
+      ? `<div class="forma-row">${ultimas.map(r => `<span class="forma-pill forma-${r.toLowerCase()}">${FORMA_LABEL[r] || r}</span>`).join('')}</div>`
+      : `<span class="forma-vacia">—</span>`;
     return `
     <tr class="${cls}">
-      <td>${pos}</td>
-      <td><div class="equipo-cell">${t.escudo ? `<img class="equipo-shield-mini" src="${t.escudo}">` : ''}<span>${escapeHtml(t.nombre)}</span></div></td>
-      <td>${t.pj}</td><td>${t.pg}</td><td>${t.pe}</td><td>${t.pp}</td><td>${t.gf}</td><td>${t.gc}</td><td>${t.dg}</td>
-      <td><strong>${t.pts}</strong></td>
+      <td class="pos-cell">${pos}</td>
+      <td class="equipo-td"><div class="equipo-cell">${t.escudo ? `<img class="equipo-shield-mini" src="${t.escudo}">` : ''}<span>${escapeHtml(t.nombre)}</span></div></td>
+      <td class="pts-cell"><strong>${t.pts}</strong></td>
+      <td>${t.pj}</td>
+      <td class="gol-cell">${t.gf}:${t.gc}</td>
+      <td>${t.dg}</td>
+      <td>${t.pg}</td>
+      <td>${t.pe}</td>
+      <td>${t.pp}</td>
+      <td class="forma-cell">${formaHtml}</td>
     </tr>`;
   }).join('');
   const leyenda = (playoffSlots > 0 || descensoSlots > 0) ? `<div class="pos-leyenda">
     ${playoffSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-playoff">Clasifica a playoffs (top ${playoffSlots})</span>` : ''}
     ${descensoSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-descenso">Desciende</span>` : ''}
   </div>` : '';
-  const tabla_html = `<div class="glass section-card">
+  // Slug para el nombre del archivo descargado -- división + zona, sin depender
+  // de pasar un parámetro nuevo por todos los call sites.
+  const slug = `${(state.divisionActiva || 'liga').toLowerCase()}${tituloZona ? '-' + tituloZona.toLowerCase().replace(/\s+/g, '-') : ''}`;
+  const tabla_html = `<div class="glass section-card posiciones-card">
+      <div class="pos-card-actions">
+        <button class="btn btn-sm pos-download-btn" data-html2canvas-ignore="true" onclick="descargarTablaComoImagen(this.closest('.section-card'), 'posiciones-${slug}.png')">📷 Descargar imagen</button>
+      </div>
       <div class="tbl-wrap">
         <table class="posiciones-table">
-          <thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead>
+          <thead><tr><th>#</th><th>Equipo</th><th>PTS</th><th>J</th><th>Gol</th><th>+/-</th><th>G</th><th>E</th><th>P</th><th>Últimas</th></tr></thead>
           <tbody>${filas || `<tr><td colspan="10" class="empty-state">Sin equipos.</td></tr>`}</tbody>
         </table>
       </div>
@@ -2376,7 +2426,12 @@ function renderGoleadoresPublico() {
   const wrap = document.getElementById('goleadores-wrap');
   const lista = calcularGoleadores();
   if (lista.length === 0) { wrap.innerHTML = `<div class="empty-state">Todavía no hay goles registrados en esta división.</div>`; return; }
-  wrap.innerHTML = `<div class="glass section-card">${lista.map((g, i) => {
+  const slugGol = (state.divisionActiva || 'liga').toLowerCase();
+  wrap.innerHTML = `<div class="glass section-card goleadores-card">
+    <div class="pos-card-actions">
+      <button class="btn btn-sm pos-download-btn" data-html2canvas-ignore="true" onclick="descargarTablaComoImagen(this.closest('.section-card'), 'goleadores-${slugGol}.png')">📷 Descargar imagen</button>
+    </div>
+    ${lista.map((g, i) => {
     const equipo = state.equiposCache.find(eq => eq.id === g.equipoId);
     return `<div class="goleadores-row">
       <span class="goleadores-rank">${i + 1}°</span>
@@ -2384,6 +2439,30 @@ function renderGoleadoresPublico() {
       <span class="goleadores-goles">${g.goles}</span>
     </div>`;
   }).join('')}</div>`;
+}
+// Descarga la tarjeta (tabla de posiciones o de goleadores) tal cual se ve en la página,
+// como PNG -- pensado para que cualquiera pueda subirlo a una historia de Instagram sin
+// tener que hacer captura de pantalla a mano. El botón que dispara esto tiene
+// data-html2canvas-ignore="true", así que html2canvas lo salta solo y no sale en la imagen.
+// Los escudos son data: URLs guardadas en Firestore (no URLs de Storage), así que no hay
+// problema de CORS/canvas tainted al capturarlos.
+async function descargarTablaComoImagen(cardEl, filename) {
+  if (!cardEl || !window.html2canvas) { showToast('No se pudo generar la imagen.', 'error'); return; }
+  const btn = cardEl.querySelector('.pos-download-btn');
+  const textoOriginal = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Generando…'; btn.disabled = true; }
+  try {
+    const canvas = await html2canvas(cardEl, { scale: 3, backgroundColor: '#020203', useCORS: true });
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) {
+    console.error('descargarTablaComoImagen:', e);
+    showToast('No se pudo generar la imagen.', 'error');
+  } finally {
+    if (btn) { btn.textContent = textoOriginal; btn.disabled = false; }
+  }
 }
 // Convierte "HH:MM" a minutos para ordenar por horario (los sin horario van al final).
 function horarioAMin(h) { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? (+m[1]) * 60 + (+m[2]) : 99999; }

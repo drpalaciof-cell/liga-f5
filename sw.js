@@ -415,7 +415,12 @@
 // 1er o el 2do tiempo (no hacia falta tocar el estado, ya funcionaba con fase primer_tiempo/
 // segundo_tiempo, pero no habia forma de resetear a 0 sin escribir el minuto a mano).
 // v72: texto del boton de v71 mas corto ("Reiniciar el 1er tiempo", sin el "Fue sin querer").
-const CACHE = 'ligaf5-v72';
+// v73: index.html -- tabla de posiciones rediseñada: tarjeta angosta (pensada para captura
+// de historia de IG), PTS como primera columna de stats, escudos mas grandes, columna nueva
+// "Ultimas" (forma de los ultimos 5 partidos, V/E/D). Boton "Descargar imagen" en cada tarjeta
+// de posiciones y en la de goleadores -- usa html2canvas (ya cargado para los PDF de planilla)
+// para bajar exactamente lo que se ve en pantalla, sin el boton, como PNG.
+const CACHE = 'ligaf5-v73';
 const ASSETS = [
   './index.html',
   './planilla.html',
