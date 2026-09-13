@@ -388,33 +388,31 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 .content-tabs-sub .tab-btn{font-size:13px;padding:8px 17px;}
 .zona-block{margin-bottom:26px;}
 .zona-block-title{font-family:var(--font-display);font-weight:800;font-size:17px;color:var(--division-color,var(--cyan));margin-bottom:10px;text-align:center;}
-/* Tarjeta angosta a propósito -- pensada para entrar en una captura de historia de IG
-   (9:16) sin tener que recortar nada, y para que el botón de abajo descargue exactamente
-   lo mismo que se ve acá. */
-.posiciones-card, .goleadores-card{max-width:440px;margin-left:auto;margin-right:auto;padding:14px 12px 8px;}
-.pos-card-actions{display:flex;justify-content:flex-end;margin-bottom:10px;}
-.pos-download-btn{font-size:11.5px;padding:6px 12px;}
-.posiciones-table{table-layout:fixed;font-size:11.5px;}
-.posiciones-table th{padding:7px 4px;font-size:9px;letter-spacing:.01em;}
-.posiciones-table td{padding:7px 4px;}
+/* Tarjeta compacta pero SIN forzar el nombre del equipo a truncarse -- a pedido del
+   usuario, el nombre completo tiene que entrar siempre antes de PTS. table-layout auto
+   (no fixed) deja que la columna Equipo crezca con su contenido; si en un celular muy
+   angosto no entra todo, tbl-wrap scrollea horizontal en vez de cortar el nombre. */
+.posiciones-card, .goleadores-card{max-width:640px;margin-left:auto;margin-right:auto;padding:14px 12px 8px;}
+.pos-card-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.pos-card-logo{width:26px;height:26px;object-fit:contain;flex-shrink:0;mix-blend-mode:screen;}
+.pos-card-divlabel{font-family:var(--font-display);font-weight:800;font-size:13px;color:var(--division-color,var(--cyan));text-transform:uppercase;letter-spacing:.03em;}
+.posiciones-table{font-size:11.5px;}
+.posiciones-table th{padding:7px 6px;font-size:9px;letter-spacing:.01em;white-space:nowrap;}
+.posiciones-table td{padding:7px 6px;}
 .posiciones-table th, .posiciones-table td{text-align:center;}
 /* La columna de posición necesita su propio padding-right de sobra -- pegada al escudo
    quedaba invisible como número de posición, a pedido explícito del usuario. */
-.posiciones-table th:nth-child(1), .posiciones-table td:nth-child(1){width:26px;padding-right:8px;}
-.posiciones-table th:nth-child(2), .posiciones-table td:nth-child(2){text-align:left;padding-left:6px;}
-.posiciones-table th:nth-child(3), .posiciones-table td:nth-child(3){width:26px;}
-.posiciones-table th:nth-child(4), .posiciones-table td:nth-child(4){width:16px;}
-.posiciones-table th:nth-child(5), .posiciones-table td:nth-child(5){width:36px;}
-.posiciones-table th:nth-child(6), .posiciones-table td:nth-child(6){width:20px;}
-.posiciones-table th:nth-child(7), .posiciones-table td:nth-child(7),
-.posiciones-table th:nth-child(8), .posiciones-table td:nth-child(8),
-.posiciones-table th:nth-child(9), .posiciones-table td:nth-child(9){width:14px;}
-.posiciones-table th:nth-child(10), .posiciones-table td:nth-child(10){width:88px;}
-.posiciones-table .equipo-cell{display:flex;align-items:center;gap:8px;min-width:0;}
-.posiciones-table .equipo-cell span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.posiciones-table .equipo-shield-mini{width:28px;height:28px;border-radius:7px;object-fit:cover;flex-shrink:0;}
+.posiciones-table th:nth-child(1), .posiciones-table td:nth-child(1){padding-right:8px;}
+.posiciones-table th:nth-child(2), .posiciones-table td:nth-child(2){text-align:left;padding-left:6px;white-space:nowrap;}
+.posiciones-table .equipo-cell{display:flex;align-items:center;gap:8px;}
+.posiciones-table .equipo-cell span{white-space:nowrap;}
+/* Escudo "flotante" -- mismo criterio que escudoEquipoHtml() para las tarjetas de partido:
+   object-fit:contain (nunca recorta ni estira, aunque el PNG no sea cuadrado) +
+   mix-blend-mode:screen (funde el fondo negro del PNG con el fondo oscuro de la tarjeta,
+   así no queda un recuadro visible alrededor del escudo). */
+.posiciones-table .equipo-shield-mini{width:28px;height:28px;object-fit:contain;flex-shrink:0;mix-blend-mode:screen;}
 .posiciones-table .pts-cell strong{font-size:13.5px;color:var(--division-color,var(--cyan));}
-.posiciones-table .gol-cell{font-variant-numeric:tabular-nums;color:var(--text-dim);}
+.posiciones-table .gol-cell{font-variant-numeric:tabular-nums;color:var(--text-dim);white-space:nowrap;}
 .forma-row{display:flex;gap:2px;justify-content:center;}
 .forma-pill{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:4px;font-size:8.5px;font-weight:800;flex-shrink:0;}
 .forma-v{background:var(--ok);color:#052e12;}
@@ -2372,12 +2370,16 @@ function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZo
     ${playoffSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-playoff">Clasifica a playoffs (top ${playoffSlots})</span>` : ''}
     ${descensoSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-descenso">Desciende</span>` : ''}
   </div>` : '';
-  // Slug para el nombre del archivo descargado -- división + zona, sin depender
-  // de pasar un parámetro nuevo por todos los call sites.
-  const slug = `${(state.divisionActiva || 'liga').toLowerCase()}${tituloZona ? '-' + tituloZona.toLowerCase().replace(/\s+/g, '-') : ''}`;
+  // Escudo de la división (no del equipo) adentro de la tarjeta -- para Segunda, se repite
+  // en cada zona: cada tarjeta tiene que identificarse sola si alguien la ve sin el resto de
+  // la página alrededor (ej. una captura recortada).
+  const esPrimera = state.divisionActiva === 'Primera';
+  const divLogo = esPrimera ? 'assets/shield-primera.png' : 'assets/shield-segunda.png';
+  const divLabel = esPrimera ? 'Primera División' : 'Segunda División';
   const tabla_html = `<div class="glass section-card posiciones-card">
-      <div class="pos-card-actions">
-        <button class="btn btn-sm pos-download-btn" data-html2canvas-ignore="true" onclick="descargarTablaComoImagen(this.closest('.section-card'), 'posiciones-${slug}.png')">📷 Descargar imagen</button>
+      <div class="pos-card-header">
+        <img class="pos-card-logo" src="${divLogo}" alt="${divLabel}">
+        <span class="pos-card-divlabel">${divLabel}</span>
       </div>
       <div class="tbl-wrap">
         <table class="posiciones-table">
@@ -2428,11 +2430,7 @@ function renderGoleadoresPublico() {
   const wrap = document.getElementById('goleadores-wrap');
   const lista = calcularGoleadores();
   if (lista.length === 0) { wrap.innerHTML = `<div class="empty-state">Todavía no hay goles registrados en esta división.</div>`; return; }
-  const slugGol = (state.divisionActiva || 'liga').toLowerCase();
   wrap.innerHTML = `<div class="glass section-card goleadores-card">
-    <div class="pos-card-actions">
-      <button class="btn btn-sm pos-download-btn" data-html2canvas-ignore="true" onclick="descargarTablaComoImagen(this.closest('.section-card'), 'goleadores-${slugGol}.png')">📷 Descargar imagen</button>
-    </div>
     ${lista.map((g, i) => {
     const equipo = state.equiposCache.find(eq => eq.id === g.equipoId);
     return `<div class="goleadores-row">
@@ -2441,30 +2439,6 @@ function renderGoleadoresPublico() {
       <span class="goleadores-goles">${g.goles}</span>
     </div>`;
   }).join('')}</div>`;
-}
-// Descarga la tarjeta (tabla de posiciones o de goleadores) tal cual se ve en la página,
-// como PNG -- pensado para que cualquiera pueda subirlo a una historia de Instagram sin
-// tener que hacer captura de pantalla a mano. El botón que dispara esto tiene
-// data-html2canvas-ignore="true", así que html2canvas lo salta solo y no sale en la imagen.
-// Los escudos son data: URLs guardadas en Firestore (no URLs de Storage), así que no hay
-// problema de CORS/canvas tainted al capturarlos.
-async function descargarTablaComoImagen(cardEl, filename) {
-  if (!cardEl || !window.html2canvas) { showToast('No se pudo generar la imagen.', 'error'); return; }
-  const btn = cardEl.querySelector('.pos-download-btn');
-  const textoOriginal = btn ? btn.textContent : '';
-  if (btn) { btn.textContent = 'Generando…'; btn.disabled = true; }
-  try {
-    const canvas = await html2canvas(cardEl, { scale: 3, backgroundColor: '#020203', useCORS: true });
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-  } catch (e) {
-    console.error('descargarTablaComoImagen:', e);
-    showToast('No se pudo generar la imagen.', 'error');
-  } finally {
-    if (btn) { btn.textContent = textoOriginal; btn.disabled = false; }
-  }
 }
 // Convierte "HH:MM" a minutos para ordenar por horario (los sin horario van al final).
 function horarioAMin(h) { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? (+m[1]) * 60 + (+m[2]) : 99999; }

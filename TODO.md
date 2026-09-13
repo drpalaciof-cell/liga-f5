@@ -1,3 +1,30 @@
+# 2026-09-13 (cont. 2) — Sacar "Descargar imagen", escudo flotante, logo de división, nombre completo (sw v75)
+
+Tres pedidos seguidos del usuario sobre la tabla de posiciones, todos en la misma tanda:
+
+1. **Sacar el botón "📷 Descargar imagen"** (de la v73) — tardaba mucho y el resultado se
+   veía feo. Se sacó del todo: el botón, la función `descargarTablaComoImagen()` y el CSS
+   asociado. (`html2canvas` sigue cargado porque lo sigue usando el PDF de planilla, sin
+   relación con esto.)
+2. **Logo de la división adentro de la tarjeta**: escudo de Primera o de Segunda (según
+   corresponda) arriba de cada tabla — en Segunda se repite en cada zona, para que la
+   tarjeta se identifique sola si alguien la ve sin el resto de la página alrededor.
+3. **Escudos de equipo "flotando" sin recuadro**: antes tenían `object-fit:cover` +
+   `border-radius` (se veían como cuadraditos, algunos con el logo mal recortado/estirado).
+   Ahora `object-fit:contain` + `mix-blend-mode:screen`, el mismo criterio que ya usa
+   `escudoEquipoHtml()` en el resto del sitio para las tarjetas de partido — el fondo negro
+   del PNG se funde con el fondo oscuro de la tarjeta y el escudo queda "flotando". Ojo:
+   esto funde bien los fondos NEGROS; un escudo con fondo blanco/claro va a verse con un
+   recuadro claro igual — es la misma limitación que ya tenía el sitio en otros lugares, no
+   es nueva de esto.
+4. **El nombre del equipo nunca debe truncarse**: se sacó `table-layout:fixed` (que forzaba
+   la tabla a caber en un ancho fijo, cortando el nombre con "…"). Ahora la columna Equipo
+   crece con su contenido y la tarjeta puede ser más ancha (max-width subió de 440px a
+   640px); si en un celular muy angosto no entra todo, `tbl-wrap` scrollea horizontal en vez
+   de cortar el nombre.
+
+---
+
 # 2026-09-13 (cont.) — Corregir espaciado: el número de posición quedaba pegado al escudo (sw v74)
 
 El usuario mandó una captura real de la v73 ya en producción: se veía apretado, sobre todo

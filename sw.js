@@ -424,7 +424,15 @@
 // mando captura real) -- mas padding ahi, filas mas altas, PTS y las pastillas de "Ultimas"
 // un poco mas grandes. Se prioriza que se vea bien en el ancho real de celular (390-430px,
 // que es donde probo el usuario) por sobre que entre perfecto en un 360px sin truncar nombres.
-const CACHE = 'ligaf5-v74';
+// v75: index.html -- se saca el boton "Descargar imagen" (html2canvas tardaba y quedaba
+// feo, a pedido del usuario). Escudo de la division (Primera/Segunda) visible arriba de
+// cada tarjeta de posiciones. Los escudos de equipo pasan a "flotar" sin fondo/recuadro
+// (object-fit:contain + mix-blend-mode:screen, mismo criterio que escudoEquipoHtml() en el
+// resto del sitio) en vez del recuadro redondeado con object-fit:cover de antes. Se saca
+// table-layout:fixed para que el nombre del equipo NUNCA trunque -- ahora la tarjeta puede
+// crecer (max-width subio a 640px) y, si no entra en un celular muy angosto, scrollea
+// horizontal en vez de cortar el nombre.
+const CACHE = 'ligaf5-v75';
 const ASSETS = [
   './index.html',
   './planilla.html',
