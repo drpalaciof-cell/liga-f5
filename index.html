@@ -201,18 +201,12 @@ h1,h2,h3{font-family:var(--font-display);font-weight:800;letter-spacing:.01em;ma
 .hero-sub{font-size:11px;color:var(--text-dim);margin-top:1px;}
 .hero-category{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .hero-actions{display:flex;justify-content:center;gap:14px;margin-top:26px;flex-wrap:wrap;}
-@media (max-width:520px){
-  /* En celular todo el resto de la página va centrado (pestañas, títulos) -- el hero
-     quedaba pegado a la izquierda mientras todo alrededor estaba centrado, se veía
-     descolgado. Centrado como bloque, apilado. */
-  .hero-topbar{justify-content:center;}
-  .hero-brand{flex-direction:column;text-align:center;}
-  .hero-brand-text{text-align:center;}
-  .hero-category{width:100%;flex-direction:column;align-items:center;}
-  .hero-category .division-tabs{justify-content:center;}
-  .hero-category .division-header{justify-content:center;}
-  .hero-category .division-title{text-align:center;}
-}
+/* Celular y computadora son dos formatos distintos acá, no el mismo achicado -- en
+   computadora el hero de arriba ya está bien (logo chico a la izquierda, categoría a la
+   derecha) y no se toca. El detalle mobile-only (logo más grande, sin el nombre de la
+   división repetido, escudo centrado, "Segunda" en naranja fijo) va en el
+   @media (max-width:520px) de más abajo, DESPUÉS del de 640px a propósito -- así gana la
+   cascada en vez de que el de 640 (más viejo, más genérico) lo pise en celulares chicos. */
 
 .deadlines{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px;}
 .deadline-pill{padding:12px 18px;border-radius:12px;font-size:13.5px;display:flex;align-items:center;gap:8px;}
@@ -620,6 +614,28 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
   .navbar .container{flex-wrap:wrap;height:auto;padding:10px 14px;row-gap:8px;}
   .nav-left{flex:1 1 100%;justify-content:center;}
   .nav-actions{flex:1 1 100%;justify-content:center;}
+}
+/* Celular chico -- va DESPUÉS del de 640px para ganarle la cascada en ese rango (mismo
+   selector .hero-logo/.hero-headline, si no el de 640 pisaba estos valores). En celular:
+   logo más grande que en computadora (no más chico), todo el hero centrado como bloque
+   apilado, sin el nombre de la división repetido al lado del trofeo (ya lo dice el botón
+   de arriba) y con el escudo de la categoría más grande y centrado. "Segunda" se pinta de
+   naranja fijo (activa o no) para distinguirse de un vistazo. */
+@media (max-width:520px){
+  .hero-topbar{justify-content:center;}
+  .hero-brand{flex-direction:column;text-align:center;}
+  .hero-brand-text{text-align:center;}
+  .hero-logo{width:64px;height:64px;}
+  .hero-headline{font-size:16px;}
+  .hero-category{width:100%;flex-direction:column;align-items:center;}
+  .hero-category .division-tabs{justify-content:center;}
+  .hero-category .division-title{display:none;}
+  .hero-category .trophy-case{width:56px;height:56px;border-radius:13px;margin:0 auto;}
+  .hero-category .division-header{justify-content:center;}
+  .hero-category #tab-primera{border-color:rgba(34,211,238,.35);color:var(--cyan);}
+  .hero-category #tab-primera.active{background:linear-gradient(135deg,var(--cyan2),var(--cyan));color:#031018;border-color:transparent;box-shadow:0 4px 18px rgba(34,211,238,.35);}
+  .hero-category #tab-segunda{border-color:rgba(251,146,60,.35);color:var(--segunda);}
+  .hero-category #tab-segunda.active{background:linear-gradient(135deg,var(--segunda2),var(--segunda));color:#2b1400;border-color:transparent;box-shadow:0 4px 18px rgba(251,146,60,.35);}
 }
 
 /* ── MENSAJERÍA ── */

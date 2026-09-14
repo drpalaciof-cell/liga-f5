@@ -1,3 +1,25 @@
+# 2026-09-13 (cont. 10) — Mobile y computadora son dos formatos distintos (sw v83)
+
+El usuario aclaró explícitamente: "esto que te digo es solo para el celular, en la
+computadora se ve bien" / "son dos formatos distintos, adaptalos según la pantalla" —
+o sea, no achicar/tocar nada del hero en computadora, solo ajustar celular.
+
+- **Logo**: en celular pasa a 64px (antes 40px por un `@media (max-width:640px)` viejo que
+  lo volvía a achicar) — en computadora se queda en 48px, sin cambios.
+- **Sin el nombre de la división repetido**: en celular se saca "PRIMERA DIVISIÓN" al lado
+  del trofeo — ya lo dice el botón de arriba (Primera/Segunda). En computadora se queda el
+  texto, sin cambios ahí.
+- **Escudo de la categoría** más grande (56px, antes 34px) y centrado, en celular.
+- **"Segunda" en naranja fijo**: en celular el botón se pinta de naranja tenga el foco o no
+  (y "Primera" de cian), para distinguirse de un vistazo sin depender de cuál esté activa.
+  En computadora los botones se quedan como estaban (neutros hasta que se tocan).
+- **Detalle técnico**: el `@media (max-width:520px)` nuevo se puso DESPUÉS del
+  `@media (max-width:640px)` viejo a propósito -- mismo selector (`.hero-logo`,
+  `.hero-headline`), y en CSS con la misma especificidad gana la regla que aparece después
+  en el archivo. Iba antes y el de 640 se lo pisaba en celulares chicos.
+
+---
+
 # 2026-09-13 (cont. 9) — Hero centrado en celular, escudos parejos, fila fija en "En vivo" (sw v82)
 
 El usuario mandó capturas reales del celular después del v81: el hero (logo+título+tabs)

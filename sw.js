@@ -474,7 +474,13 @@
 // equipo en "En vivo" reescrita con CSS grid de columnas fijas (nombre 1fr / escudo 24px /
 // marcador / escudo 24px / nombre 1fr) en vez de flex+wrap -- antes el escudo se corría de
 // lugar según el largo del nombre de cada equipo.
-const CACHE = 'ligaf5-v82';
+// v83: index.html -- el hero mobile y el de computadora son dos formatos distintos a
+// propósito (computadora no se toca). En celular: logo más grande (no más chico), sin el
+// nombre de la división repetido al lado del trofeo (ya lo dice el botón Primera/Segunda),
+// escudo de la categoría más grande y centrado, "Segunda" pintado de naranja fijo (activa o
+// no). El @media nuevo va DESPUÉS del de 640px a propósito, para ganarle la cascada en el
+// mismo selector .hero-logo/.hero-headline.
+const CACHE = 'ligaf5-v83';
 const ASSETS = [
   './index.html',
   './planilla.html',
