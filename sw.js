@@ -466,7 +466,15 @@
 // solapa pública), y la posición de cada equipo entre paréntesis junto al nombre --
 // calculada "adelantando" el resultado del partido en curso, así se mueve sola mientras el
 // partido pasa y queda la posición final de una cuando cierra de verdad.
-const CACHE = 'ligaf5-v81';
+// v82: index.html -- el hero de la landing quedaba pegado a la izquierda en celular
+// mientras todo el resto de la página se veía centrado; ahora se centra como bloque
+// apilado. Escudos chicos (En vivo, Fixture, Partidos, Goleadores) pasan de
+// object-fit:contain a cover: con "contain" un escudo con proporciones distintas al
+// cuadrado se veía más chico o más arriba que los demás en la misma fila. Fila de
+// equipo en "En vivo" reescrita con CSS grid de columnas fijas (nombre 1fr / escudo 24px /
+// marcador / escudo 24px / nombre 1fr) en vez de flex+wrap -- antes el escudo se corría de
+// lugar según el largo del nombre de cada equipo.
+const CACHE = 'ligaf5-v82';
 const ASSETS = [
   './index.html',
   './planilla.html',

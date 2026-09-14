@@ -1,3 +1,30 @@
+# 2026-09-13 (cont. 9) — Hero centrado en celular, escudos parejos, fila fija en "En vivo" (sw v82)
+
+El usuario mandó capturas reales del celular después del v81: el hero (logo+título+tabs)
+quedaba pegado a la izquierda mientras todo el resto de la página (pestañas, títulos) se ve
+centrado — se notaba descolgado. Además, en "En vivo" un escudo salía más chico o más
+arriba que el de al lado, y el escudo se corría de lugar según cuán largo fuera el nombre
+del equipo.
+
+- **Hero centrado en celular**: nuevo bloque en el `@media (max-width:520px)` — logo+título
+  en columna centrada, tabs centradas, trofeo+nombre de división centrado. En computadora
+  sigue siendo logo a la izquierda / categoría a la derecha, sin cambios ahí.
+- **Escudos chicos parejos**: `.goleador-shield`, `.fx-team-shield` y los inline de "En
+  vivo"/Partidos pasan de `object-fit:contain` a `cover` (con `border-radius`). Con
+  "contain", un escudo subido con proporciones distintas al cuadrado (más ancho, más alto)
+  se veía más chico o corrido respecto a los demás en la misma fila — "cover" fuerza a que
+  todos llenen el mismo cuadrito, igual que ya se hacía en la tabla de goleadores antes de
+  esta sesión. (El escudo grande de la tabla de posiciones se queda con `contain`, eso no
+  cambió — ahí sí importa no recortar nada.)
+- **Fila de equipo en "En vivo" reescrita con CSS grid** de columnas fijas (`1fr 24px auto
+  24px 1fr`: nombre / escudo / marcador / escudo / nombre) en vez de flex+wrap. Antes el
+  escudo compartía fila con el nombre y se reacomodaba según cuánto medía cada uno
+  ("JAURIA SPORT" corría el escudo distinto que "LA CAMORRA" al lado) — con columnas fijas
+  el escudo queda siempre en el mismo lugar, el nombre trunca con "…" si no entra, y la
+  posición en vivo pasa a una segunda línea debajo del nombre en vez de ir pegada al lado.
+
+---
+
 # 2026-09-13 (cont. 8) — Logo achicado, banner admin sin tarjeta, "En vivo" con escudo/color/posición (sw v81)
 
 **Logo de la landing**: ocupaba casi toda la pantalla (85vw, 380px máx) — quedó de cuando

@@ -202,8 +202,16 @@ h1,h2,h3{font-family:var(--font-display);font-weight:800;letter-spacing:.01em;ma
 .hero-category{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .hero-actions{display:flex;justify-content:center;gap:14px;margin-top:26px;flex-wrap:wrap;}
 @media (max-width:520px){
-  .hero-topbar{justify-content:flex-start;}
-  .hero-category{width:100%;flex-direction:column;align-items:flex-start;}
+  /* En celular todo el resto de la página va centrado (pestañas, títulos) -- el hero
+     quedaba pegado a la izquierda mientras todo alrededor estaba centrado, se veía
+     descolgado. Centrado como bloque, apilado. */
+  .hero-topbar{justify-content:center;}
+  .hero-brand{flex-direction:column;text-align:center;}
+  .hero-brand-text{text-align:center;}
+  .hero-category{width:100%;flex-direction:column;align-items:center;}
+  .hero-category .division-tabs{justify-content:center;}
+  .hero-category .division-header{justify-content:center;}
+  .hero-category .division-title{text-align:center;}
 }
 
 .deadlines{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px;}
@@ -490,7 +498,11 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 .goleadores-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);}
 .goleadores-row:last-child{border-bottom:none;}
 .goleadores-rank{font-family:var(--font-display);font-weight:800;color:var(--text-dim);width:26px;flex-shrink:0;}
-.goleador-shield{width:26px;height:26px;object-fit:contain;flex-shrink:0;}
+/* object-fit:cover (no contain) en los escudos chicos -- a diferencia del escudo grande de
+   la tabla de posiciones, acá el objetivo es que todos midan exactamente igual en una lista
+   apretada; algunos equipos suben el logo con proporciones bien distintas y con "contain"
+   quedaban visualmente más chicos o más arriba que los demás. */
+.goleador-shield{width:26px;height:26px;object-fit:cover;border-radius:5px;flex-shrink:0;}
 .goleadores-goles{font-family:var(--font-display);font-weight:800;font-size:18px;color:var(--division-color,var(--cyan));}
 .fecha-pills{display:flex;gap:8px;justify-content:center;margin-bottom:22px;flex-wrap:wrap;}
 .fecha-pills .tab-btn{font-size:12.5px;padding:7px 15px;}
@@ -682,7 +694,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 .fx-team.local{justify-content:flex-end;}
 .fx-team.visit{justify-content:flex-start;}
 .fx-team-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.fx-team-shield{width:20px;height:20px;object-fit:contain;flex-shrink:0;}
+.fx-team-shield{width:20px;height:20px;object-fit:cover;border-radius:5px;flex-shrink:0;}
 .fx-vs{font-size:13.5px;font-weight:800;color:var(--division-color);white-space:nowrap;}
 .fx-bye{text-align:center;color:var(--text-dim);font-size:11.5px;}
 @media(max-width:760px){
@@ -2570,11 +2582,11 @@ function renderPartidosPublico() {
       <div class="marcador" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;">
         <span class="equipo-nombre" style="text-align:right;font-size:19px;display:flex;align-items:center;justify-content:flex-end;gap:8px;">
           <span>${escapeHtml(p.equipoLocalNombre)}</span>
-          ${eqLocal && eqLocal.escudo ? `<img style="width:26px;height:26px;object-fit:contain;flex-shrink:0;" src="${eqLocal.escudo}">` : ''}
+          ${eqLocal && eqLocal.escudo ? `<img style="width:26px;height:26px;object-fit:cover;border-radius:6px;flex-shrink:0;" src="${eqLocal.escudo}">` : ''}
         </span>
         <span class="goles" style="font-size:18px;">${p.jugado ? `${p.golesLocal} - ${p.golesVisitante}` : 'vs'}</span>
         <span class="equipo-nombre visitante" style="text-align:left;font-size:19px;display:flex;align-items:center;justify-content:flex-start;gap:8px;">
-          ${eqVisit && eqVisit.escudo ? `<img style="width:26px;height:26px;object-fit:contain;flex-shrink:0;" src="${eqVisit.escudo}">` : ''}
+          ${eqVisit && eqVisit.escudo ? `<img style="width:26px;height:26px;object-fit:cover;border-radius:6px;flex-shrink:0;" src="${eqVisit.escudo}">` : ''}
           <span>${escapeHtml(p.equipoVisitanteNombre)}</span>
         </span>
       </div>
@@ -7477,7 +7489,7 @@ function renderEnVivoCards(contId, isAdmin) {
     const marcador = (enCurso || p.jugado) ? `${p.golesLocal ?? 0} - ${p.golesVisitante ?? 0}` : 'vs';
     const eqLocalEV = equiposTotalCache.find(eq => eq.id === p.equipoLocalId);
     const eqVisitEV = equiposTotalCache.find(eq => eq.id === p.equipoVisitanteId);
-    const escudoImg = eq => eq && eq.escudo ? `<img src="${eq.escudo}" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;">` : '';
+    const escudoImg = eq => eq && eq.escudo ? `<img src="${eq.escudo}" style="width:22px;height:22px;object-fit:cover;border-radius:5px;">` : '';
     const divColorEV = p.division === 'Primera' ? '#22d3ee' : '#fb923c';
     const divShieldEV = p.division === 'Primera' ? 'assets/shield-primera.png' : 'assets/shield-segunda.png';
     // Posición EN VIVO: la tabla de esa división/zona "adelantando" el partido en curso con
@@ -7493,7 +7505,7 @@ function renderEnVivoCards(contId, isAdmin) {
       partidosGrupo = partidosGrupo.map(x => x.id === p.id ? { ...x, jugado: true, golesLocal: p.golesLocal ?? 0, golesVisitante: p.golesVisitante ?? 0 } : x);
       const tabla = calcularTablaPosiciones(equiposGrupo, partidosGrupo);
       const idx = tabla.findIndex(t => t.id === equipoId);
-      return idx === -1 ? '' : ` <span style="color:var(--text-dim);font-weight:600;">(${idx + 1}º)</span>`;
+      return idx === -1 ? '' : `${idx + 1}º`;
     };
     // Goleadores/tarjetas separados por equipo (antes salían todos mezclados en una sola lista,
     // sin poder saber de qué lado era cada uno) -- cada columna va debajo del nombre de SU
@@ -7542,10 +7554,18 @@ function renderEnVivoCards(contId, isAdmin) {
         <img src="${divShieldEV}" style="width:16px;height:16px;object-fit:contain;flex-shrink:0;">
         ${escapeHtml(p.division || '')}${p.zona && p.zona !== 'INT' ? ' · Zona ' + p.zona : ''}${interBadge}
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <div style="font-weight:700;font-size:13px;flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:4px 6px;text-align:right;">${escudoImg(eqLocalEV)}<span>${escapeHtml(p.equipoLocalNombre || '')}${posEnVivoDe(p.equipoLocalId)}</span></div>
-        <div style="font-weight:800;font-size:20px;color:${divColorEV};white-space:nowrap;flex-shrink:0;">${marcador}</div>
-        <div style="font-weight:700;font-size:13px;flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 6px;">${escudoImg(eqVisitEV)}<span>${escapeHtml(p.equipoVisitanteNombre || '')}${posEnVivoDe(p.equipoVisitanteId)}</span></div>
+      <div style="display:grid;grid-template-columns:1fr 24px auto 24px 1fr;align-items:center;gap:8px;">
+        <div style="min-width:0;text-align:right;">
+          <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.equipoLocalNombre || '')}</div>
+          <div style="font-size:11px;color:var(--text-dim);">${posEnVivoDe(p.equipoLocalId)}</div>
+        </div>
+        ${escudoImg(eqLocalEV)}
+        <div style="font-weight:800;font-size:20px;color:${divColorEV};white-space:nowrap;text-align:center;">${marcador}</div>
+        ${escudoImg(eqVisitEV)}
+        <div style="min-width:0;text-align:left;">
+          <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.equipoVisitanteNombre || '')}</div>
+          <div style="font-size:11px;color:var(--text-dim);">${posEnVivoDe(p.equipoVisitanteId)}</div>
+        </div>
       </div>
       ${tiempoHtml}
       <div style="display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--text-dim);line-height:1.5;">
