@@ -446,7 +446,16 @@
 // "Ultimas" pasa de 5 a 4 resultados.
 // v78: escudos de los dos equipos en el Fixture (fxMatchHtml) y en la solapa Partidos
 // (renderPartidosPublico), pegados al marcador/al "vs".
-const CACHE = 'ligaf5-v78';
+// v79: index.html -- se saca la pestaña pública "Equipos" (los equipos ya se ven en la
+// tabla de posiciones) y las secciones "Nuestra Historia" y sponsor de la landing. La
+// carga de state.equiposCache que hacia loadTeamsGrid() se mantiene en una funcion nueva
+// (cargarEquiposCache) -- posiciones/goleadores/fixture/partidos siguen dependiendo de
+// eso. Pestañas reordenadas: Posiciones, Goleadores, Resultados (antes "Partidos", mismo
+// id interno), En vivo, Fixture. "En vivo" ahora aclara de que fecha son los partidos.
+// v80: escudos en "En vivo" también. Como esa pestaña mezcla partidos de las DOS
+// divisiones (no filtra por division), se agrega equiposTotalCache (todos los equipos,
+// cargada una sola vez) en vez de state.equiposCache (que solo tiene la division activa).
+const CACHE = 'ligaf5-v80';
 const ASSETS = [
   './index.html',
   './planilla.html',

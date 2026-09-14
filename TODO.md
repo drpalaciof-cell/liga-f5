@@ -1,3 +1,32 @@
+# 2026-09-13 (cont. 7) — Escudos también en "En vivo" (sw v80)
+
+"En vivo" mezcla partidos de las DOS divisiones (no filtra por `division`, para poder mostrar
+la fecha que se está jugando en cualquiera de las dos), así que `state.equiposCache` (solo
+tiene los equipos de la división activa) no alcanzaba para buscar el escudo. Se agregó
+`equiposTotalCache` — todos los equipos de las dos divisiones, cargados una sola vez con
+`cargarEquiposTotalCache()` (no hace falta tiempo real, un escudo no cambia en vivo) — y se
+usa en `renderEnVivoCards` para mostrar el escudo de cada equipo junto al marcador.
+
+---
+
+# 2026-09-13 (cont. 6) — Sacar pestaña Equipos/Historia/Sponsor, reordenar pestañas, fecha en "En vivo" (sw v79)
+
+- **Se saca la pestaña pública "Equipos"** (Primera y Segunda) — los equipos ya se ven en la
+  tabla de Posiciones, con escudo y todo. `loadTeamsGrid()` hacía dos cosas a la vez (pintar
+  la grilla Y cargar `state.equiposCache`, que usan posiciones/goleadores/fixture/partidos);
+  se separó: la carga de datos quedó en una función nueva, `cargarEquiposCache()`, sin la
+  parte visual.
+- **Se sacan "Nuestra Historia" y el bloque de sponsor** de la landing (iban debajo de las
+  pestañas, solo visibles con "Equipos" activo).
+- **Pestañas reordenadas**: Posiciones · Goleadores · Resultados · En vivo · Fixture. La de
+  "Partidos" ahora dice **"Resultados"** en el botón (el id interno `partidos` no cambió, así
+  que no hubo que tocar `renderPartidosPublico` ni nada que dependa de eso).
+- **"En vivo" aclara la fecha**: antes mostraba las 3 canchas sin decir nunca "Fecha 4" — ahora
+  hay un título arriba con `tituloFecha()` (mismo criterio que ya se usa en Fixture/Partidos,
+  incluida la etiqueta "(postergada)" si corresponde).
+
+---
+
 # 2026-09-13 (cont. 5) — Escudos también en el Fixture y en Partidos (sw v78)
 
 `fxMatchHtml()` (solapa Fixture) y `renderPartidosPublico()` (solapa Partidos) ahora muestran
