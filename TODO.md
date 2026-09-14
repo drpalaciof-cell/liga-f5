@@ -1,3 +1,40 @@
+# 2026-09-13 (cont. 8) — Logo achicado, banner admin sin tarjeta, "En vivo" con escudo/color/posición (sw v81)
+
+**Logo de la landing**: ocupaba casi toda la pantalla (85vw, 380px máx) — quedó de cuando
+recién arrancaba la inscripción y había que mostrarlo bien grande. Ahora es una franja
+compacta arriba: logo chico (48px) + título a la izquierda, pestañas Primera/Segunda + el
+trofeo/nombre de la división activa a la derecha. En celular se apila (logo arriba, tabs
+debajo, trofeo+nombre debajo de eso) en vez de forzar el lado a lado — confirmado con el
+usuario que en celular "arriba nomás" (apilado) está bien, el lado a lado es cosa de
+computadora. Había un `@media (max-width:640px){.hero-logo{width:82vw...}}` viejo que
+pisaba el tamaño nuevo — corregido también.
+
+**Banner "Torneo Clausura" del panel admin** (pantalla `torneo-home`, la que ve el admin
+antes de elegir Primera/Segunda): tenía el logo grande adentro de una tarjeta `glass` — a
+pedido del usuario, se saca la tarjeta (mismo criterio que los escudos: que flote, sin fondo
+ni marco) y el logo baja a 56px, en fila con el título.
+
+**"En vivo"**:
+- Escudo de la división (Primera/Segunda) en cada tarjeta, al lado de dónde dice la división.
+- El borde superior de la tarjeta se pinta del color de SU categoría (cian Primera / naranja
+  Segunda) — antes el color del marcador salía de `var(--division-color)`, que es la división
+  que esté activa en la solapa pública, no la del partido — dos partidos de distinta división
+  en pantalla a la vez se confundían visualmente. Ahora cada tarjeta tiene su propio color,
+  sea cual sea la pestaña pública abierta.
+- **Posición en vivo entre paréntesis** junto a cada equipo, ej. `RURAL 55 (4º)`. Se calcula
+  con una versión de `calcularTablaPosiciones` que "adelanta" el partido en curso con el
+  marcador de ahora mismo (sobre `equiposTotalCache`/`partidosTotalCache`, no sobre
+  `state.*`, porque "En vivo" mezcla las dos divisiones) — se mueve sola gol a gol mientras
+  el partido sigue, y en cuanto el partido cierra de verdad la función ya cuenta ese
+  resultado como definitivo, así que la posición mostrada pasa a ser la final sin código
+  aparte para eso.
+- Los nombres de equipo + escudo + posición se pusieron en un contenedor flex con
+  `min-width:0` y `flex-wrap:wrap`: sin eso, un nombre largo como "STRONGEST TEAM" se salía
+  de su tarjeta y se metía visualmente en la de al lado (bug real, encontrado probando con
+  3 tarjetas angostas en fila).
+
+---
+
 # 2026-09-13 (cont. 7) — Escudos también en "En vivo" (sw v80)
 
 "En vivo" mezcla partidos de las DOS divisiones (no filtra por `division`, para poder mostrar

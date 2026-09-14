@@ -455,7 +455,18 @@
 // v80: escudos en "En vivo" también. Como esa pestaña mezcla partidos de las DOS
 // divisiones (no filtra por division), se agrega equiposTotalCache (todos los equipos,
 // cargada una sola vez) en vez de state.equiposCache (que solo tiene la division activa).
-const CACHE = 'ligaf5-v80';
+// v81: index.html -- logo y encabezado de la landing achicados (antes ocupaban casi toda
+// la pantalla, quedó de cuando recién arrancaba la inscripción). Ahora es una franja
+// compacta: logo chico + título a la izquierda, pestañas Primera/Segunda + trofeo/nombre
+// de la división a la derecha -- se apila arriba en celular en vez de forzar el lado a lado.
+// El banner "Torneo Clausura" del panel admin (torneo-home) pierde la tarjeta ("glass"):
+// el logo flota directo sobre el fondo, más chico, en fila con el título.
+// "En vivo": escudo de la división en cada tarjeta, borde superior pintado según la
+// categoría (cian Primera / naranja Segunda, ya no según qué división esté activa en la
+// solapa pública), y la posición de cada equipo entre paréntesis junto al nombre --
+// calculada "adelantando" el resultado del partido en curso, así se mueve sola mientras el
+// partido pasa y queda la posición final de una cuando cierra de verdad.
+const CACHE = 'ligaf5-v81';
 const ASSETS = [
   './index.html',
   './planilla.html',

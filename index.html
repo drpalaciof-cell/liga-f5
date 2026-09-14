@@ -188,11 +188,23 @@ h1,h2,h3{font-family:var(--font-display);font-weight:800;letter-spacing:.01em;ma
 @keyframes slidein{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
 
 /* ===== hero ===== */
-.hero{padding:18px 0 16px;text-align:center;}
-.hero-logo{width:85vw;max-width:380px;height:auto;object-fit:contain;}
-.hero-headline{font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:10px;background:linear-gradient(135deg,#fff,var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.hero-sub{margin-top:8px;font-size:15.5px;color:var(--text-dim);max-width:480px;margin-left:auto;margin-right:auto;}
+/* Antes el logo ocupaba casi toda la pantalla (85vw) seguido de las pestañas de división
+   bien abajo -- útil cuando recién arrancaba la inscripción y había que mostrar bien el
+   logo, pero de ahí en más era demasiado espacio vacío. Ahora es una franja compacta:
+   logo chico a la izquierda, selección de categoría a la derecha -- se apila en celular
+   (lo más importante: que entre bien en pantalla chica, no al revés). */
+.hero-topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 22px;padding:14px 0 10px;}
+.hero-brand{display:flex;align-items:center;gap:10px;}
+.hero-logo{width:48px;height:48px;object-fit:contain;flex-shrink:0;}
+.hero-brand-text{text-align:left;}
+.hero-headline{font-size:14.5px;font-weight:800;letter-spacing:-.01em;line-height:1.25;background:linear-gradient(135deg,#fff,var(--cyan));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.hero-sub{font-size:11px;color:var(--text-dim);margin-top:1px;}
+.hero-category{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .hero-actions{display:flex;justify-content:center;gap:14px;margin-top:26px;flex-wrap:wrap;}
+@media (max-width:520px){
+  .hero-topbar{justify-content:flex-start;}
+  .hero-category{width:100%;flex-direction:column;align-items:flex-start;}
+}
 
 .deadlines{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px;}
 .deadline-pill{padding:12px 18px;border-radius:12px;font-size:13.5px;display:flex;align-items:center;gap:8px;}
@@ -209,16 +221,17 @@ h1,h2,h3{font-family:var(--font-display);font-weight:800;letter-spacing:.01em;ma
 .divisions{padding:8px 0 30px;}
 .divisions[data-division="Segunda"]{--division-color:var(--segunda);--division-color2:var(--segunda2);--division-soft:var(--segunda-soft);}
 .divisions-caption{text-align:center;color:var(--text-dim);font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;}
-.division-tabs{display:flex;gap:10px;justify-content:center;margin-bottom:28px;}
+.division-tabs{display:flex;gap:8px;}
 .tab-btn{padding:10px 22px;border-radius:11px;border:1px solid var(--glass-border);background:transparent;color:var(--text-dim);font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;transition:all .15s ease;}
 .tab-btn.active{background:linear-gradient(135deg,var(--division-color2,var(--cyan2)),var(--division-color,var(--cyan)));color:#031018;border-color:transparent;box-shadow:0 4px 18px rgba(34,211,238,.35);}
-.division-header{display:flex;flex-direction:column;align-items:center;gap:0;justify-content:center;margin-bottom:8px;}
+.hero-category .tab-btn{padding:7px 14px;font-size:12.5px;}
+.division-header{display:flex;flex-direction:row;align-items:center;gap:8px;}
 .trophy-case{
-  position:relative;width:260px;height:260px;margin:0 auto 16px;
+  position:relative;width:34px;height:34px;margin:0;
   background:linear-gradient(160deg, var(--piano2), var(--piano) 65%, #000 100%);
   border:1px solid rgba(255,255,255,.08);
   border-top-color:rgba(255,255,255,.18);
-  border-radius:22px;
+  border-radius:9px;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.10),
     inset 0 -30px 36px -22px rgba(0,0,0,.8),
@@ -239,6 +252,7 @@ h1,h2,h3{font-family:var(--font-display);font-weight:800;letter-spacing:.01em;ma
 .division-cup-logo{display:block;width:100%;height:100%;object-fit:contain;}
 .division-pick-card .trophy-case{width:170px;height:170px;}
 .division-title{font-family:var(--font-display);font-weight:800;font-size:34px;text-transform:uppercase;letter-spacing:.01em;color:var(--division-color,var(--cyan));text-align:center;transition:color .2s ease;line-height:1;}
+.hero-category .division-title{font-size:15px;text-align:left;}
 /* .team-shield sigue en uso en el panel de admin (lista de equipos) -- el resto de las
    clases de la grilla pública "Equipos" (sacada a pedido del usuario: ya se ven en la
    tabla de posiciones) se borró junto con esa pestaña. */
@@ -312,7 +326,9 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 .tabs-admin .tab-btn{font-size:13px;padding:9px 16px;white-space:nowrap;flex-shrink:0;}
 .tabs-admin-sub{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
 .tabs-admin-sub .tab-btn{font-size:13px;padding:9px 18px;}
-.torneo-banner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:28px 26px;margin-bottom:22px;}
+/* Sin "glass": a pedido del usuario, el logo flota sobre el fondo de la página en vez de
+   ir adentro de una tarjeta -- esa tarjeta era lo que más espacio ocupaba acá arriba. */
+.torneo-banner{display:flex;align-items:center;text-align:left;gap:14px;padding:10px 4px;margin-bottom:18px;}
 .torneo-logo-ph{width:62px;height:62px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:30px;background:linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.09);}
 .torneo-banner h2{font-size:22px;margin-bottom:2px;}
 .torneo-banner p{color:var(--text-dim);font-size:13px;}
@@ -581,7 +597,9 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 @keyframes exito-in{from{opacity:0;transform:scale(.85);}to{opacity:1;transform:scale(1);}}
 
 @media (max-width:640px){
-  .hero-logo{width:82vw;max-width:300px;height:auto;}
+  .hero-logo{width:40px;height:40px;}
+  .hero-headline{font-size:13px;}
+  .hero-sub{display:none;}
   .panel-header{flex-direction:column;text-align:center;}
   .panel-header .spacer{display:none;}
   .division-choice{grid-template-columns:1fr;}
@@ -728,26 +746,31 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 <!-- ===================== LANDING ===================== -->
 <section id="view-landing" class="view">
   <div class="container">
-    <div class="hero">
-      <img src="assets/logo-clausura.png" alt="Torneo Clausura" class="hero-logo">
-      <h2 class="hero-headline">Torneo Clausura 2026</h2>
-      <p class="hero-sub">Seguí las posiciones, goleadores y el fixture de todas las fechas.</p>
+    <div class="hero-topbar">
+      <div class="hero-brand">
+        <img src="assets/logo-clausura.png" alt="Torneo Clausura" class="hero-logo">
+        <div class="hero-brand-text">
+          <h2 class="hero-headline">Torneo Clausura 2026</h2>
+          <p class="hero-sub">Seguí las posiciones, goleadores y el fixture de todas las fechas.</p>
+        </div>
+      </div>
+      <div class="hero-category">
+        <div class="division-tabs">
+          <button class="tab-btn active" id="tab-primera" onclick="switchDivisionTab('Primera')">Primera</button>
+          <button class="tab-btn" id="tab-segunda" onclick="switchDivisionTab('Segunda')">Segunda</button>
+        </div>
+        <div class="division-header">
+          <div class="trophy-case">
+            <img id="division-cup-logo" class="division-cup-logo" src="assets/copa-primera.png" alt="Copa Primera División">
+          </div>
+          <h3 id="division-title" class="division-title">Primera División</h3>
+        </div>
+      </div>
     </div>
 
     <div class="avisos-wrap" id="avisos-wrap"></div>
 
     <div class="divisions" id="divisions-wrap" data-division="Primera">
-      <div class="division-tabs">
-        <button class="tab-btn active" id="tab-primera" onclick="switchDivisionTab('Primera')">Primera División</button>
-        <button class="tab-btn" id="tab-segunda" onclick="switchDivisionTab('Segunda')">Segunda División</button>
-      </div>
-      <div class="division-header">
-        <div class="trophy-case">
-          <img id="division-cup-logo" class="division-cup-logo" src="assets/copa-primera.png" alt="Copa Primera División">
-        </div>
-        <h3 id="division-title" class="division-title">Primera División</h3>
-      </div>
-
       <div class="content-tabs-sub">
         <button class="tab-btn active" data-content-tab="posiciones" onclick="switchContentTab('posiciones')">Posiciones</button>
         <button class="tab-btn" data-content-tab="goleadores" onclick="switchContentTab('goleadores')">Goleadores</button>
@@ -1285,8 +1308,8 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
 
       <!-- Pantalla 1: entrar al torneo -->
       <div id="torneo-home">
-        <div class="glass torneo-banner">
-          <img src="assets/logo-clausura.png" alt="Torneo Clausura" style="width:min(340px,90vw);height:auto;object-fit:contain;">
+        <div class="torneo-banner">
+          <img src="assets/logo-clausura.png" alt="Torneo Clausura" style="width:56px;height:56px;object-fit:contain;flex-shrink:0;">
           <div>
             <h2>Torneo Clausura</h2>
             <p id="torneo-temporada-txt">Temporada 2026</p>
@@ -7455,6 +7478,23 @@ function renderEnVivoCards(contId, isAdmin) {
     const eqLocalEV = equiposTotalCache.find(eq => eq.id === p.equipoLocalId);
     const eqVisitEV = equiposTotalCache.find(eq => eq.id === p.equipoVisitanteId);
     const escudoImg = eq => eq && eq.escudo ? `<img src="${eq.escudo}" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;">` : '';
+    const divColorEV = p.division === 'Primera' ? '#22d3ee' : '#fb923c';
+    const divShieldEV = p.division === 'Primera' ? 'assets/shield-primera.png' : 'assets/shield-segunda.png';
+    // Posición EN VIVO: la tabla de esa división/zona "adelantando" el partido en curso con
+    // el marcador de ahora mismo -- deja de moverse sola en cuanto el partido cierra de
+    // verdad, porque calcularTablaPosiciones ya cuenta ese resultado como el real.
+    const posEnVivoDe = equipoId => {
+      const esPrimera = p.division === 'Primera';
+      const equiposGrupo = equiposTotalCache.filter(eq => eq.division === p.division && (esPrimera || eq.zona === p.zona));
+      const idsGrupo = new Set(equiposGrupo.map(eq => eq.id));
+      let partidosGrupo = partidosTotalCache.filter(x => x.division === p.division && (
+        esPrimera || x.zona === p.zona || (x.interzonal && (idsGrupo.has(x.equipoLocalId) || idsGrupo.has(x.equipoVisitanteId)))
+      ));
+      partidosGrupo = partidosGrupo.map(x => x.id === p.id ? { ...x, jugado: true, golesLocal: p.golesLocal ?? 0, golesVisitante: p.golesVisitante ?? 0 } : x);
+      const tabla = calcularTablaPosiciones(equiposGrupo, partidosGrupo);
+      const idx = tabla.findIndex(t => t.id === equipoId);
+      return idx === -1 ? '' : ` <span style="color:var(--text-dim);font-weight:600;">(${idx + 1}º)</span>`;
+    };
     // Goleadores/tarjetas separados por equipo (antes salían todos mezclados en una sola lista,
     // sin poder saber de qué lado era cada uno) -- cada columna va debajo del nombre de SU
     // equipo, igual que el marcador de arriba.
@@ -7493,16 +7533,19 @@ function renderEnVivoCards(contId, isAdmin) {
     }
     const enVivoTick = fase === 'primer_tiempo' || fase === 'segundo_tiempo';
     const tiempoHtml = tiempoLinea ? `<div style="text-align:center;font-variant-numeric:tabular-nums;font-weight:800;margin:2px 0 8px;font-size:${enVivoTick ? '24px' : '11.5px'};color:${enVivoTick ? '#ff6b6b' : 'var(--text-dim)'};">${tiempoLinea}</div>` : '';
-    return `<div class="glass" style="border-radius:14px;padding:16px;${enCurso ? 'border:1px solid rgba(255,80,80,.4);' : ''}">
+    return `<div class="glass" style="border-radius:14px;padding:16px;${enCurso ? 'border:1px solid rgba(255,80,80,.4);' : ''}border-top:3px solid ${divColorEV};">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <h4 style="margin:0;">Cancha ${cancha}</h4>
         <span style="font-size:11px;font-weight:700;color:${enCurso ? '#ff6b6b' : 'var(--text-dim)'};">${estadoTxt}</span>
       </div>
-      <div style="font-size:13px;color:var(--text-dim);margin-bottom:2px;">${escapeHtml(p.division || '')}${p.zona && p.zona !== 'INT' ? ' · Zona ' + p.zona : ''}${interBadge}</div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:2px;display:flex;align-items:center;gap:5px;">
+        <img src="${divShieldEV}" style="width:16px;height:16px;object-fit:contain;flex-shrink:0;">
+        ${escapeHtml(p.division || '')}${p.zona && p.zona !== 'INT' ? ' · Zona ' + p.zona : ''}${interBadge}
+      </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-        <div style="font-weight:700;font-size:14.5px;flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;">${escapeHtml(p.equipoLocalNombre || '')}${escudoImg(eqLocalEV)}</div>
-        <div style="font-weight:800;font-size:20px;color:var(--division-color);white-space:nowrap;">${marcador}</div>
-        <div style="font-weight:700;font-size:14.5px;flex:1;display:flex;align-items:center;justify-content:flex-start;gap:6px;">${escudoImg(eqVisitEV)}${escapeHtml(p.equipoVisitanteNombre || '')}</div>
+        <div style="font-weight:700;font-size:13px;flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:4px 6px;text-align:right;">${escudoImg(eqLocalEV)}<span>${escapeHtml(p.equipoLocalNombre || '')}${posEnVivoDe(p.equipoLocalId)}</span></div>
+        <div style="font-weight:800;font-size:20px;color:${divColorEV};white-space:nowrap;flex-shrink:0;">${marcador}</div>
+        <div style="font-weight:700;font-size:13px;flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 6px;">${escudoImg(eqVisitEV)}<span>${escapeHtml(p.equipoVisitanteNombre || '')}${posEnVivoDe(p.equipoVisitanteId)}</span></div>
       </div>
       ${tiempoHtml}
       <div style="display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--text-dim);line-height:1.5;">
