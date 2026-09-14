@@ -480,7 +480,11 @@
 // escudo de la categoría más grande y centrado, "Segunda" pintado de naranja fijo (activa o
 // no). El @media nuevo va DESPUÉS del de 640px a propósito, para ganarle la cascada en el
 // mismo selector .hero-logo/.hero-headline.
-const CACHE = 'ligaf5-v83';
+// v84: index.html -- logos mas grandes, en computadora Y en celular (el usuario aviso que
+// quedaron muy chicos para leerse en las dos). Logo del torneo 48->68px desktop, 64->84px
+// mobile. Escudo de la division (trophy-case) 34->52px desktop, 56->76px mobile -- antes no
+// se distinguia el texto "PRIMERA DIVISION"/"SEGUNDA DIVISION" adentro del escudo.
+const CACHE = 'ligaf5-v84';
 const ASSETS = [
   './index.html',
   './planilla.html',

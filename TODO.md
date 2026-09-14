@@ -1,3 +1,14 @@
+# 2026-09-13 (cont. 11) — Logos más grandes en las dos pantallas (sw v84)
+
+El usuario avisó que después del v83 quedaron muy chicos para leerse, **tanto en
+computadora como en celular** — el escudo de la división en particular, no se distinguía el
+texto "PRIMERA DIVISIÓN"/"SEGUNDA DIVISIÓN" adentro.
+
+- Logo del torneo: 48px → 68px en computadora, 64px → 84px en celular.
+- Escudo de la división (`.trophy-case`): 34px → 52px en computadora, 56px → 76px en celular.
+
+---
+
 # 2026-09-13 (cont. 10) — Mobile y computadora son dos formatos distintos (sw v83)
 
 El usuario aclaró explícitamente: "esto que te digo es solo para el celular, en la
