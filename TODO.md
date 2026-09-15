@@ -1,3 +1,29 @@
+# 2026-09-15 — Escudos reales de Segunda (sin cambio de código, sw sigue en v84)
+
+El usuario mandó los PNG transparentes de los **22 equipos de Segunda** (carpeta
+`Desktop\NUEVOS ESCUDOS`). Se aplicó **el mismo criterio que a Primera el 13/09**, verificado
+contra los 12 escudos de Primera ya cargados (300×300, PNG de paleta, contenido tocando el
+borde en su lado largo, centrado):
+
+- Recorte del margen transparente (umbral alfa > 8, para no comerse el borde suavizado),
+  ajuste al lado largo dentro de 300×300 centrado, PNG con paleta de 256 colores y
+  transparencia. Pesan 7–37 KB (los originales llegaban a 6,6 MB en 3840×3840).
+- Hecho en la PC de ATP con **Python + PIL** (no hay `sharp` acá) y subido a
+  `equipos/{id}.escudo` con el token de firebase-tools, sólo ese campo (`updateMask=escudo`).
+  Releído después: 22 de 22 coinciden.
+- Dos archivos no decían el equipo y se identificaron mirándolos:
+  "Black and Green Sport Standing Table…" = **DRINK TEAM**; "ChatGPT Image 14 sept 2026" =
+  **ESTILO F.C.**
+- **Respaldo de los escudos anteriores** (los JPEG que había subido cada equipo):
+  `Desktop\NUEVOS ESCUDOS\_respaldo_escudos_segunda_anteriores_2026-09-15.json`
+  (`{id: {nombre, escudo}}`) — con eso se vuelve atrás equipo por equipo.
+
+Con esto **los 34 equipos tienen escudo con transparencia real**. Queda `mix-blend-mode:screen`
+en `escudoEquipoHtml()` y `.pos-card-logo` (era para el truco del fondo negro); no se tocó para
+mantener el criterio de Primera, pero ya no hace falta en ningún equipo.
+
+---
+
 # 2026-09-13 (cont. 11) — Logos más grandes en las dos pantallas (sw v84)
 
 El usuario avisó que después del v83 quedaron muy chicos para leerse, **tanto en
