@@ -436,11 +436,19 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 #divisions-wrap[data-division="Segunda"] .posiciones-table tr.pos-playoff td:first-child{border-left-color:var(--segunda);}
 .posiciones-table tr.pos-descenso td{background:rgba(248,113,113,.07);}
 .posiciones-table tr.pos-descenso td:first-child{border-left:3px solid var(--danger);padding-left:7px;}
+/* El puntero, en verde. Va DESPUÉS de las reglas de pos-playoff (y repitiendo el selector
+   con el id para empatarle en especificidad al override de Segunda) porque lleva las dos
+   clases: clasifica a playoffs y además se lleva la ventaja deportiva. */
+.posiciones-table tr.pos-puntero td{background:rgba(74,222,128,.12);}
+.posiciones-table tr.pos-puntero td:first-child{border-left:3px solid var(--ok);padding-left:7px;}
+#divisions-wrap[data-division="Segunda"] .posiciones-table tr.pos-puntero td{background:rgba(74,222,128,.12);}
+#divisions-wrap[data-division="Segunda"] .posiciones-table tr.pos-puntero td:first-child{border-left-color:var(--ok);}
 .pos-leyenda{display:flex;gap:18px;flex-wrap:wrap;padding:10px 14px 4px;border-top:1px solid rgba(255,255,255,.06);margin-top:4px;}
 .pos-leyenda-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-dim);}
 .pos-leyenda-item::before{content:'';width:14px;height:3px;border-radius:2px;flex-shrink:0;}
 .pos-leyenda-playoff::before{background:var(--cyan);}
 #divisions-wrap[data-division="Segunda"] .pos-leyenda-playoff::before{background:var(--segunda);}
+.pos-leyenda-puntero::before{background:var(--ok);}
 .pos-leyenda-descenso::before{background:var(--danger);}
 .partido-libre{opacity:.72;}
 .partido-libre-label{font-style:italic;font-size:13px;color:var(--text-dim);}
@@ -2373,7 +2381,11 @@ function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZo
   const filas = tabla.map((t, i) => {
     const pos = i + 1;
     let cls = '';
-    if (pos <= playoffSlots) cls = 'pos-playoff';
+    // El puntero va en verde: termina primero y se lleva la ventaja deportiva en cuartos
+    // (si empata, pasa sin penales). Lleva también pos-playoff porque clasifica igual; el
+    // verde le gana al color de clasificado por orden en la hoja de estilos.
+    if (pos === 1 && playoffSlots > 0) cls = 'pos-playoff pos-puntero';
+    else if (pos <= playoffSlots) cls = 'pos-playoff';
     else if (descensoSlots > 0 && pos > total - descensoSlots) cls = 'pos-descenso';
     const ultimas = t.ultimas || [];
     const formaHtml = ultimas.length
@@ -2394,6 +2406,7 @@ function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZo
     </tr>`;
   }).join('');
   const leyenda = (playoffSlots > 0 || descensoSlots > 0) ? `<div class="pos-leyenda">
+    ${playoffSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-puntero">1° Ventaja deportiva en Cuartos de final (Playoffs)</span>` : ''}
     ${playoffSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-playoff">Clasifica a playoffs (top ${playoffSlots})</span>` : ''}
     ${descensoSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-descenso">Desciende</span>` : ''}
   </div>` : '';

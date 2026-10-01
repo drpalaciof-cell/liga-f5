@@ -186,6 +186,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .mc-estado.primer_tiempo,.mc-estado.segundo_tiempo{background:rgba(255,112,67,0.08);border-color:rgba(255,112,67,0.28);color:var(--orange);}
 .mc-estado.entretiempo{background:rgba(255,214,0,0.08);border-color:rgba(255,214,0,0.28);color:var(--yellow);}
 .mc-estado.cerrado{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);color:rgba(255,255,255,0.2);}
+/* En un partido ya cerrado, el resultado y el motivo a la vista: así el planillero no tiene
+   que abrirlo (no puede) ni preguntar por qué ese partido no se juega. */
+.mc-resultado{display:inline-block;font-size:11px;font-weight:800;color:rgba(255,255,255,0.55);margin-left:8px;letter-spacing:.5px;}
+.mc-obs{font-size:10.5px;color:rgba(255,255,255,0.4);margin-top:4px;line-height:1.35;}
 .empty-msg{text-align:center;color:var(--muted);padding:44px 20px;font-size:14px;line-height:1.8;}
 
 /* ── ALINEACION ── */
@@ -1518,7 +1522,8 @@ async function cargarLista(){
   <div style="flex:1;">
     <div class="mc-teams">${esc(p.equipoLocalNombre)}<span class="mc-vs">vs</span>${esc(p.equipoVisitanteNombre)}</div>
     <div class="mc-fecha">${p.interzonal?'⚔ Interzonal':'Zona '+(p.zona||'—')}</div>
-    <span class="mc-estado ${estado}">${labels[estado]||estado}</span>
+    <span class="mc-estado ${estado}">${labels[estado]||estado}</span>${estado==='cerrado'?`<span class="mc-resultado">${p.golesLocal??0} - ${p.golesVisitante??0}</span>`:''}
+    ${estado==='cerrado'&&p.observaciones?`<div class="mc-obs">${esc(p.observaciones)}</div>`:''}
   </div>
   <span class="mc-arrow">›</span>
 </div></div>`;

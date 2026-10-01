@@ -501,7 +501,16 @@
 //    arreglaba nada. Ahora lo dice bien.
 //  - el cartel generico muestra el codigo real que devolvio Firestore, para poder
 //    diagnosticar con la captura del delegado.
-const CACHE = 'ligaf5-v86';
+// v87: el PUNTERO de cada tabla va en VERDE (index.html). Termina primero => ventaja
+// deportiva en cuartos: si empata, pasa sin penales. Corre SOLO para el primer partido de
+// playoffs; de ahi en mas todo empate se define por penales. Nueva clase .pos-puntero
+// (lleva tambien .pos-playoff, porque clasifica igual) y un item nuevo en la leyenda de
+// abajo: "1° Ventaja deportiva en Cuartos de final (Playoffs)". Aplica a Primera y a cada
+// zona de Segunda.
+// planilla.html: un partido ya cerrado muestra el RESULTADO y, si tiene, la observacion
+// (ej. "Gano FONTANA 3-0 sin jugar: ARSENAL se bajo de la liga"). El planillero no puede
+// abrirlo, asi que sin esto no tenia forma de saber por que ese partido no se juega.
+const CACHE = 'ligaf5-v87';
 const ASSETS = [
   './index.html',
   './planilla.html',
