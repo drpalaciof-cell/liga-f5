@@ -484,7 +484,13 @@
 // quedaron muy chicos para leerse en las dos). Logo del torneo 48->68px desktop, 64->84px
 // mobile. Escudo de la division (trophy-case) 34->52px desktop, 56->76px mobile -- antes no
 // se distinguia el texto "PRIMERA DIVISION"/"SEGUNDA DIVISION" adentro del escudo.
-const CACHE = 'ligaf5-v84';
+// v85: index.html -- un equipo puede quedar FUERA DE LA LIGA (campo `bajaLiga` en su
+// documento) y entonces deja de pagar arancel. En el panel de admin no suma al objetivo ni
+// figura en "Faltan": se lista aparte, bajo "Fuera de la liga", con el motivo y la fecha,
+// para que se entienda por que el total de la zona bajo. En el panel del equipo, la solapa
+// de pagos deja de mostrarle deuda. Caso real: ARSENAL F.C. (Segunda, zona B) se bajo el
+// 2026-10-01 y le quedaban 4 fechas por delante.
+const CACHE = 'ligaf5-v85';
 const ASSETS = [
   './index.html',
   './planilla.html',

@@ -2928,7 +2928,13 @@ async function renderPagosEquipo() {
       <div style="font-size:11.5px;color:var(--text-dim);margin-top:4px;">Es el mismo alias que el de las inscripciones.</div>
     </div>`;
   let arancelCard;
-  if (fecha == null) {
+  // El equipo que se bajó de la liga deja de deber arancel. Sin esto le siguen apareciendo
+  // como deuda todas las fechas que faltan hasta el final del torneo.
+  if (state.equipo && state.equipo.bajaLiga) {
+    arancelCard = `<div class="glass section-card"><h3>💵 Aranceles por fecha</h3>
+      <p class="muted">⛔ Tu equipo ya no participa de la liga, así que no se te cobra más el arancel semanal.
+      ${state.equipo.bajaMotivo ? escapeHtml(state.equipo.bajaMotivo) : ''}</p></div>`;
+  } else if (fecha == null) {
     arancelCard = `<div class="glass section-card"><h3>💵 Arancel semanal</h3><p class="muted">Todavía no hay una fecha de arancel abierta. La organización la habilita cada semana.</p></div>`;
   } else {
     // Se listan TODAS las fechas hasta la abierta, no sólo la última. Antes sólo se podía
@@ -3119,7 +3125,13 @@ async function renderArancelesAdmin() {
   const fechaV = state.arancelFechaVista;
   document.getElementById('aranceles-subtabs').innerHTML = [['Primera', '🥇 Primera'], ['A', '🥈 Zona A'], ['B', '🥈 Zona B']].map(([k, l]) => `<button class="tab-btn ${tab === k ? 'active' : ''}" onclick="seleccionarArancelTab('${k}')">${l}</button>`).join('');
   document.getElementById('aranceles-fecha-sel').innerHTML = `Ver fecha: <select onchange="seleccionarArancelFecha(this.value)" style="padding:5px 8px;border-radius:8px;">${Array.from({ length: 11 }, (_, i) => i + 1).map(f => `<option value="${f}" ${f === fechaV ? 'selected' : ''}>Fecha ${f}${f === _cfgArancel.fecha ? ' (actual)' : ''}</option>`).join('')}</select>`;
-  const equipos = tab === 'Primera' ? equiposCacheAdmin.filter(e => e.division === 'Primera') : equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona === tab);
+  const delTab = tab === 'Primera' ? equiposCacheAdmin.filter(e => e.division === 'Primera') : equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona === tab);
+  // Un equipo que se bajó de la liga no se le cobra más el arancel: no suma al objetivo ni
+  // aparece en "Faltan" (si no, figura debiendo todas las fechas que quedan hasta el final).
+  // No se lo esconde: se lista aparte diciendo desde cuándo y por qué, así se entiende por
+  // qué el total de la zona bajó.
+  const equipos = delTab.filter(e => !e.bajaLiga);
+  const dadosDeBaja = delTab.filter(e => e.bajaLiga);
   const total = equipos.length;
   // Una fecha postergada no se cobra: no tiene sentido mostrar "faltan 12" de algo que
   // nadie debe. Se muestra el cartel y, si alguien la pagó antes de que se postergara,
@@ -3158,7 +3170,12 @@ async function renderArancelesAdmin() {
       ${pagados ? `${pagados} equipo(s) la habían pagado antes de que se postergara: esa plata queda a favor.` : ''}
     </div>` : ''}
     <h4 style="margin:10px 0 6px;">✅ Pagaron (${pagados})</h4>${filasPagaron || '<p class="muted">Nadie pagó todavía en esta fecha.</p>'}
-    ${esPostergada ? '' : `<h4 style="margin:16px 0 6px;">⏳ Faltan (${total - pagados})</h4>${filasFaltan || '<p class="muted" style="color:var(--ok);">¡Todos pagaron!</p>'}`}`;
+    ${esPostergada ? '' : `<h4 style="margin:16px 0 6px;">⏳ Faltan (${total - pagados})</h4>${filasFaltan || '<p class="muted" style="color:var(--ok);">¡Todos pagaron!</p>'}`}
+    ${dadosDeBaja.length ? `<h4 style="margin:16px 0 6px;">⛔ Fuera de la liga (${dadosDeBaja.length}) — no se les cobra</h4>${dadosDeBaja.map(e => `
+      <div class="list-row" style="align-items:center;opacity:.7;border-left:4px solid var(--text-dim);padding-left:10px;border-radius:8px;margin-bottom:5px;">
+        <div style="flex:1;font-weight:700;">⛔ ${escapeHtml(e.nombre)}</div>
+        <span class="muted" style="font-size:12px;">${escapeHtml(e.bajaMotivo || 'Dado de baja')}${e.bajaEn ? ' · ' + new Date(e.bajaEn).toLocaleDateString('es-AR') : ''}</span>
+      </div>`).join('')}` : ''}`;
 }
 async function rechazarArancel(id) {
   if (!confirm('¿Rechazar este pago? El equipo lo verá como rechazado y deberá volver a cargarlo.')) return;
