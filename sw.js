@@ -490,7 +490,18 @@
 // para que se entienda por que el total de la zona bajo. En el panel del equipo, la solapa
 // de pagos deja de mostrarle deuda. Caso real: ARSENAL F.C. (Segunda, zona B) se bajo el
 // 2026-10-01 y le quedaban 4 fechas por delante.
-const CACHE = 'ligaf5-v85';
+// v86: index.html -- la baja de un equipo rige DESDE una fecha (`bajaDesdeFecha`), no
+// desde siempre: las fechas anteriores se siguen viendo con su pago, y de esa en adelante
+// no se le cobra ni figura en "Faltan". ARSENAL F.C. => bajaDesdeFecha 8.
+// Ademas, mensajes de error de carga de comprobante que ahora sirven para algo:
+//  - reader.onerror rechazaba con un ProgressEvent (sin .code ni .message) y caia en el
+//    cartel generico; ahora es ARCHIVO_ILEGIBLE, con el consejo de la foto en la nube.
+//  - 'resource-exhausted' decia "este equipo no tiene espacio" y mandaba a borrar
+//    comprobantes. Es la CUOTA del proyecto, no el tamanio del documento: borrar no
+//    arreglaba nada. Ahora lo dice bien.
+//  - el cartel generico muestra el codigo real que devolvio Firestore, para poder
+//    diagnosticar con la captura del delegado.
+const CACHE = 'ligaf5-v86';
 const ASSETS = [
   './index.html',
   './planilla.html',

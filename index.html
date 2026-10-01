@@ -2013,7 +2013,11 @@ function resizeImageFile(file, maxSize = 220) {
       img.onerror = () => reject(new Error('IMG_DECODE_FAILED'));
       img.src = e.target.result;
     };
-    reader.onerror = reject;
+    // reject(evento) tiraba un ProgressEvent, no un Error: llegaba sin .code y sin .message,
+    // así que caía en el mensaje genérico "No se pudo cargar el comprobante" sin ninguna
+    // pista. Pasa cuando el archivo elegido no se puede leer (foto que está en iCloud y no
+    // bajada al teléfono, archivo movido, permiso de la galería).
+    reader.onerror = () => reject(new Error('ARCHIVO_ILEGIBLE'));
     reader.readAsDataURL(file);
   });
 }
@@ -2024,11 +2028,16 @@ function mensajeErrorComprobante(err) {
   if (err && err.message === 'IMG_DECODE_FAILED') {
     return 'No pudimos abrir esa imagen. Si la sacaste con la cámara de un iPhone, probá sacarle una captura de pantalla al comprobante y subí esa captura en vez de la foto original.';
   }
+  if (err && err.message === 'ARCHIVO_ILEGIBLE') {
+    return 'El teléfono no pudo leer ese archivo. Si la foto está guardada en la nube (iCloud/Google Fotos) abrila primero en la galería para que se descargue, o sacale una captura de pantalla y subí esa.';
+  }
   // La validación de tamaño máximo de documento de Firestore (1 MB) es del lado del
   // cliente, ANTES de tocar la red — no tiene el código 'resource-exhausted' (eso es para
   // límites de cuota/velocidad), tira un Error con .message mencionando el tamaño en bytes.
+  // 'resource-exhausted' NO es falta de espacio del documento: es la cuota del proyecto en
+  // Firebase. Decía lo contrario y mandaba a borrar comprobantes, que no arregla nada.
   if (err && err.code === 'resource-exhausted') {
-    return 'Este equipo ya no tiene espacio para guardar más comprobantes/fotos (se acumularon demasiados). Avisale a la organización para que libere espacio borrando alguno viejo.';
+    return 'La base de la liga llegó a su límite de uso por hoy. No es problema de tu teléfono ni del comprobante: avisale a la organización (error resource-exhausted).';
   }
   if (err && /longer than|exceeds the maximum|maximum.*size|too large|1048/i.test(err.message || '')) {
     return 'Este equipo ya no tiene espacio para guardar más comprobantes/fotos (llegó al límite de tamaño). Avisale a la organización para que libere espacio borrando algún comprobante viejo desde el panel de admin.';
@@ -2039,7 +2048,12 @@ function mensajeErrorComprobante(err) {
   if (err && (err.code === 'unavailable' || /network|fetch/i.test(err.message || ''))) {
     return 'Parece que no hay conexión a internet en este momento. Probá de nuevo cuando tengas señal.';
   }
-  return 'No se pudo cargar el comprobante. Volvé a intentar; si sigue fallando, avisale a la organización.';
+  // Último recurso: en vez del cartel genérico que no dice nada, se muestra el código real
+  // que devolvió Firestore. Es lo único que permite saber qué pasó cuando el delegado
+  // manda la captura — sin esto, "No se pudo cargar el comprobante" tapa cualquier causa.
+  const pista = (err && (err.code || err.name)) || '';
+  return 'No se pudo cargar el comprobante. Volvé a intentar; si sigue fallando, mandale esta captura a la organización'
+    + (pista ? ' (error: ' + pista + ').' : '.');
 }
 
 /* ===================== VIEW ROUTING ===================== */
@@ -2928,13 +2942,7 @@ async function renderPagosEquipo() {
       <div style="font-size:11.5px;color:var(--text-dim);margin-top:4px;">Es el mismo alias que el de las inscripciones.</div>
     </div>`;
   let arancelCard;
-  // El equipo que se bajó de la liga deja de deber arancel. Sin esto le siguen apareciendo
-  // como deuda todas las fechas que faltan hasta el final del torneo.
-  if (state.equipo && state.equipo.bajaLiga) {
-    arancelCard = `<div class="glass section-card"><h3>💵 Aranceles por fecha</h3>
-      <p class="muted">⛔ Tu equipo ya no participa de la liga, así que no se te cobra más el arancel semanal.
-      ${state.equipo.bajaMotivo ? escapeHtml(state.equipo.bajaMotivo) : ''}</p></div>`;
-  } else if (fecha == null) {
+  if (fecha == null) {
     arancelCard = `<div class="glass section-card"><h3>💵 Arancel semanal</h3><p class="muted">Todavía no hay una fecha de arancel abierta. La organización la habilita cada semana.</p></div>`;
   } else {
     // Se listan TODAS las fechas hasta la abierta, no sólo la última. Antes sólo se podía
@@ -2943,7 +2951,11 @@ async function renderPagosEquipo() {
     const filas = [];
     let deuda = 0, nDeuda = 0;
     const divEq = (state.equipo && state.equipo.division) || '';
+    // Un equipo que se bajó de la liga no debe el arancel de las fechas que ya no juega.
+    // Sin esto le siguen apareciendo como deuda todas las que faltan hasta el final.
+    const bajaDesde = (state.equipo && state.equipo.bajaLiga) ? (state.equipo.bajaDesdeFecha || 1) : null;
     for (let f = fecha; f >= 1; f--) {
+      if (bajaDesde != null && f >= bajaDesde) continue;
       const st = _estadoArancelFecha(pagos, f);
       const postergada = _arancelFechaPostergada(f, divEq);
 
@@ -2979,7 +2991,9 @@ async function renderPagosEquipo() {
     }
     arancelCard = `<div class="glass section-card">
       <h3>💵 Aranceles por fecha</h3>
-      <p style="font-size:13px;margin-bottom:10px;">La Fecha ${fecha} vence <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencida</span>' : `<span class="muted">· después sube a ${fmtPesos(ARANCEL_MONTO_TARDE)}</span>`}</p>
+      ${bajaDesde != null
+        ? `<p style="font-size:13px;margin-bottom:10px;">⛔ Tu equipo ya no participa de la liga, así que desde la Fecha ${bajaDesde} no se te cobra el arancel. Abajo quedan las fechas que sí jugaste.</p>`
+        : `<p style="font-size:13px;margin-bottom:10px;">La Fecha ${fecha} vence <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencida</span>' : `<span class="muted">· después sube a ${fmtPesos(ARANCEL_MONTO_TARDE)}</span>`}</p>`}
       ${nDeuda ? `<div style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;">
         Debés <strong style="color:var(--danger);font-size:17px;">${fmtPesos(deuda)}</strong> — ${nDeuda} fecha(s) sin pagar.</div>`
         : `<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;color:var(--ok);">✅ Estás al día con los aranceles.</div>`}
@@ -3130,8 +3144,11 @@ async function renderArancelesAdmin() {
   // aparece en "Faltan" (si no, figura debiendo todas las fechas que quedan hasta el final).
   // No se lo esconde: se lista aparte diciendo desde cuándo y por qué, así se entiende por
   // qué el total de la zona bajó.
-  const equipos = delTab.filter(e => !e.bajaLiga);
-  const dadosDeBaja = delTab.filter(e => e.bajaLiga);
+  // La baja rige DESDE una fecha (bajaDesdeFecha): las anteriores se siguen viendo como
+  // siempre, con su pago, porque esas sí las jugó y las pagó.
+  const estaDeBaja = e => e.bajaLiga && fechaV >= (e.bajaDesdeFecha || 1);
+  const equipos = delTab.filter(e => !estaDeBaja(e));
+  const dadosDeBaja = delTab.filter(estaDeBaja);
   const total = equipos.length;
   // Una fecha postergada no se cobra: no tiene sentido mostrar "faltan 12" de algo que
   // nadie debe. Se muestra el cartel y, si alguien la pagó antes de que se postergara,
