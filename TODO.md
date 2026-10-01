@@ -1,3 +1,39 @@
+# 2026-10-01 (cont.) — El puntero en verde, y el planillero con la info nueva (sw v87)
+
+## Ventaja deportiva del puntero
+El **1° de cada tabla** —Primera y **cada zona** de Segunda— va en **verde**. Termina
+puntero y se lleva la ventaja deportiva en cuartos: **si empata, pasa sin penales**.
+Corre **sólo para el primer partido de playoffs**; de ahí en más cualquier empate, de
+cualquier equipo, se define desde los penales.
+
+- Clase nueva `.pos-puntero`, que se suma a `.pos-playoff` (clasifica igual). El verde le
+  gana al celeste/naranja de clasificado por orden en la hoja de estilos — las reglas van
+  **después** y repiten el selector con `#divisions-wrap[data-division="Segunda"]` para
+  empatarle en especificidad al override de Segunda, si no el naranja se lo comía.
+- Item nuevo en la leyenda de abajo: **"1° Ventaja deportiva en Cuartos de final
+  (Playoffs)"**, con el cuadradito verde.
+- No se pinta en el bloque "Sin zona asignada" (ahí `playoffSlots` es 0 y no hay playoffs).
+
+## El planillero y los horarios nuevos
+`cargarLista()` **vacía `_pCache`/`_eCache` y relee de Firestore cada vez que se entra a una
+cancha**, y ordena por `horario`: los horarios nuevos entran solos, no hay nada que migrar.
+La tablet que quedó abierta en la lista desde antes se actualiza al volver a entrar a la
+cancha, y el `sw` v87 le baja el `planilla.html` nuevo.
+
+El partido de ARSENAL de la fecha 8 quedó `cerrado`, así que el planillero **no puede
+abrirlo**. Pero antes no decía por qué: ahora **un partido cerrado muestra el resultado y la
+observación** en la tarjeta. Verificado simulando las 3 canchas:
+
+    CANCHA 1 — fecha 8
+      15:00 LA BANDA vs KRATOS           [pendiente]
+      16:00 CONTADORES vs DEFENSORES     [pendiente]
+      17:00 INTER vs LA CAMORRA          [pendiente]
+      18:00 BARRACAS vs LOS DE SIEMPRE   [pendiente]
+      19:00 JAURIA vs ESTILO             [pendiente]
+      20:00 FONTANA vs ARSENAL           [cerrado] 3-0 · Ganó FONTANA 3-0 sin jugar…
+
+---
+
 # 2026-10-01 — ARSENAL F.C. se bajó de la liga (sw v85 y v86)
 
 Se bajó faltando 4 fechas (8 a la 11, Segunda zona B). Tres cosas distintas:
