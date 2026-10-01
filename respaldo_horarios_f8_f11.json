@@ -1,0 +1,546 @@
+[
+ {
+  "id": "06YRNaf5dODQrEOkjdw4",
+  "numeroFecha": 9,
+  "cancha": 2,
+  "horario": "17:00",
+  "local": "BARRACAS FC",
+  "visitante": "JUVENTUD"
+ },
+ {
+  "id": "0AsDNQi37LCneLrRrz0Q",
+  "numeroFecha": 8,
+  "cancha": 3,
+  "horario": "18:00",
+  "local": "LORESVA F.C",
+  "visitante": "CORTE DE SEMANA F.C"
+ },
+ {
+  "id": "0khZAEJESqc5aiMpP6tn",
+  "numeroFecha": 10,
+  "cancha": 2,
+  "horario": "15:00",
+  "local": "BEER UNITED",
+  "visitante": "EL REJUNTE FC"
+ },
+ {
+  "id": "1T0x5fZh0y8r59oCsT2i",
+  "numeroFecha": 11,
+  "cancha": 1,
+  "horario": "17:00",
+  "local": "MITOMANOS",
+  "visitante": "BEER UNITED"
+ },
+ {
+  "id": "232CjOVpiml6WDuVpci0",
+  "numeroFecha": 11,
+  "cancha": 1,
+  "horario": "16:00",
+  "local": "VALENCIA",
+  "visitante": "LA SUB 21"
+ },
+ {
+  "id": "2ixIji6vUNnAyEMq4Q3K",
+  "numeroFecha": 11,
+  "cancha": 2,
+  "horario": "17:00",
+  "local": "ARCANGEL F.C",
+  "visitante": "FRANJAMIGOS"
+ },
+ {
+  "id": "3tj4nOmEuoLMm0F71w2A",
+  "numeroFecha": 8,
+  "cancha": 1,
+  "horario": "15:00",
+  "local": "LA BANDA FC",
+  "visitante": "KRATOS F.C"
+ },
+ {
+  "id": "4FMy6Z63zjxPwcAVsJYm",
+  "numeroFecha": 9,
+  "cancha": 2,
+  "horario": "20:00",
+  "local": "FRANJAMIGOS",
+  "visitante": "TANINEROS"
+ },
+ {
+  "id": "5FYHC5yBILKGDGhusaE5",
+  "numeroFecha": 8,
+  "cancha": 3,
+  "horario": "16:00",
+  "local": "CITY RECURSOS",
+  "visitante": "FRANJAMIGOS"
+ },
+ {
+  "id": "6gfYRxBhjIkX5eEZSpGs",
+  "numeroFecha": 9,
+  "cancha": 2,
+  "horario": "18:00",
+  "local": "ARCANGEL F.C",
+  "visitante": "ARSENAL F.C."
+ },
+ {
+  "id": "7Nzaaff0hcw1C5u14WMU",
+  "numeroFecha": 9,
+  "cancha": 3,
+  "horario": "18:00",
+  "local": "CONTADORES",
+  "visitante": "FONTANA FC"
+ },
+ {
+  "id": "8Dj0jST8U4HxfQhqMR8R",
+  "numeroFecha": 8,
+  "cancha": 2,
+  "horario": "18:00",
+  "local": "LA SUB 21",
+  "visitante": "ELOSRA"
+ },
+ {
+  "id": "8nodh2ri6IbVAgkUJzsR",
+  "numeroFecha": 9,
+  "cancha": 3,
+  "horario": "16:00",
+  "local": "KRATOS F.C",
+  "visitante": "INTER FC"
+ },
+ {
+  "id": "9ZwOzN02I39I9i6KNv5y",
+  "numeroFecha": 10,
+  "cancha": 3,
+  "horario": "18:00",
+  "local": "DEPORTIVO CONTI",
+  "visitante": "DRINK TEAM"
+ },
+ {
+  "id": "AU1d1MSFv1smH6pF6BLv",
+  "numeroFecha": 10,
+  "cancha": 2,
+  "horario": "19:00",
+  "local": "VALENCIA",
+  "visitante": "MITOMANOS"
+ },
+ {
+  "id": "AdrQGeBGD90jfwfuOg26",
+  "numeroFecha": 9,
+  "cancha": 3,
+  "horario": "15:00",
+  "local": "DEFENSORES DEL OBRERO",
+  "visitante": "JAURIA SPORT"
+ },
+ {
+  "id": "CMR6Iiq8NSJmU5uAPGGj",
+  "numeroFecha": 10,
+  "cancha": 3,
+  "horario": "16:00",
+  "local": "TANINEROS",
+  "visitante": "CORTE DE SEMANA F.C"
+ },
+ {
+  "id": "CNEhtSDeT8bTKFtN5SWq",
+  "numeroFecha": 8,
+  "cancha": 1,
+  "horario": "18:00",
+  "local": "BARRACAS FC",
+  "visitante": "LOS DE SIEMPRE FUTSAL"
+ },
+ {
+  "id": "CTVrZDfmhihMDDoCUsTt",
+  "numeroFecha": 9,
+  "cancha": 2,
+  "horario": "19:00",
+  "local": "DRINK TEAM",
+  "visitante": "LORESVA F.C"
+ },
+ {
+  "id": "E2iFhqvSbOdnvG2gSuSL",
+  "numeroFecha": 9,
+  "cancha": 3,
+  "horario": "19:00",
+  "local": "ESTILO F.C.",
+  "visitante": "LA BANDA FC"
+ },
+ {
+  "id": "FQAgPG7QmW0pgctMWFPP",
+  "numeroFecha": 11,
+  "cancha": 1,
+  "horario": "20:00",
+  "local": "INSTITUTO F.C",
+  "visitante": "EL CLAN FC"
+ },
+ {
+  "id": "GDEkxVFGt9Px08Ppp8Fg",
+  "numeroFecha": 10,
+  "cancha": 2,
+  "horario": "20:00",
+  "local": "LA SUB 21",
+  "visitante": "RURAL 55"
+ },
+ {
+  "id": "HUCWr9IjKXC4e2C6DoUC",
+  "numeroFecha": 11,
+  "cancha": 3,
+  "horario": "16:00",
+  "local": "ARSENAL F.C.",
+  "visitante": "KRATOS F.C"
+ },
+ {
+  "id": "HlX39Z9TShAjsZcOzr17",
+  "numeroFecha": 10,
+  "cancha": 1,
+  "horario": "18:00",
+  "local": "LOS DE SIEMPRE FUTSAL",
+  "visitante": "KRATOS F.C"
+ },
+ {
+  "id": "KAf6aMn6Lss85wWFCUor",
+  "numeroFecha": 8,
+  "cancha": 1,
+  "horario": "19:00",
+  "local": "FONTANA FC",
+  "visitante": "ARSENAL F.C."
+ },
+ {
+  "id": "LE9TueOfyFJyr2rtNi1o",
+  "numeroFecha": 9,
+  "cancha": 1,
+  "horario": "20:00",
+  "local": "EL CLAN FC",
+  "visitante": "IMPERIO VERDE"
+ },
+ {
+  "id": "LJ9UHFI8yryzRAshbXeS",
+  "numeroFecha": 11,
+  "cancha": 1,
+  "horario": "15:00",
+  "local": "RURAL 55",
+  "visitante": "ROTENS FC"
+ },
+ {
+  "id": "MEpiIJ3WGFyBcpTd2rFu",
+  "numeroFecha": 10,
+  "cancha": 2,
+  "horario": "18:00",
+  "local": "ROTENS FC",
+  "visitante": "INSTITUTO F.C"
+ },
+ {
+  "id": "NlP413qnMPGQaU4Z6mQM",
+  "numeroFecha": 8,
+  "cancha": 2,
+  "horario": "16:00",
+  "local": "BEER UNITED",
+  "visitante": "EL CLAN FC"
+ },
+ {
+  "id": "QAXrO6OfwbCPdRiUo2mA",
+  "numeroFecha": 10,
+  "cancha": 1,
+  "horario": "16:00",
+  "local": "LA BANDA FC",
+  "visitante": "JAURIA SPORT"
+ },
+ {
+  "id": "Qu5Kn2Vck4qG9PeWw3WT",
+  "numeroFecha": 8,
+  "cancha": 1,
+  "horario": "16:00",
+  "local": "CONTADORES",
+  "visitante": "DEFENSORES DEL OBRERO"
+ },
+ {
+  "id": "SLEgBkIHusQq6zZLTHu6",
+  "numeroFecha": 9,
+  "cancha": 1,
+  "horario": "19:00",
+  "local": "INSTITUTO F.C",
+  "visitante": "LA SUB 21"
+ },
+ {
+  "id": "Sc7QaWUzNJ1CMiBuGOiR",
+  "numeroFecha": 8,
+  "cancha": 2,
+  "horario": "19:00",
+  "local": "RURAL 55",
+  "visitante": "MITOMANOS"
+ },
+ {
+  "id": "SdLUORlAEPNV4x1zl7dG",
+  "numeroFecha": 11,
+  "cancha": 1,
+  "horario": "18:00",
+  "local": "EL REJUNTE FC",
+  "visitante": "IMPERIO VERDE"
+ },
+ {
+  "id": "Vko3eA00E9ujW4GgBwOM",
+  "numeroFecha": 8,
+  "cancha": 3,
+  "horario": "19:00",
+  "local": "TANINEROS",
+  "visitante": "JUVENTUD"
+ },
+ {
+  "id": "WCsT39hmZ8FBKrvBnyLt",
+  "numeroFecha": 8,
+  "cancha": 2,
+  "horario": "15:00",
+  "local": "VALENCIA",
+  "visitante": "INSTITUTO F.C"
+ },
+ {
+  "id": "XAQcGLy6K1Tyic1C45oE",
+  "numeroFecha": 11,
+  "cancha": 2,
+  "horario": "15:00",
+  "local": "DEPORTIVO CONTI",
+  "visitante": "FONTANA FC"
+ },
+ {
+  "id": "ZESaK7y8pyGvGkcpyprh",
+  "numeroFecha": 11,
+  "cancha": 2,
+  "horario": "20:00",
+  "local": "DRINK TEAM",
+  "visitante": "CITY RECURSOS"
+ },
+ {
+  "id": "ZJRp1zXo4AC0rXmAac6F",
+  "numeroFecha": 9,
+  "cancha": 1,
+  "horario": "16:00",
+  "local": "MITOMANOS",
+  "visitante": "EL REJUNTE FC"
+ },
+ {
+  "id": "ZdLuRGWUPc9UIgrQ8VBY",
+  "numeroFecha": 8,
+  "cancha": 2,
+  "horario": "20:00",
+  "local": "IMPERIO VERDE",
+  "visitante": "ROTENS FC"
+ },
+ {
+  "id": "dcg9pN90BSk9R8sobase",
+  "numeroFecha": 10,
+  "cancha": 2,
+  "horario": "16:00",
+  "local": "ELOSRA",
+  "visitante": "EL CLAN FC"
+ },
+ {
+  "id": "e5F7vHCkoY4RZzbGYo3M",
+  "numeroFecha": 9,
+  "cancha": 1,
+  "horario": "17:00",
+  "local": "RURAL 55",
+  "visitante": "VALENCIA"
+ },
+ {
+  "id": "eAZp6vqfU7tuGkLQeJzd",
+  "numeroFecha": 9,
+  "cancha": 1,
+  "horario": "18:00",
+  "local": "STRONGEST TEAM",
+  "visitante": "BEER UNITED"
+ },
+ {
+  "id": "eBmZTEIjsRI7YT64JuOH",
+  "numeroFecha": 9,
+  "cancha": 3,
+  "horario": "17:00",
+  "local": "LOS DE SIEMPRE FUTSAL",
+  "visitante": "LA CAMORRA"
+ },
+ {
+  "id": "hk3SoP05DH5tsptqBrp2",
+  "numeroFecha": 10,
+  "cancha": 3,
+  "horario": "19:00",
+  "local": "BARRACAS FC",
+  "visitante": "FRANJAMIGOS"
+ },
+ {
+  "id": "hpErcCXgKh7BhZA3gf8h",
+  "numeroFecha": 11,
+  "cancha": 3,
+  "horario": "15:00",
+  "local": "CONTADORES",
+  "visitante": "LA CAMORRA"
+ },
+ {
+  "id": "iTVgHtAVecapb0t3YWGw",
+  "numeroFecha": 11,
+  "cancha": 3,
+  "horario": "17:00",
+  "local": "DEFENSORES DEL OBRERO",
+  "visitante": "LA BANDA FC"
+ },
+ {
+  "id": "j9v4sHebxOtkvUQFJ3yi",
+  "numeroFecha": 11,
+  "cancha": 2,
+  "horario": "19:00",
+  "local": "CORTE DE SEMANA F.C",
+  "visitante": "BARRACAS FC"
+ },
+ {
+  "id": "kbzzxX7rKZKowDUgrT71",
+  "numeroFecha": 11,
+  "cancha": 3,
+  "horario": "19:00",
+  "local": "ESTILO F.C.",
+  "visitante": "LOS DE SIEMPRE FUTSAL"
+ },
+ {
+  "id": "lAD6L1RXA8AIonITFT8e",
+  "numeroFecha": 11,
+  "cancha": 3,
+  "horario": "18:00",
+  "local": "JAURIA SPORT",
+  "visitante": "INTER FC"
+ },
+ {
+  "id": "lG3gUKFnBl7LDSn6U8zB",
+  "numeroFecha": 10,
+  "cancha": 2,
+  "horario": "17:00",
+  "local": "IMPERIO VERDE",
+  "visitante": "STRONGEST TEAM"
+ },
+ {
+  "id": "mIfrqMxHN7BPdAVWupLZ",
+  "numeroFecha": 10,
+  "cancha": 1,
+  "horario": "15:00",
+  "local": "INTER FC",
+  "visitante": "ESTILO F.C."
+ },
+ {
+  "id": "oEmjKPqlcwVCaIavtjuY",
+  "numeroFecha": 8,
+  "cancha": 1,
+  "horario": "17:00",
+  "local": "INTER FC",
+  "visitante": "LA CAMORRA"
+ },
+ {
+  "id": "oQ1C3ndiHQwDmPnA6wv4",
+  "numeroFecha": 8,
+  "cancha": 3,
+  "horario": "17:00",
+  "local": "DEPORTIVO CONTI",
+  "visitante": "ARCANGEL F.C"
+ },
+ {
+  "id": "oo8etCE8H2YXWA8h0MVK",
+  "numeroFecha": 11,
+  "cancha": 1,
+  "horario": "19:00",
+  "local": "STRONGEST TEAM",
+  "visitante": "ELOSRA"
+ },
+ {
+  "id": "pON9rl3Cx9FpWdExQspT",
+  "numeroFecha": 8,
+  "cancha": 1,
+  "horario": "20:00",
+  "local": "JAURIA SPORT",
+  "visitante": "ESTILO F.C."
+ },
+ {
+  "id": "qBHz0oSJVpxAg2FmG20Z",
+  "numeroFecha": 8,
+  "cancha": 3,
+  "horario": "15:00",
+  "local": "GENOA F5",
+  "visitante": "DRINK TEAM"
+ },
+ {
+  "id": "qwqZ0F2GLxqn4PpJCk5B",
+  "numeroFecha": 10,
+  "cancha": 3,
+  "horario": "17:00",
+  "local": "CITY RECURSOS",
+  "visitante": "LORESVA F.C"
+ },
+ {
+  "id": "rzi8uDWHvXD4ITyeI7Ej",
+  "numeroFecha": 9,
+  "cancha": 2,
+  "horario": "15:00",
+  "local": "CORTE DE SEMANA F.C",
+  "visitante": "CITY RECURSOS"
+ },
+ {
+  "id": "tDiz41zOv79GTZlYs5Kg",
+  "numeroFecha": 9,
+  "cancha": 1,
+  "horario": "15:00",
+  "local": "ELOSRA",
+  "visitante": "ROTENS FC"
+ },
+ {
+  "id": "tIMIO26a1a89RkNEqSDB",
+  "numeroFecha": 10,
+  "cancha": 3,
+  "horario": "15:00",
+  "local": "JUVENTUD",
+  "visitante": "ARCANGEL F.C"
+ },
+ {
+  "id": "tgsCJKzhiVo54jdDzbYF",
+  "numeroFecha": 8,
+  "cancha": 2,
+  "horario": "17:00",
+  "local": "EL REJUNTE FC",
+  "visitante": "STRONGEST TEAM"
+ },
+ {
+  "id": "vA0Y3h5NVRyDDEbLAUId",
+  "numeroFecha": 11,
+  "cancha": 2,
+  "horario": "18:00",
+  "local": "LORESVA F.C",
+  "visitante": "TANINEROS"
+ },
+ {
+  "id": "wZvt5SBiuIhmt1yR8cs7",
+  "numeroFecha": 11,
+  "cancha": 2,
+  "horario": "16:00",
+  "local": "GENOA F5",
+  "visitante": "JUVENTUD"
+ },
+ {
+  "id": "wkDesgmg573WI3PlaDNU",
+  "numeroFecha": 9,
+  "cancha": 2,
+  "horario": "16:00",
+  "local": "GENOA F5",
+  "visitante": "DEPORTIVO CONTI"
+ },
+ {
+  "id": "xexpjQz3HnKeyWDRhv7C",
+  "numeroFecha": 10,
+  "cancha": 1,
+  "horario": "19:00",
+  "local": "GENOA F5",
+  "visitante": "CONTADORES"
+ },
+ {
+  "id": "xukaAzWICOcCuA31gMF8",
+  "numeroFecha": 10,
+  "cancha": 1,
+  "horario": "20:00",
+  "local": "FONTANA FC",
+  "visitante": "DEFENSORES DEL OBRERO"
+ },
+ {
+  "id": "zCkBsE2VGLibduZZllz6",
+  "numeroFecha": 10,
+  "cancha": 1,
+  "horario": "17:00",
+  "local": "LA CAMORRA",
+  "visitante": "ARSENAL F.C."
+ }
+]

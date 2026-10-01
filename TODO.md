@@ -1,3 +1,102 @@
+# 2026-10-01 — ARSENAL F.C. se bajó de la liga (sw v85 y v86)
+
+Se bajó faltando 4 fechas (8 a la 11, Segunda zona B). Tres cosas distintas:
+
+## 1. Sus partidos pasan al último horario de cada fecha
+Un partido que no se juega en el medio de la jornada deja la cancha parada una hora. Ahora
+el de ARSENAL es **el último de su cancha (20:00)** y todo lo que venía después **en esa
+misma cancha** subió una hora, así no queda hueco. 13 partidos movidos, **0 choques**
+(chequeado fecha+cancha+horario y que ningún equipo quede con dos partidos a la misma hora).
+
+| Fecha | Cancha | Partido de ARSENAL | Lo que subió una hora |
+|---|---|---|---|
+| 8 | 1 | FONTANA FC vs ARSENAL · 19:00 → **20:00** | JAURIA vs ESTILO 20→19 |
+| 9 | 2 | ARCANGEL vs ARSENAL · 18:00 → **20:00** | DRINK TEAM 19→18, FRANJAMIGOS 20→19 |
+| 10 | 1 | LA CAMORRA vs ARSENAL · 17:00 → **20:00** | LOS DE SIEMPRE 18→17, GENOA 19→18, FONTANA 20→19 |
+| 11 | 3 | ARSENAL vs KRATOS · 16:00 → **20:00** | DEFENSORES 17→16, JAURIA 18→17, ESTILO 19→18 |
+
+Respaldo de los horarios anteriores de las 4 fechas en `scratchpad/respaldo_horarios_f8_f11.json`.
+
+## 2. Un equipo puede quedar FUERA DE LA LIGA y deja de pagar arancel
+Campo nuevo en el documento del equipo: **`bajaLiga`** + `bajaMotivo` + `bajaEn` +
+**`bajaDesdeFecha`**. La baja **rige desde una fecha**, no desde siempre: las anteriores se
+siguen viendo con su pago (las jugó y las pagó), y de esa en adelante no se le cobra.
+
+- **Admin → 💵 Aranceles**: no suma al objetivo de la zona ni aparece en "Faltan". **No se
+  esconde**: se lista aparte bajo "⛔ Fuera de la liga" con el motivo y la fecha, para que se
+  entienda por qué el total de la zona bajó de 11 a 10.
+- **Panel del equipo**: desde esa fecha no se le muestra deuda ni botón de Pagar.
+
+ARSENAL quedó con `bajaDesdeFecha: 8`.
+
+## 3. El walkover se otorga FECHA POR FECHA, no todo junto
+Decisión del usuario: el rival gana **3-0 y los 3 puntos**, pero **sólo cuando llega esa
+fecha**, porque para cobrarlos tiene que haber subido el comprobante de arancel. No se
+cargan las 4 de una.
+
+**Cargado ahora, sólo la fecha 8:** `FONTANA FC 3 - 0 ARSENAL F.C.`, con `observaciones`
+dejando constancia de que no se jugó. FONTANA pasó de 4 a 7 puntos.
+
+⏳ **Pendiente para las próximas semanas** — cargar cuando llegue cada fecha:
+- Fecha 9: `ARCANGEL F.C 3 - 0 ARSENAL`
+- Fecha 10: `LA CAMORRA 3 - 0 ARSENAL`
+- Fecha 11: `ARSENAL 0 - 3 KRATOS F.C`
+
+---
+
+# 2026-10-01 — Fecha 7 dada por pagada, y los mensajes de error de los comprobantes
+
+## La fecha 7 la pagaron todos pero no pudieron subir el comprobante
+Figuraban 31 de 34. Se crearon a mano los 3 que faltaban —**EL CLAN FC, JUVENTUD y
+ARSENAL**— con el mismo patrón que ya se usaba para un pago reconocido por la organización:
+`reconocidoMotivo` + `reconocidoEn`, monto $50.000, **sin imagen inventada**. La fecha 7
+quedó 34 de 34.
+
+## Por qué NO se borraron los comprobantes de arancel
+El usuario pidió borrarlos "para liberar memoria". **No era eso y no había que borrar nada**:
+
+- Los comprobantes de arancel **no viven en el documento del equipo**: cada pago es su
+  propio documento en la colección `aranceles` (232 docs). El más pesado de toda la liga
+  tiene **116 KB** sobre un límite de 1024 KB por documento. No hay nada cerca del tope.
+- Borrarlos no habría liberado nada **y se perdía la prueba de todos los pagos del torneo**.
+
+**Lo que sí está cerca del límite** es el documento de 4 equipos, por el campo viejo
+`fotosJugadores` (fotos de carnet embebidas, de antes de la migración a la subcolección
+`equipos/{id}/fotos/{dni}`):
+
+| Equipo | Documento | De eso, `fotosJugadores` |
+|---|---|---|
+| GENOA F5 | **883 KB** (86% del límite) | 842 KB |
+| ROTENS FC | 689 KB | 625 KB |
+| LA BANDA FC | 681 KB | 657 KB |
+| DEPORTIVO CONTI | 635 KB | 439 KB |
+
+Esos 4 **no pueden guardar nada más en su documento**: ni foto de carnet, ni comprobante de
+seguro, ni edición de plantel. `limpiarFotoViejaEmbebida()` sólo borra la copia vieja cuando
+alguien vuelve a subir esa foto, así que no se limpia solo. **Pendiente: correr la migración
+para los 34 equipos** (mover `fotosJugadores` a la subcolección y borrar el campo) — las
+fotos no se pierden, la app ya lee primero la subcolección.
+
+## Mensajes de error que ahora dicen algo (sw v86)
+El delegado veía **"No se pudo cargar el comprobante"**, el cartel genérico, que no permite
+diagnosticar nada. Tres arreglos:
+
+- `reader.onerror` rechazaba con un **ProgressEvent**, no con un Error: llegaba sin `.code`
+  y sin `.message` y caía siempre en el genérico. Ahora tira `ARCHIVO_ILEGIBLE` y el cartel
+  explica el caso real (foto guardada en iCloud/Google Fotos sin bajar al teléfono).
+- `resource-exhausted` decía *"este equipo ya no tiene espacio… borrá alguno viejo"*. **Es
+  la cuota del proyecto en Firebase, no el tamaño del documento** — el propio comentario del
+  código lo aclaraba y el mensaje decía lo contrario. Mandaba a borrar comprobantes para
+  arreglar algo que no se arregla borrando (de ahí la idea de que era "memoria").
+- El cartel genérico ahora **muestra el código real que devolvió Firestore**. Con la captura
+  del delegado se puede saber qué pasó.
+
+⏳ **Sin resolver**: no sabemos todavía por qué fallaba. El último pago de toda la liga entró
+el **26/09 18:07** y la fecha 8 está en 0 de 33, pero los pagos siempre llegan jueves/viernes,
+así que eso solo no prueba nada. Hay que esperar la próxima captura con el código.
+
+---
+
 # 2026-09-15 — Escudos reales de Segunda (sin cambio de código, sw sigue en v84)
 
 El usuario mandó los PNG transparentes de los **22 equipos de Segunda** (carpeta
