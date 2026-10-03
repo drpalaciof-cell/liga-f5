@@ -4180,7 +4180,13 @@ function generarPDFEquipo(eq) {
    Firestore no lo distinguen. Para que sea una barrera real habría que sacar la
    parte financiera de `equipos` a una colección propia restringida por rol. */
 const PC_TABS_PERMITIDAS = ['torneo', 'envivo'];
-const PC_SUBTABS_PERMITIDAS = ['planillas'];
+// 'sanciones' se sumó a pedido del usuario (2026-10-03): los organizadores de cancha
+// necesitan poder habilitar jugadores sancionados (revisar el comprobante de pago de una
+// sanción, o marcarla cumplida a mano) sin ver nada de recaudación -- la pestaña de
+// Sanciones no muestra totales de plata, eso vive aparte en "aranceles"
+// (#sanciones-recaudacion-cont, ver renderRecaudacionSanciones), que sigue sin estar en
+// PC_TABS_PERMITIDAS.
+const PC_SUBTABS_PERMITIDAS = ['planillas', 'sanciones'];
 const PC_BLOQUES_OCULTOS = ['card-datos-temporada', 'admin-fixture-general', 'admin-auditoria-card',
   'admin-duplicados-card', 'admin-buscador-global-card'];
 let panelControlUsuarios = [];

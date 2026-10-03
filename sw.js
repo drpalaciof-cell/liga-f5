@@ -510,7 +510,12 @@
 // planilla.html: un partido ya cerrado muestra el RESULTADO y, si tiene, la observacion
 // (ej. "Gano FONTANA 3-0 sin jugar: ARSENAL se bajo de la liga"). El planillero no puede
 // abrirlo, asi que sin esto no tenia forma de saber por que ese partido no se juega.
-const CACHE = 'ligaf5-v87';
+// v88: index.html -- el Panel de Control (los organizadores que van de veedores a la
+// cancha) ahora tambien ve la pestana Sanciones de cada division, para poder habilitar
+// jugadores sancionados (revisar comprobante de pago o marcar la sancion cumplida a mano)
+// sin ver nada de recaudacion -- esa pestana solo muestra el estado por jugador, los
+// totales de plata viven aparte y siguen sin estar permitidos para este rol.
+const CACHE = 'ligaf5-v88';
 const ASSETS = [
   './index.html',
   './planilla.html',

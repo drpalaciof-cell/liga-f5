@@ -1,3 +1,31 @@
+# 2026-10-03 — Panel de Control: habilitar jugadores sancionados, sin recaudación (sw v88)
+
+El usuario pidió que los 4 organizadores que usan el "Panel de Control" (veedores de
+cancha, ven solo En vivo + Planillas) puedan **habilitar jugadores sancionados**: la lista
+de quién no pagó, quién subió comprobante y está pendiente de revisión, y la acción de
+aprobarlo o marcar la sanción cumplida a mano (para el que pagó en efectivo o de otra
+forma) — explícitamente **sin ver recaudación ni nada de plata**.
+
+- La pestaña **Sanciones** (por división) ya tenía exactamente esto armado para el admin
+  completo: lista de jugadores sancionados, pagos de sanción esperando aprobación con su
+  comprobante, y el botón "Gestionar" para marcar cumplida/pagada a mano. No muestra ningún
+  total de dinero — eso vive aparte, en "aranceles" (`renderRecaudacionSanciones`,
+  `#sanciones-recaudacion-cont`), que sigue bloqueado para este rol.
+- Cambio de una línea: se agregó `'sanciones'` a `PC_SUBTABS_PERMITIDAS` en `index.html`.
+  No hizo falta tocar `firestore.rules` — una cuenta de Panel de Control ya tiene el mismo
+  claim `role:'admin'` que un admin completo (la separación es solo de interfaz, ver el
+  comentario grande arriba de `PC_TABS_PERMITIDAS`), así que ya podía leer/escribir
+  `pagosSanciones` y `equipos.sancionesPagadas/sancionesCumplidas` — simplemente no tenía
+  forma de llegar a esa pantalla.
+- Caso real probado en vivo con el usuario: BAREIRO (Rodrigo), KRATOS F.C. — una doble
+  amarilla de la fecha 7 (partido ya cerrado) se gestionó bien desde el Panel de Control.
+  Una roja de la fecha 8 (partido TODAVÍA en juego al momento de probar) no se pudo
+  gestionar — **a propósito**: `calcularTarjetasPorJugador` sólo cuenta tarjetas de
+  partidos con `jugado:true`, para no dejar saldar una sanción de un partido que todavía se
+  podría corregir. No es un bug, es el mismo criterio que ya usaba el admin completo.
+
+---
+
 # 2026-10-01 (cont.) — El puntero en verde, y el planillero con la info nueva (sw v87)
 
 ## Ventaja deportiva del puntero
