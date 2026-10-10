@@ -1,3 +1,40 @@
+# 2026-10-10 — GENOA no se presenta en la fecha 9, y el 3-0 de ARSENAL de la fecha 9
+
+## GENOA F5 falta sólo esta fecha (NO es una baja)
+`DEPORTIVO CONTI` gana **3-0 y los 3 puntos** (GENOA de local, por eso queda 0-3). A
+diferencia de ARSENAL, GENOA **sigue en la liga**: no lleva `bajaLiga` ni deja de pagar
+arancel, y las próximas fechas siguen igual.
+
+Cancha 2 queda así: el partido de GENOA pasó a las **15:00** (cerrado) y el primer partido
+real de Segunda en esa cancha arranca a las **16:00**:
+
+    CANCHA 2 — fecha 9
+      15:00 GENOA F5 vs DEPORTIVO CONTI       [cerrado] 0-3  (era 16:00)
+      16:00 CORTE DE SEMANA vs CITY RECURSOS  [pendiente]    (era 15:00)
+      17:00 BARRACAS FC vs JUVENTUD           [pendiente]
+      18:00 DRINK TEAM vs LORESVA F.C         [pendiente]
+      19:00 FRANJAMIGOS vs TANINEROS          [pendiente]
+      20:00 ARCANGEL F.C vs ARSENAL F.C.      [cerrado] 3-0
+
+Canchas 1 y 3 sin cambios. Chequeado: ningún choque de cancha+horario ni equipo con dos
+partidos a la misma hora. Respaldo de los 3 documentos antes del cambio en
+`respaldo_f9_genoa.json`.
+
+## ARSENAL fecha 9 cargado
+`ARCANGEL F.C 3 - 0 ARSENAL F.C.`, cerrado, con observación de que no se jugó.
+
+⏳ Siguen pendientes: fecha 10 `LA CAMORRA 3 - 0 ARSENAL`, fecha 11 `ARSENAL 0 - 3 KRATOS F.C`.
+
+## "Habilitar todos los partidos" en el planillero: ya estaba
+El usuario pidió sacar la regla de "sólo se abre el siguiente cuando se cierra el
+anterior". **Esa regla no existe desde el 21/08** (commit `bbc713a`), y la versión
+publicada (sw v88) tampoco la tiene: cualquier partido no cerrado de la cancha se abre en
+cualquier orden. Lo único que no se abre es un partido ya cerrado. Si una tablet lo sigue
+mostrando bloqueado, es que tiene una versión vieja guardada: cerrar la app del todo y
+volver a abrirla (o recargar dos veces).
+
+---
+
 # 2026-10-03 — Panel de Control: habilitar jugadores sancionados, sin recaudación (sw v88)
 
 El usuario pidió que los 4 organizadores que usan el "Panel de Control" (veedores de
