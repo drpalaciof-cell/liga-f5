@@ -2391,7 +2391,9 @@ function calcularPosicionesDivision() {
 // mismos --ok/--warn/--danger que ya usa el resto del sitio (no colores nuevos).
 const FORMA_LABEL = { V: 'V', E: 'E', D: 'D' };
 function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZona) {
-  const total = tabla.length;
+  // Los descalificados van al fondo pero no cuentan para el descenso: desciende el último
+  // de los que siguen en competencia, el que queda justo encima de ellos.
+  const total = tabla.filter(t => !t.descalificado).length;
   const filas = tabla.map((t, i) => {
     const pos = i + 1;
     let cls = '';

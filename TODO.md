@@ -19,7 +19,9 @@ ninguna marca**: sólo los puntos que le quedan.
 **Descalificados al fondo (sw v91)**: campo `equipos/{id}.descalificado: true` (RURAL 55 y
 VALENCIA). Van siempre últimos en la tabla aunque tengan más puntos, y toda la fila (escudo
 y datos) se ve en escala de grises y apagada. INTER y ARSENAL **no** lo llevan (se bajaron,
-no fueron descalificados): siguen ordenados normal. RURAL 55: 12 → **9**. VALENCIA: 6 → **3**.
+no fueron descalificados): siguen ordenados normal.
+**Descenso (sw v92)**: no cuenta a los descalificados, desciende el último de los que siguen
+compitiendo — hoy INSTITUTO F.C., justo encima de RURAL y VALENCIA. RURAL 55: 12 → **9**. VALENCIA: 6 → **3**.
 Cargado también `descuentoMotivo`. Vale para tabla pública, admin y la posición en vivo.
 
 ## ⏳ Pendiente
