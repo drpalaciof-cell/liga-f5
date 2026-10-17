@@ -423,6 +423,8 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
    arriba y nítidos sobre cualquier fondo de fila. */
 .posiciones-table .equipo-shield-mini{width:28px;height:28px;object-fit:contain;flex-shrink:0;}
 .posiciones-table .pts-cell strong{font-size:13.5px;color:var(--division-color,var(--cyan));}
+.pts-desc{display:inline-block;margin-left:3px;padding:0 3px;border-radius:3px;background:rgba(248,113,113,.18);color:var(--danger);font-size:9.5px;font-weight:800;vertical-align:2px;}
+.pos-leyenda-desc::before{display:none;}
 .posiciones-table .gol-cell{font-variant-numeric:tabular-nums;color:var(--text-dim);white-space:nowrap;}
 .forma-row{display:flex;gap:2px;justify-content:center;}
 .forma-pill{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:4px;font-size:8.5px;font-weight:800;flex-shrink:0;}
@@ -2353,7 +2355,15 @@ function calcularTablaPosiciones(equipos, partidos) {
       if (gv > gl) { visitante.pg++; visitante.pts += 3; visitante.historial.push('V'); } else if (gv < gl) { visitante.pp++; visitante.historial.push('D'); } else { visitante.pe++; visitante.pts++; visitante.historial.push('E'); }
     }
   });
-  tabla.forEach(t => { t.dg = t.gf - t.gc; t.ultimas = t.historial.slice(-4); });
+  // Quita de puntos por sanción (equipos/{id}.puntosDescontados): se resta del total sin
+  // tocar ningún resultado -- los partidos siguen figurando como se jugaron.
+  const eqById = {};
+  equipos.forEach(eq => eqById[eq.id] = eq);
+  tabla.forEach(t => {
+    t.dg = t.gf - t.gc; t.ultimas = t.historial.slice(-4);
+    const desc = Number(eqById[t.id]?.puntosDescontados) || 0;
+    if (desc > 0) { t.pts -= desc; t.ptsDescontados = desc; }
+  });
   tabla.sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf);
   return tabla;
 }
@@ -2395,7 +2405,7 @@ function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZo
     <tr class="${cls}">
       <td class="pos-cell">${pos}</td>
       <td class="equipo-td"><div class="equipo-cell">${t.escudo ? `<img class="equipo-shield-mini" src="${t.escudo}">` : ''}<span>${escapeHtml(t.nombre)}</span></div></td>
-      <td class="pts-cell"><strong>${t.pts}</strong></td>
+      <td class="pts-cell"><strong>${t.pts}</strong>${t.ptsDescontados ? `<span class="pts-desc" title="Quita de ${t.ptsDescontados} puntos por sanción">-${t.ptsDescontados}</span>` : ''}</td>
       <td>${t.pj}</td>
       <td class="forma-cell">${formaHtml}</td>
       <td>${t.pg}</td>
@@ -2405,7 +2415,9 @@ function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZo
       <td>${t.dg}</td>
     </tr>`;
   }).join('');
-  const leyenda = (playoffSlots > 0 || descensoSlots > 0) ? `<div class="pos-leyenda">
+  const hayDescuento = tabla.some(t => t.ptsDescontados);
+  const leyenda = (playoffSlots > 0 || descensoSlots > 0 || hayDescuento) ? `<div class="pos-leyenda">
+    ${hayDescuento ? `<span class="pos-leyenda-item pos-leyenda-desc"><span class="pts-desc">-3</span> Quita de puntos por sanción</span>` : ''}
     ${playoffSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-puntero">1° Ventaja deportiva en Cuartos de final (Playoffs)</span>` : ''}
     ${playoffSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-playoff">Clasifica a playoffs (top ${playoffSlots})</span>` : ''}
     ${descensoSlots > 0 ? `<span class="pos-leyenda-item pos-leyenda-descenso">Desciende</span>` : ''}

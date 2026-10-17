@@ -1,3 +1,34 @@
+# 2026-10-17 — Fecha 10: se baja INTER (Segunda), descalifican RURAL 55 y VALENCIA (Primera), quita de puntos (sw v89)
+
+## Cargado hoy (fecha 10), todos `cerrado` con observación de que no se jugó
+- Segunda B, cancha 1, 15:00: `INTER FC 0 - 3 ESTILO F.C.` → la cancha 1 arranca de verdad a las **16:00**.
+- Segunda B, cancha 1, 20:00: `LA CAMORRA 3 - 0 ARSENAL F.C.`
+- Primera, cancha 2, 19:00: `VALENCIA 0 - 3 MITOMANOS`
+- Primera, cancha 2, 20:00: `LA SUB 21 3 - 0 RURAL 55`
+No se movió ningún horario de la fecha 10. Respaldo de los 4 partidos antes del cambio en `respaldo_f10_bajas.json`.
+
+## Bajas (mismo esquema que ARSENAL)
+INTER FC, RURAL 55 y VALENCIA con `bajaLiga: true`, **`bajaDesdeFecha: 10`**. INTER "se bajó",
+RURAL y VALENCIA "Descalificado por la organización". Dejan de pagar arancel desde la 10.
+
+## Quita de puntos por sanción — campo nuevo `equipos/{id}.puntosDescontados`
+`calcularTablaPosiciones` lo resta del total **sin tocar resultados** (el 6-5 de VALENCIA a RURAL
+de la fecha 9 sigue figurando). En la tabla se ve un `-3` rojo al lado de los puntos y una
+leyenda "Quita de puntos por sanción". RURAL 55: 12 → **9**. VALENCIA: 6 → **3**.
+Cargado también `descuentoMotivo`. Vale para tabla pública, admin y la posición en vivo.
+
+## ⏳ Pendiente
+- **Fecha 11**: el usuario avisó que **se empieza más tarde por el calor**. Los partidos de los
+  equipos que ya no están van **primero** (no se juegan) y los reales después. Falta que diga
+  el horario de arranque. Afecta: Primera C1 `RURAL vs ROTENS`, `VALENCIA vs LA SUB 21`;
+  Segunda C3 `JAURIA vs INTER`, `ARSENAL vs KRATOS`.
+- Los 3-0 de la fecha 11 se cargan **el día de la fecha** (rival tiene que haber pagado el arancel):
+  `RURAL 0-3 ROTENS`, `VALENCIA 0-3 LA SUB 21`, `JAURIA 3-0 INTER`, `ARSENAL 0-3 KRATOS`.
+- **Fecha 3 de Primera (postergada, se juega al terminar las fechas)**: `VALENCIA 0-3 STRONGEST TEAM`
+  y `EL REJUNTE 3-0 RURAL 55` se asignan en su momento.
+
+---
+
 # 2026-10-10 — GENOA no se presenta en la fecha 9, y el 3-0 de ARSENAL de la fecha 9
 
 ## GENOA F5 falta sólo esta fecha (NO es una baja)

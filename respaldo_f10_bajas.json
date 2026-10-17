@@ -1,0 +1,108 @@
+{
+ "partidos": [
+  {
+   "id": "mIfrqMxHN7BPdAVWupLZ",
+   "golesLocal": null,
+   "golesVisitante": null,
+   "goleadores": [],
+   "tarjetas": [],
+   "jugado": false,
+   "fechaCreacion": "2026-08-14T13:54:57.514Z",
+   "division": "Segunda",
+   "numeroFecha": 10,
+   "zona": "B",
+   "interzonal": false,
+   "cancha": 1,
+   "horario": "15:00",
+   "equipoLocalId": "7iID6PRAnxL8RTDKD5QF",
+   "equipoLocalNombre": "INTER FC",
+   "equipoVisitanteId": "TiBTVFfxszabZIGY7EZt",
+   "equipoVisitanteNombre": "ESTILO F.C."
+  },
+  {
+   "id": "zCkBsE2VGLibduZZllz6",
+   "golesLocal": null,
+   "golesVisitante": null,
+   "goleadores": [],
+   "tarjetas": [],
+   "jugado": false,
+   "fechaCreacion": "2026-08-14T13:54:57.514Z",
+   "division": "Segunda",
+   "numeroFecha": 10,
+   "zona": "B",
+   "interzonal": false,
+   "cancha": 1,
+   "equipoLocalId": "QzM9amlPzsOExeDFmHQr",
+   "equipoLocalNombre": "LA CAMORRA",
+   "equipoVisitanteId": "fp9oiWajbrTVK8fZEmXS",
+   "equipoVisitanteNombre": "ARSENAL F.C.",
+   "horario": "20:00"
+  },
+  {
+   "id": "AU1d1MSFv1smH6pF6BLv",
+   "golesLocal": null,
+   "golesVisitante": null,
+   "goleadores": [],
+   "tarjetas": [],
+   "jugado": false,
+   "fechaCreacion": "2026-08-14T13:54:57.513Z",
+   "division": "Primera",
+   "numeroFecha": 10,
+   "cancha": 2,
+   "horario": "19:00",
+   "equipoLocalId": "PKQActjz73vqJkC3ch4b",
+   "equipoLocalNombre": "VALENCIA",
+   "equipoVisitanteId": "J8EbiTjaLt5pOebgVR2s",
+   "equipoVisitanteNombre": "MITOMANOS"
+  },
+  {
+   "id": "GDEkxVFGt9Px08Ppp8Fg",
+   "golesLocal": null,
+   "golesVisitante": null,
+   "goleadores": [],
+   "tarjetas": [],
+   "jugado": false,
+   "fechaCreacion": "2026-08-14T13:54:57.513Z",
+   "division": "Primera",
+   "numeroFecha": 10,
+   "cancha": 2,
+   "horario": "20:00",
+   "equipoLocalId": "tVI9TJWc1W3hfouYMW5v",
+   "equipoLocalNombre": "LA SUB 21",
+   "equipoVisitanteId": "40qpPNLdR5pknCT3Xwko",
+   "equipoVisitanteNombre": "RURAL 55"
+  }
+ ],
+ "equipos": [
+  {
+   "id": "7iID6PRAnxL8RTDKD5QF",
+   "nombre": "INTER FC",
+   "bajaLiga": null,
+   "bajaMotivo": null,
+   "bajaEn": null,
+   "bajaDesdeFecha": null,
+   "puntosDescontados": null,
+   "descuentoMotivo": null
+  },
+  {
+   "id": "40qpPNLdR5pknCT3Xwko",
+   "nombre": "RURAL 55",
+   "bajaLiga": null,
+   "bajaMotivo": null,
+   "bajaEn": null,
+   "bajaDesdeFecha": null,
+   "puntosDescontados": null,
+   "descuentoMotivo": null
+  },
+  {
+   "id": "PKQActjz73vqJkC3ch4b",
+   "nombre": "VALENCIA",
+   "bajaLiga": null,
+   "bajaMotivo": null,
+   "bajaEn": null,
+   "bajaDesdeFecha": null,
+   "puntosDescontados": null,
+   "descuentoMotivo": null
+  }
+ ]
+}

@@ -515,7 +515,10 @@
 // jugadores sancionados (revisar comprobante de pago o marcar la sancion cumplida a mano)
 // sin ver nada de recaudacion -- esa pestana solo muestra el estado por jugador, los
 // totales de plata viven aparte y siguen sin estar permitidos para este rol.
-const CACHE = 'ligaf5-v88';
+// v89: index.html -- quita de puntos por sancion en la tabla (equipos.puntosDescontados):
+// se resta del total sin tocar resultados y se marca con un -N en rojo + leyenda.
+// Primer uso: RURAL 55 y VALENCIA, -3 cada uno, descalificados desde la fecha 10.
+const CACHE = 'ligaf5-v89';
 const ASSETS = [
   './index.html',
   './planilla.html',
