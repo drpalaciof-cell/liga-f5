@@ -18,10 +18,14 @@ leyenda "Quita de puntos por sanción". RURAL 55: 12 → **9**. VALENCIA: 6 → 
 Cargado también `descuentoMotivo`. Vale para tabla pública, admin y la posición en vivo.
 
 ## ⏳ Pendiente
-- **Fecha 11**: el usuario avisó que **se empieza más tarde por el calor**. Los partidos de los
-  equipos que ya no están van **primero** (no se juegan) y los reales después. Falta que diga
-  el horario de arranque. Afecta: Primera C1 `RURAL vs ROTENS`, `VALENCIA vs LA SUB 21`;
-  Segunda C3 `JAURIA vs INTER`, `ARSENAL vs KRATOS`.
+- **Fecha 11 — horarios YA CAMBIADOS** (se arranca más tarde por el calor; lo que no se juega va
+  primero, reales desde las **17:00**). Respaldo en `respaldo_horarios_f11.json`, 0 choques:
+
+      CANCHA 1 (Primera) sin cambios: 15 RURAL-ROTENS y 16 VALENCIA-SUB 21 no se juegan, reales 17-20
+      CANCHA 2 (Segunda A) 15-20 -> 17-22: CONTI-FONTANA 17, GENOA-JUVENTUD 18, ARCANGEL-FRANJAMIGOS 19,
+                           LORESVA-TANINEROS 20, CORTE-BARRACAS 21, DRINK-CITY 22
+      CANCHA 3 (Segunda B): 15 JAURIA-INTER y 16 ARSENAL-KRATOS no se juegan,
+                           CONTADORES-CAMORRA 17, DEFENSORES-LA BANDA 18, ESTILO-LOS DE SIEMPRE 19
 - Los 3-0 de la fecha 11 se cargan **el día de la fecha** (rival tiene que haber pagado el arancel):
   `RURAL 0-3 ROTENS`, `VALENCIA 0-3 LA SUB 21`, `JAURIA 3-0 INTER`, `ARSENAL 0-3 KRATOS`.
 - **Fecha 3 de Primera (postergada, se juega al terminar las fechas)**: `VALENCIA 0-3 STRONGEST TEAM`
