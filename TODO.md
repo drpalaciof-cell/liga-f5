@@ -13,8 +13,8 @@ RURAL y VALENCIA "Descalificado por la organización". Dejan de pagar arancel de
 
 ## Quita de puntos por sanción — campo nuevo `equipos/{id}.puntosDescontados`
 `calcularTablaPosiciones` lo resta del total **sin tocar resultados** (el 6-5 de VALENCIA a RURAL
-de la fecha 9 sigue figurando). En la tabla se ve un `-3` rojo al lado de los puntos y una
-leyenda "Quita de puntos por sanción". RURAL 55: 12 → **9**. VALENCIA: 6 → **3**.
+de la fecha 9 sigue figurando). A pedido del usuario (sw v90) la tabla **no muestra
+ninguna marca**: sólo los puntos que le quedan. RURAL 55: 12 → **9**. VALENCIA: 6 → **3**.
 Cargado también `descuentoMotivo`. Vale para tabla pública, admin y la posición en vivo.
 
 ## ⏳ Pendiente
