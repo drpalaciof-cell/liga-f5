@@ -518,7 +518,9 @@
 // v89: index.html -- quita de puntos por sancion en la tabla (equipos.puntosDescontados):
 // se resta del total sin tocar resultados y se marca con un -N en rojo + leyenda.
 // Primer uso: RURAL 55 y VALENCIA, -3 cada uno, descalificados desde la fecha 10.
-const CACHE = 'ligaf5-v89';
+// v90: index.html -- se saca la marca -N de la tabla a pedido del usuario: el descuento se
+// sigue restando, pero la tabla muestra solo los puntos que le quedan.
+const CACHE = 'ligaf5-v90';
 const ASSETS = [
   './index.html',
   './planilla.html',
