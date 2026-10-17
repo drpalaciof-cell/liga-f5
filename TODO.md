@@ -14,7 +14,12 @@ RURAL y VALENCIA "Descalificado por la organización". Dejan de pagar arancel de
 ## Quita de puntos por sanción — campo nuevo `equipos/{id}.puntosDescontados`
 `calcularTablaPosiciones` lo resta del total **sin tocar resultados** (el 6-5 de VALENCIA a RURAL
 de la fecha 9 sigue figurando). A pedido del usuario (sw v90) la tabla **no muestra
-ninguna marca**: sólo los puntos que le quedan. RURAL 55: 12 → **9**. VALENCIA: 6 → **3**.
+ninguna marca**: sólo los puntos que le quedan.
+
+**Descalificados al fondo (sw v91)**: campo `equipos/{id}.descalificado: true` (RURAL 55 y
+VALENCIA). Van siempre últimos en la tabla aunque tengan más puntos, y toda la fila (escudo
+y datos) se ve en escala de grises y apagada. INTER y ARSENAL **no** lo llevan (se bajaron,
+no fueron descalificados): siguen ordenados normal. RURAL 55: 12 → **9**. VALENCIA: 6 → **3**.
 Cargado también `descuentoMotivo`. Vale para tabla pública, admin y la posición en vivo.
 
 ## ⏳ Pendiente

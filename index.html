@@ -443,6 +443,10 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 .posiciones-table tr.pos-puntero td:first-child{border-left:3px solid var(--ok);padding-left:7px;}
 #divisions-wrap[data-division="Segunda"] .posiciones-table tr.pos-puntero td{background:rgba(74,222,128,.12);}
 #divisions-wrap[data-division="Segunda"] .posiciones-table tr.pos-puntero td:first-child{border-left-color:var(--ok);}
+/* Descalificado: toda la fila (escudo, puntos, últimas) en escala de grises y apagada. */
+.posiciones-table tr.pos-descalificado td{filter:grayscale(1);opacity:.5;background:rgba(255,255,255,.04);}
+.posiciones-table tr.pos-descalificado td:first-child{border-left:3px solid #6b7280;padding-left:7px;}
+.posiciones-table tr.pos-descalificado .pts-cell strong{color:var(--text-dim);}
 .pos-leyenda{display:flex;gap:18px;flex-wrap:wrap;padding:10px 14px 4px;border-top:1px solid rgba(255,255,255,.06);margin-top:4px;}
 .pos-leyenda-item{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-dim);}
 .pos-leyenda-item::before{content:'';width:14px;height:3px;border-radius:2px;flex-shrink:0;}
@@ -2361,8 +2365,10 @@ function calcularTablaPosiciones(equipos, partidos) {
     t.dg = t.gf - t.gc; t.ultimas = t.historial.slice(-4);
     const desc = Number(eqById[t.id]?.puntosDescontados) || 0;
     if (desc > 0) { t.pts -= desc; t.ptsDescontados = desc; }
+    t.descalificado = !!eqById[t.id]?.descalificado;
   });
-  tabla.sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf);
+  // Un descalificado va siempre al fondo, aunque tenga más puntos que otros.
+  tabla.sort((a, b) => (a.descalificado - b.descalificado) || b.pts - a.pts || b.dg - a.dg || b.gf - a.gf);
   return tabla;
 }
 function calcularPosiciones(zona) {
@@ -2392,7 +2398,8 @@ function renderTablaPosicionesBlock(tabla, playoffSlots, descensoSlots, tituloZo
     // El puntero va en verde: termina primero y se lleva la ventaja deportiva en cuartos
     // (si empata, pasa sin penales). Lleva también pos-playoff porque clasifica igual; el
     // verde le gana al color de clasificado por orden en la hoja de estilos.
-    if (pos === 1 && playoffSlots > 0) cls = 'pos-playoff pos-puntero';
+    if (t.descalificado) cls = 'pos-descalificado';
+    else if (pos === 1 && playoffSlots > 0) cls = 'pos-playoff pos-puntero';
     else if (pos <= playoffSlots) cls = 'pos-playoff';
     else if (descensoSlots > 0 && pos > total - descensoSlots) cls = 'pos-descenso';
     const ultimas = t.ultimas || [];

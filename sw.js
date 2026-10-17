@@ -520,7 +520,9 @@
 // Primer uso: RURAL 55 y VALENCIA, -3 cada uno, descalificados desde la fecha 10.
 // v90: index.html -- se saca la marca -N de la tabla a pedido del usuario: el descuento se
 // sigue restando, pero la tabla muestra solo los puntos que le quedan.
-const CACHE = 'ligaf5-v90';
+// v91: index.html -- equipos.descalificado: va al fondo de la tabla y la fila entera
+// (escudo y datos) en escala de grises. RURAL 55 y VALENCIA.
+const CACHE = 'ligaf5-v91';
 const ASSETS = [
   './index.html',
   './planilla.html',
