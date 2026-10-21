@@ -1,0 +1,44 @@
+[
+ {
+  "id": "2ixIji6vUNnAyEMq4Q3K",
+  "cancha": 2,
+  "horario": "19:00",
+  "local": "ARCANGEL F.C",
+  "visitante": "FRANJAMIGOS"
+ },
+ {
+  "id": "XAQcGLy6K1Tyic1C45oE",
+  "cancha": 2,
+  "horario": "17:00",
+  "local": "DEPORTIVO CONTI",
+  "visitante": "FONTANA FC"
+ },
+ {
+  "id": "ZESaK7y8pyGvGkcpyprh",
+  "cancha": 2,
+  "horario": "22:00",
+  "local": "DRINK TEAM",
+  "visitante": "CITY RECURSOS"
+ },
+ {
+  "id": "j9v4sHebxOtkvUQFJ3yi",
+  "cancha": 2,
+  "horario": "21:00",
+  "local": "CORTE DE SEMANA F.C",
+  "visitante": "BARRACAS FC"
+ },
+ {
+  "id": "vA0Y3h5NVRyDDEbLAUId",
+  "cancha": 2,
+  "horario": "20:00",
+  "local": "LORESVA F.C",
+  "visitante": "TANINEROS"
+ },
+ {
+  "id": "wZvt5SBiuIhmt1yR8cs7",
+  "cancha": 2,
+  "horario": "18:00",
+  "local": "GENOA F5",
+  "visitante": "JUVENTUD"
+ }
+]

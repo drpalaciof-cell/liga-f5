@@ -1,3 +1,19 @@
+# 2026-10-21 — Fecha 11: la Zona A vuelve a arrancar a las 15:00 y el último pasa a cancha 3
+
+A pedido del usuario. Sólo se tocaron `cancha`/`horario` de 6 partidos de Segunda A; nada más.
+
+    CANCHA 2 (Segunda A): CONTI-FONTANA 15 (interzonal), GENOA-JUVENTUD 16, ARCANGEL-FRANJAMIGOS 17,
+                          LORESVA-TANINEROS 18, CORTE-BARRACAS 19
+    CANCHA 3: DRINK TEAM-CITY RECURSOS pasa de cancha 2 22:00 a **cancha 3 20:00** (queda después de
+              ESTILO-LOS DE SIEMPRE; la cancha 3 tiene 6 partidos en esta fecha, 2 de ellos no se juegan)
+    CANCHA 1 (Primera): sin cambios.
+
+Chequeado: 0 choques de cancha+horario, ningún equipo con dos partidos a la misma hora.
+Respaldo de los 6 partidos antes del cambio en `respaldo_horarios_f11_zonaA.json`.
+Ojo el día de la fecha: el planillero de la **cancha 3** tiene que cargar el DRINK-CITY (es de Zona A).
+
+---
+
 # 2026-10-17 — Fecha 10: se baja INTER (Segunda), descalifican RURAL 55 y VALENCIA (Primera), quita de puntos (sw v89)
 
 ## Cargado hoy (fecha 10), todos `cerrado` con observación de que no se jugó
