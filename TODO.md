@@ -21,6 +21,14 @@ de corrido desde las 15:00 y los dos que no se juegan van al final:
 Las 3 canchas arrancan a las 15:00 con partido real (la cancha 1 no: RURAL y VALENCIA a las 15 y 16 no se juegan).
 Respaldo previo en `respaldo_horarios_f11_cancha3.json`. 0 choques.
 
+**Corrección 2 (definitiva):** la Zona B también arranca a las 15:00 y el DRINK-CITY (Zona A) va
+después de los partidos reales de la B:
+
+    CANCHA 3: CONTADORES-CAMORRA 15, DEFENSORES-LA BANDA 16, ESTILO-LOS DE SIEMPRE 17,
+              DRINK-CITY 18 (Zona A), JAURIA-INTER 19 y ARSENAL-KRATOS 20 (no se juegan)
+
+Respaldo previo en `respaldo_horarios_f11_zonaB.json`. 0 choques.
+
 ---
 
 # 2026-10-17 — Fecha 10: se baja INTER (Segunda), descalifican RURAL 55 y VALENCIA (Primera), quita de puntos (sw v89)

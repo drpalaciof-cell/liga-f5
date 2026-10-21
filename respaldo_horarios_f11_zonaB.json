@@ -1,0 +1,44 @@
+[
+ {
+  "id": "HUCWr9IjKXC4e2C6DoUC",
+  "cancha": 3,
+  "horario": "20:00",
+  "local": "ARSENAL F.C.",
+  "visitante": "KRATOS F.C"
+ },
+ {
+  "id": "ZESaK7y8pyGvGkcpyprh",
+  "cancha": 3,
+  "horario": "15:00",
+  "local": "DRINK TEAM",
+  "visitante": "CITY RECURSOS"
+ },
+ {
+  "id": "hpErcCXgKh7BhZA3gf8h",
+  "cancha": 3,
+  "horario": "16:00",
+  "local": "CONTADORES",
+  "visitante": "LA CAMORRA"
+ },
+ {
+  "id": "iTVgHtAVecapb0t3YWGw",
+  "cancha": 3,
+  "horario": "17:00",
+  "local": "DEFENSORES DEL OBRERO",
+  "visitante": "LA BANDA FC"
+ },
+ {
+  "id": "kbzzxX7rKZKowDUgrT71",
+  "cancha": 3,
+  "horario": "18:00",
+  "local": "ESTILO F.C.",
+  "visitante": "LOS DE SIEMPRE FUTSAL"
+ },
+ {
+  "id": "lAD6L1RXA8AIonITFT8e",
+  "cancha": 3,
+  "horario": "19:00",
+  "local": "JAURIA SPORT",
+  "visitante": "INTER FC"
+ }
+]
