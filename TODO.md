@@ -29,7 +29,7 @@ después de los partidos reales de la B:
 
 Respaldo previo en `respaldo_horarios_f11_zonaB.json`. 0 choques.
 
-**Corrección 3 — VIGENTE:** todo arranca a las 15:00, los horarios liberados por los que ya no están
+**Corrección 3 (superada):** todo arranca a las 15:00, los horarios liberados por los que ya no están
 se ocupan con partidos reales, y CORTE-BARRACAS + DRINK-CITY (Zona A) pasan a cancha 3:
 
     CANCHA 1: MITOMANOS-BEER 15, REJUNTE-IMPERIO 16, STRONGEST-ELOSRA 17, INSTITUTO-CLAN 18,
@@ -39,6 +39,16 @@ se ocupan con partidos reales, y CORTE-BARRACAS + DRINK-CITY (Zona A) pasan a ca
               CORTE-BARRACAS 18 (A), DRINK-CITY 19 (A), JAURIA-INTER 20 y ARSENAL-KRATOS 21 (no se juegan)
 
 Respaldo de los 17 partidos antes del cambio en `respaldo_horarios_f11_todo15.json`. 0 choques.
+
+**Corrección 4 — VIGENTE (definitiva):** la cancha 2 se queda con la mayoría de Segunda (los 5 de Zona A)
+y la cancha 3 con 4 reales (el interzonal + los 3 de Zona B). Todo desde las 15:00:
+
+    CANCHA 1: sin cambios respecto de la corrección 3 (reales 15-18, RURAL 19 y VALENCIA 20 no se juegan)
+    CANCHA 2: GENOA-JUVENTUD 15, ARCANGEL-FRANJAMIGOS 16, LORESVA-TANINEROS 17, CORTE-BARRACAS 18, DRINK-CITY 19
+    CANCHA 3: CONTI-FONTANA 15 (interzonal), CONTADORES-CAMORRA 16, DEFENSORES-LA BANDA 17,
+              ESTILO-LOS DE SIEMPRE 18, JAURIA-INTER 19 y ARSENAL-KRATOS 20 (no se juegan)
+
+Respaldo previo en `respaldo_horarios_f11_c2_5_c3_4.json`. 0 choques.
 
 ---
 
