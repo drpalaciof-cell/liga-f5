@@ -1,0 +1,121 @@
+[
+ {
+  "id": "1T0x5fZh0y8r59oCsT2i",
+  "cancha": 1,
+  "horario": "17:00",
+  "local": "MITOMANOS",
+  "visitante": "BEER UNITED"
+ },
+ {
+  "id": "232CjOVpiml6WDuVpci0",
+  "cancha": 1,
+  "horario": "16:00",
+  "local": "VALENCIA",
+  "visitante": "LA SUB 21"
+ },
+ {
+  "id": "2ixIji6vUNnAyEMq4Q3K",
+  "cancha": 2,
+  "horario": "17:00",
+  "local": "ARCANGEL F.C",
+  "visitante": "FRANJAMIGOS"
+ },
+ {
+  "id": "FQAgPG7QmW0pgctMWFPP",
+  "cancha": 1,
+  "horario": "20:00",
+  "local": "INSTITUTO F.C",
+  "visitante": "EL CLAN FC"
+ },
+ {
+  "id": "HUCWr9IjKXC4e2C6DoUC",
+  "cancha": 3,
+  "horario": "20:00",
+  "local": "ARSENAL F.C.",
+  "visitante": "KRATOS F.C"
+ },
+ {
+  "id": "LJ9UHFI8yryzRAshbXeS",
+  "cancha": 1,
+  "horario": "15:00",
+  "local": "RURAL 55",
+  "visitante": "ROTENS FC"
+ },
+ {
+  "id": "SdLUORlAEPNV4x1zl7dG",
+  "cancha": 1,
+  "horario": "18:00",
+  "local": "EL REJUNTE FC",
+  "visitante": "IMPERIO VERDE"
+ },
+ {
+  "id": "XAQcGLy6K1Tyic1C45oE",
+  "cancha": 2,
+  "horario": "15:00",
+  "local": "DEPORTIVO CONTI",
+  "visitante": "FONTANA FC"
+ },
+ {
+  "id": "ZESaK7y8pyGvGkcpyprh",
+  "cancha": 3,
+  "horario": "18:00",
+  "local": "DRINK TEAM",
+  "visitante": "CITY RECURSOS"
+ },
+ {
+  "id": "hpErcCXgKh7BhZA3gf8h",
+  "cancha": 3,
+  "horario": "15:00",
+  "local": "CONTADORES",
+  "visitante": "LA CAMORRA"
+ },
+ {
+  "id": "iTVgHtAVecapb0t3YWGw",
+  "cancha": 3,
+  "horario": "16:00",
+  "local": "DEFENSORES DEL OBRERO",
+  "visitante": "LA BANDA FC"
+ },
+ {
+  "id": "j9v4sHebxOtkvUQFJ3yi",
+  "cancha": 2,
+  "horario": "19:00",
+  "local": "CORTE DE SEMANA F.C",
+  "visitante": "BARRACAS FC"
+ },
+ {
+  "id": "kbzzxX7rKZKowDUgrT71",
+  "cancha": 3,
+  "horario": "17:00",
+  "local": "ESTILO F.C.",
+  "visitante": "LOS DE SIEMPRE FUTSAL"
+ },
+ {
+  "id": "lAD6L1RXA8AIonITFT8e",
+  "cancha": 3,
+  "horario": "19:00",
+  "local": "JAURIA SPORT",
+  "visitante": "INTER FC"
+ },
+ {
+  "id": "oo8etCE8H2YXWA8h0MVK",
+  "cancha": 1,
+  "horario": "19:00",
+  "local": "STRONGEST TEAM",
+  "visitante": "ELOSRA"
+ },
+ {
+  "id": "vA0Y3h5NVRyDDEbLAUId",
+  "cancha": 2,
+  "horario": "18:00",
+  "local": "LORESVA F.C",
+  "visitante": "TANINEROS"
+ },
+ {
+  "id": "wZvt5SBiuIhmt1yR8cs7",
+  "cancha": 2,
+  "horario": "16:00",
+  "local": "GENOA F5",
+  "visitante": "JUVENTUD"
+ }
+]

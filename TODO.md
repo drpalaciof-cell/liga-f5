@@ -29,6 +29,17 @@ después de los partidos reales de la B:
 
 Respaldo previo en `respaldo_horarios_f11_zonaB.json`. 0 choques.
 
+**Corrección 3 — VIGENTE:** todo arranca a las 15:00, los horarios liberados por los que ya no están
+se ocupan con partidos reales, y CORTE-BARRACAS + DRINK-CITY (Zona A) pasan a cancha 3:
+
+    CANCHA 1: MITOMANOS-BEER 15, REJUNTE-IMPERIO 16, STRONGEST-ELOSRA 17, INSTITUTO-CLAN 18,
+              RURAL-ROTENS 19 y VALENCIA-SUB 21 20 (no se juegan)
+    CANCHA 2: CONTI-FONTANA 15 (interzonal), GENOA-JUVENTUD 16, ARCANGEL-FRANJAMIGOS 17, LORESVA-TANINEROS 18
+    CANCHA 3: CONTADORES-CAMORRA 15, DEFENSORES-LA BANDA 16, ESTILO-LOS DE SIEMPRE 17,
+              CORTE-BARRACAS 18 (A), DRINK-CITY 19 (A), JAURIA-INTER 20 y ARSENAL-KRATOS 21 (no se juegan)
+
+Respaldo de los 17 partidos antes del cambio en `respaldo_horarios_f11_todo15.json`. 0 choques.
+
 ---
 
 # 2026-10-17 — Fecha 10: se baja INTER (Segunda), descalifican RURAL 55 y VALENCIA (Primera), quita de puntos (sw v89)
