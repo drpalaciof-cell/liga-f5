@@ -1,0 +1,30 @@
+[
+ {
+  "id": "1T0x5fZh0y8r59oCsT2i",
+  "cancha": 1,
+  "horario": "17:00",
+  "local": "MITOMANOS",
+  "visitante": "BEER UNITED"
+ },
+ {
+  "id": "FQAgPG7QmW0pgctMWFPP",
+  "cancha": 1,
+  "horario": "20:00",
+  "local": "INSTITUTO F.C",
+  "visitante": "EL CLAN FC"
+ },
+ {
+  "id": "SdLUORlAEPNV4x1zl7dG",
+  "cancha": 1,
+  "horario": "18:00",
+  "local": "EL REJUNTE FC",
+  "visitante": "IMPERIO VERDE"
+ },
+ {
+  "id": "oo8etCE8H2YXWA8h0MVK",
+  "cancha": 1,
+  "horario": "19:00",
+  "local": "STRONGEST TEAM",
+  "visitante": "ELOSRA"
+ }
+]

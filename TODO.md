@@ -62,6 +62,8 @@ el día de la fecha. Respaldo en `respaldo_horarios_f11_sin_hora.json`.
               RURAL-ROTENS y VALENCIA-SUB 21 sin horario (no se juegan)
 
 Si INSTITUTO no se presenta: EL CLAN FC gana 3-0 (INSTITUTO de local → 0-3). Respaldo en `respaldo_horarios_f11_primera17.json`.
+**Corregido enseguida: Primera arranca a las 16:00** → MITOMANOS-BEER 16, REJUNTE-IMPERIO 17, STRONGEST-ELOSRA 18,
+INSTITUTO-EL CLAN 19 (a confirmar). Respaldo en `respaldo_horarios_f11_primera16.json`.
 
 ---
 
