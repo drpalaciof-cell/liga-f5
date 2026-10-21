@@ -524,7 +524,10 @@
 // (escudo y datos) en escala de grises. RURAL 55 y VALENCIA.
 // v92: index.html -- el descenso no cuenta a los descalificados: desciende el ultimo
 // de los que siguen compitiendo (hoy INSTITUTO F.C, justo encima de RURAL y VALENCIA).
-const CACHE = 'ligaf5-v92';
+// v93: partidos sin horario (los que no se juegan) van al final en "En vivo", planillas del admin,
+// planilla de juego del equipo y la lista/historial del planillero. Antes se ordenaba por texto y
+// el horario vacío quedaba PRIMERO ("En vivo" mostraba VALENCIA-LA SUB 21 como próximo).
+const CACHE = 'ligaf5-v93';
 const ASSETS = [
   './index.html',
   './planilla.html',

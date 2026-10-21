@@ -1,3 +1,15 @@
+# 2026-10-21 (cont.) — Partidos sin horario al final en todos lados (sw v93)
+
+"En vivo" mostraba **VALENCIA - LA SUB 21** y **ARSENAL - KRATOS** como "Próximo · --:--" en las canchas 1 y 3:
+esos partidos (no se juegan) quedaron con `horario: ''` y varias listas ordenaban por texto, donde el
+vacío va primero. Ahora todas ordenan con `horarioAMin` (sin horario → 99999 → al final):
+- index.html: En vivo (admin y público), Planillas del admin, Planilla de juego del equipo.
+- planilla.html: lista de partidos de la cancha e historial (se agregó `horarioAMin` ahí, no existía).
+El fixture público ya lo hacía bien. Después de los reales, si el 3-0 todavía no se cargó, "En vivo"
+mostraría el no jugado como próximo: cargar los 3-0 el día de la fecha.
+
+---
+
 # 2026-10-21 — Fecha 11: la Zona A vuelve a arrancar a las 15:00 y el último pasa a cancha 3
 
 A pedido del usuario. Sólo se tocaron `cancha`/`horario` de 6 partidos de Segunda A; nada más.

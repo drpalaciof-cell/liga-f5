@@ -1452,6 +1452,8 @@ function getSancionesActivas(counts, eq, numeroFecha){
   return items;
 }
 
+// Ordena por horario real; un partido sin horario (los que no se juegan) va siempre al final.
+function horarioAMin(h){const m=/^(\d{1,2}):(\d{2})/.exec(h||'');return m?(+m[1])*60+(+m[2]):99999;}
 async function cargarLista(){
   if(st.unsub){st.unsub();st.unsub=null;}
   iniciarSyncAvisos();
@@ -1492,7 +1494,7 @@ async function cargarLista(){
     const fechasActivas=[...new Set(activos.map(p=>p.numeroFecha||0))].sort((a,b)=>Number(a)-Number(b));
     const fechaActiva=fechasActivas.length?fechasActivas[0]:null;
     let partidos=fechaActiva!=null?todos.filter(p=>(p.numeroFecha||0)===fechaActiva):activos;
-    partidos.sort((a,b)=>(a.horario||'').localeCompare(b.horario||''));
+    partidos.sort((a,b)=>horarioAMin(a.horario)-horarioAMin(b.horario));
     // Banner de división
     const divisionCancha=partidos.length?(partidos[0].division||''):'';
     if(divisionCancha) cargarTarjetasDivision(divisionCancha); // dispara en paralelo, no bloquea el render de la lista — para cuando se abra una alineación ya está (o quedó cacheado offline)
@@ -2931,7 +2933,7 @@ async function cambiarDivisionHistorial(div){
     const snap=await getRapido(db.collection('partidos').where('division','==',div));
     _histPartidos=[];
     snap.forEach(doc=>_histPartidos.push({id:doc.id,...doc.data()}));
-    _histPartidos.sort((a,b)=>(a.cancha||0)-(b.cancha||0)||(a.horario||'').localeCompare(b.horario||''));
+    _histPartidos.sort((a,b)=>(a.cancha||0)-(b.cancha||0)||horarioAMin(a.horario)-horarioAMin(b.horario));
     const fechas=[...new Set(_histPartidos.map(p=>p.numeroFecha||'?'))].sort((a,b)=>Number(a)-Number(b));
     sel.innerHTML='<option value="">— Seleccioná —</option>'+fechas.map(f=>`<option value="${f}">Fecha ${f}</option>`).join('');
     if(fechas.length){sel.value=fechas[fechas.length-1];renderHistorialLista();}
