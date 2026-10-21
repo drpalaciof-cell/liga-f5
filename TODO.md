@@ -56,6 +56,13 @@ Se ven como "--:--". En el fixture público van al final (`horarioAMin` → 9999
 y "En vivo" ordenan por texto y los ponen PRIMERO** hasta que se carga el 3-0 → cargar los 3-0 temprano
 el día de la fecha. Respaldo en `respaldo_horarios_f11_sin_hora.json`.
 
+**Primera (cancha 1) arranca a las 17:00**, INSTITUTO (ya descendido, sin confirmar si se presenta) al último horario:
+
+    CANCHA 1: MITOMANOS-BEER 17, REJUNTE-IMPERIO 18, STRONGEST-ELOSRA 19, INSTITUTO-EL CLAN 20 (a confirmar)
+              RURAL-ROTENS y VALENCIA-SUB 21 sin horario (no se juegan)
+
+Si INSTITUTO no se presenta: EL CLAN FC gana 3-0 (INSTITUTO de local → 0-3). Respaldo en `respaldo_horarios_f11_primera17.json`.
+
 ---
 
 # 2026-10-17 — Fecha 10: se baja INTER (Segunda), descalifican RURAL 55 y VALENCIA (Primera), quita de puntos (sw v89)
