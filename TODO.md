@@ -50,6 +50,12 @@ y la cancha 3 con 4 reales (el interzonal + los 3 de Zona B). Todo desde las 15:
 
 Respaldo previo en `respaldo_horarios_f11_c2_5_c3_4.json`. 0 choques.
 
+**Después:** a pedido del usuario se les sacó el horario (`horario: ''`) a los 4 que no se juegan
+(RURAL-ROTENS y VALENCIA-SUB 21 en cancha 1, JAURIA-INTER y ARSENAL-KRATOS en cancha 3); conservan la cancha.
+Se ven como "--:--". En el fixture público van al final (`horarioAMin` → 99999), pero **el planillero
+y "En vivo" ordenan por texto y los ponen PRIMERO** hasta que se carga el 3-0 → cargar los 3-0 temprano
+el día de la fecha. Respaldo en `respaldo_horarios_f11_sin_hora.json`.
+
 ---
 
 # 2026-10-17 — Fecha 10: se baja INTER (Segunda), descalifican RURAL 55 y VALENCIA (Primera), quita de puntos (sw v89)

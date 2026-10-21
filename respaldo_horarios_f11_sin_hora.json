@@ -1,0 +1,30 @@
+[
+ {
+  "id": "232CjOVpiml6WDuVpci0",
+  "cancha": 1,
+  "horario": "20:00",
+  "local": "VALENCIA",
+  "visitante": "LA SUB 21"
+ },
+ {
+  "id": "HUCWr9IjKXC4e2C6DoUC",
+  "cancha": 3,
+  "horario": "20:00",
+  "local": "ARSENAL F.C.",
+  "visitante": "KRATOS F.C"
+ },
+ {
+  "id": "LJ9UHFI8yryzRAshbXeS",
+  "cancha": 1,
+  "horario": "19:00",
+  "local": "RURAL 55",
+  "visitante": "ROTENS FC"
+ },
+ {
+  "id": "lAD6L1RXA8AIonITFT8e",
+  "cancha": 3,
+  "horario": "19:00",
+  "local": "JAURIA SPORT",
+  "visitante": "INTER FC"
+ }
+]
