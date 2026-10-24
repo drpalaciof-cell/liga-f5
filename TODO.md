@@ -1,6 +1,6 @@
 # 2026-10-24 — Fecha 11 en el día: BARRACAS no se presenta, 3-0 de los que ya no están, horarios
 
-Los horarios de la fecha 11 los había cambiado el usuario desde la app (arranque 15/16, los
+Los horarios de la fecha 11 ya los había cambiado otra sesión (commits del 21/10, sw v93) (arranque 15/16, los
 que no se juegan quedan **sin horario**, CONTI-FONTANA pasó a la cancha 3). Sobre eso:
 
 - `CORTE DE SEMANA 3 - 0 BARRACAS FC` (BARRACAS no se presentó — **no es baja**, como GENOA), sin horario.
