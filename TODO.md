@@ -1,3 +1,21 @@
+# 2026-10-24 — Fecha 11 en el día: BARRACAS no se presenta, 3-0 de los que ya no están, horarios
+
+Los horarios de la fecha 11 los había cambiado el usuario desde la app (arranque 15/16, los
+que no se juegan quedan **sin horario**, CONTI-FONTANA pasó a la cancha 3). Sobre eso:
+
+- `CORTE DE SEMANA 3 - 0 BARRACAS FC` (BARRACAS no se presentó — **no es baja**, como GENOA), sin horario.
+- `DRINK TEAM vs CITY RECURSOS` 19:00 → **18:00** (cancha 2).
+- Cancha 3: `DEFENSORES vs LA BANDA` 17 → **15:00**, `DEPORTIVO CONTI vs FONTANA` 15 → **17:00**.
+- Cargados los 3-0 que estaban pendientes para hoy: `RURAL 0-3 ROTENS`, `VALENCIA 0-3 LA SUB 21`,
+  `JAURIA 3-0 INTER`, `ARSENAL 0-3 KRATOS`.
+
+Respaldo en `respaldo_f11_dia.json`. 0 choques de cancha/horario ni equipos con dos partidos.
+
+    CANCHA 1 (Primera)  16 MITOMANOS-BEER · 17 REJUNTE-IMPERIO · 18 STRONGEST-ELOSRA · 19 INSTITUTO-CLAN
+    CANCHA 2 (Seg. A)   15 GENOA-JUVENTUD · 16 ARCANGEL-FRANJAMIGOS · 17 LORESVA-TANINEROS · 18 DRINK-CITY
+    CANCHA 3 (Seg. B)   15 DEFENSORES-LA BANDA · 16 CONTADORES-CAMORRA · 17 CONTI-FONTANA · 18 ESTILO-LOS DE SIEMPRE
+
+⏳ Sigue pendiente: fecha 3 postergada de Primera (`VALENCIA 0-3 STRONGEST`, `EL REJUNTE 3-0 RURAL`).
 # 2026-10-21 (cont.) — Partidos sin horario al final en todos lados (sw v93)
 
 "En vivo" mostraba **VALENCIA - LA SUB 21** y **ARSENAL - KRATOS** como "Próximo · --:--" en las canchas 1 y 3:
