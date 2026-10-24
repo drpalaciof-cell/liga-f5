@@ -1,3 +1,14 @@
+# 2026-10-24 (cont.) — INSTITUTO F.C. (Primera) se baja
+
+- Fecha 11, cancha 1: `INSTITUTO F.C 0 - 3 EL CLAN FC`, cerrado, **sin horario** (va al final como
+  los otros que no se juegan). La cancha 1 termina a las 18:00 (STRONGEST-ELOSRA).
+- `bajaLiga: true`, `bajaDesdeFecha: 11` (deja de pagar arancel desde la 11). **No** lleva
+  `descalificado`: queda en la tabla normal, último con 0 puntos → hoy sigue siendo el que desciende.
+- Respaldo del partido en `respaldo_f11_instituto.json`.
+- ⏳ Fecha 3 postergada: `BEER UNITED 3-0 INSTITUTO` cuando se juegue (junto con los de VALENCIA y RURAL).
+
+---
+
 # 2026-10-24 (cont.) — Planillero: "agregar jugador" no aparecía hasta recargar (sw v94)
 
 Causa: los botones `footer-add-local/visitante` se muestran sólo en `primer_tiempo`/`segundo_tiempo`
