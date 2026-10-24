@@ -2163,6 +2163,9 @@ function togglePausaCronometro(){
 }
 function actualizarGateArranque(){
   actualizarCronoPartido();
+  // Los botones de agregar jugador dependen del mismo estado que este gate. confirmarArranque
+  // sólo llamaba a esta función, así que en el 1er tiempo no aparecían hasta recargar.
+  actualizarBotonesAgregarJugador();
   const btnArr=document.getElementById('btn-arranque');
   const btnHalf=document.getElementById('btn-halftime');
   const btnFin=document.getElementById('btn-fin');

@@ -1,3 +1,13 @@
+# 2026-10-24 (cont.) — Planillero: "agregar jugador" no aparecía hasta recargar (sw v94)
+
+Causa: los botones `footer-add-local/visitante` se muestran sólo en `primer_tiempo`/`segundo_tiempo`
+(`actualizarBotonesAgregarJugador`), pero `confirmarArranque` (botón "▶ ARRANCÓ EL PARTIDO") ponía
+el estado en `primer_tiempo` y sólo llamaba a `actualizarGateArranque`, no a esa función. El 2° tiempo
+sí la llamaba. Recargar pasaba por `irAPartido`, que sí la llama: por eso "actualizando aparecía".
+Fix: `actualizarGateArranque` ahora llama a `actualizarBotonesAgregarJugador` — cubre todos los cambios.
+
+---
+
 # 2026-10-24 — Fecha 11 en el día: BARRACAS no se presenta, 3-0 de los que ya no están, horarios
 
 Los horarios de la fecha 11 ya los había cambiado otra sesión (commits del 21/10, sw v93) (arranque 15/16, los

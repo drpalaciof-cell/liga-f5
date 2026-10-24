@@ -527,7 +527,10 @@
 // v93: partidos sin horario (los que no se juegan) van al final en "En vivo", planillas del admin,
 // planilla de juego del equipo y la lista/historial del planillero. Antes se ordenaba por texto y
 // el horario vacío quedaba PRIMERO ("En vivo" mostraba VALENCIA-LA SUB 21 como próximo).
-const CACHE = 'ligaf5-v93';
+// v94: planilla.html -- los botones de agregar jugador no aparecian al tocar "ARRANCO EL
+// PARTIDO" (confirmarArranque no los refrescaba), habia que recargar. Ahora
+// actualizarGateArranque los refresca en cada cambio de estado.
+const CACHE = 'ligaf5-v94';
 const ASSETS = [
   './index.html',
   './planilla.html',
