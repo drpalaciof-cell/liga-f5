@@ -20,8 +20,17 @@
       {
         "source": "**",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
         ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/prode",
+        "destination": "/prode-segunda.html"
       }
     ]
   },
@@ -32,7 +41,11 @@
     {
       "source": "functions",
       "codebase": "default",
-      "ignore": ["node_modules", ".git", "*.log"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log"
+      ]
     }
   ]
 }

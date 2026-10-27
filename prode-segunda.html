@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="es">
-<head>
-<meta charset="utf-8">
+<head><meta charset="utf-8">
 <title>Prode Playoffs Segunda</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -38,9 +37,37 @@ button{font:inherit;color:inherit;cursor:pointer}
 .share{background:var(--acc);border:0;color:#1A0802;font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.08em;padding:8px 12px}
 .share[disabled]{background:var(--panel2);color:var(--muted);cursor:default}
 .toast{font-family:var(--mono);font-size:12px;color:var(--hot);text-align:center;min-height:16px}
+@media (max-width:400px){.hs{display:none}}
 .reset:hover{border-color:var(--acc);color:var(--fg)}
 .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);background:rgba(20,8,4,.55)}
-.stage{position:relative}
+.stage{position:relative;margin:0 auto}
+.chip{position:absolute;width:36px;height:50px;padding:0;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;overflow:hidden}
+.chip .ci{width:100%;height:34px;flex-shrink:0;overflow:hidden;background:radial-gradient(circle,#5A2A12,#1E0C05 80%);border-bottom:1px solid var(--line)}
+.chip .ci img{width:100%;height:100%;object-fit:cover;transform:scale(1.25)}
+.chip .cd{font-weight:700;font-size:11px;line-height:15px;letter-spacing:.03em}
+.chip.sel{background:#6A2C0A;border-color:var(--acc);box-shadow:0 0 12px rgba(255,138,31,.55)}
+.chip.sel .cd{color:var(--hot)}
+.chip.out{opacity:.3}
+.chip.tbd{border-style:dashed;background:transparent;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;color:var(--muted)}
+.chip:focus-visible{outline:2px solid var(--hot);outline-offset:1px}
+.vs{position:absolute;font-family:var(--display);font-style:italic;font-weight:900;font-stretch:62%;font-size:16px;color:var(--acc);text-align:center}
+.vlab{position:absolute;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);text-align:center;left:0;width:340px}
+.cupv{position:absolute;object-fit:contain;filter:drop-shadow(0 0 18px rgba(255,120,20,.5))}
+.champv{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.champv small{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--acc)}
+.champv img{width:52px;height:52px;object-fit:contain}
+.champv b{font-family:var(--display);font-style:italic;font-weight:900;font-stretch:62%;font-size:22px;line-height:.95}
+.champv p{margin:0;color:var(--muted);font-size:13px;line-height:1.15}
+.champv.on img,.champv.on b{animation:pop .45s ease-out}
+.hint{font-family:var(--mono);font-size:11px;color:var(--hot);text-align:center;min-height:14px}
+@media (max-width:719px){
+ .wrap{padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));gap:12px;padding-top:12px}
+ .logos img{height:40px}.logos i{height:30px}
+ .sub{font-size:16px}
+ .bar{gap:8px;padding:6px 8px}
+ .reset,.share{font-size:11px;padding:7px 8px}
+ .scroller{overflow:hidden}
+}
 .board{position:absolute;left:0;top:0;width:1180px;height:700px;transform-origin:0 0}
 .swipe{display:none;font-family:var(--mono);font-size:12px;color:var(--acc);letter-spacing:.12em;text-align:center}
 .rl{position:absolute;font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--muted);text-align:center}
@@ -80,11 +107,6 @@ footer .fv{height:36px;width:auto}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
-
-<meta property="og:title" content="Armá tu camino a la final · Liga F5">
-<meta property="og:description" content="Elegí quién pasa en cada cruce de los playoffs de Segunda División.">
-</head>
-<body>
 <div class="wrap">
 <header>
   <div class="logos"><img id="lgLiga" alt="Liga F5"><i></i><img id="lgSeg" alt="Segunda División"></div>
@@ -96,9 +118,10 @@ footer .fv{height:36px;width:auto}
   <div class="prog" aria-hidden="true"><b id="progBar" style="width:0%"></b></div>
   <span class="count" id="count">0 de 15</span>
   <button class="reset" id="reset" type="button">Reiniciar</button>
-  <button class="share" id="share" type="button" disabled>Compartir en historia</button>
+  <button class="share" id="share" type="button" disabled>Compartir <span class="hs">en historia</span></button>
 </div>
 <div class="toast" id="toast" role="status"></div>
+<div class="hint" id="hint" aria-live="polite"></div>
 <div class="swipe" id="swipe">↔ Deslizá para ver toda la llave</div>
 <div class="scroller" id="scroller"><div class="stage" id="stage"><div class="board" id="board"></div></div></div>
 <p class="note">★ Drink Team y Estilo F.C. tienen ventaja deportiva en caso de empate · Octavos: sábado 7 de noviembre</p>
@@ -145,6 +168,9 @@ function slot(m,id,other,x,y,w,side,from){
 }
 function wire(x,y,w,h,on){el('w'+(on?' on':''),{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});}
 function render(){
+  MODE=isV()?'v':'h';
+  if(MODE==='v'){renderV();finish();return;}
+  B.style.width='1180px';B.style.height='700px';
   B.innerHTML='';
   [['OCTAVOS',0],['CUARTOS',1],['SEMIS',2]].forEach(([n,r])=>{for(const s of['L','R']){const[x,w]=COL[s][r];el('rl',{left:x+'px',width:w+'px',top:'28px'},n);}});
   for(let m=0;m<14;m++){
@@ -174,6 +200,9 @@ function render(){
   const ch=pick[14];const c=el('champ'+(ch?' on':''),{top:(FIN.top+MH+22)+'px'});
   c.innerHTML=ch?`<small>TU CAMPEÓN</small><img src="${T[ch].img}" alt=""><b>${T[ch].n}</b><p>Sacale captura y compartila etiquetando a la liga</p>`
                :`<small>TU CAMPEÓN</small><p>Te faltan ${15-Object.keys(pick).length} cruces</p>`;
+  finish();
+}
+function finish(){
   const n=Object.keys(pick).length;
   document.getElementById('count').textContent=`${n} de 15`;
   document.getElementById('progBar').style.width=(n/15*100)+'%';
@@ -188,8 +217,8 @@ async function makeStory(){
   const lh=120;x.drawImage(liga,W/2-20-liga.width*lh/liga.height,70,liga.width*lh/liga.height,lh);x.drawImage(seg,W/2+20,70,seg.width*lh/seg.height,lh);
   x.fillStyle='#FF8A1F';x.fillRect(W/2-1,85,3,90);
   x.textAlign='center';x.fillStyle='#FF8A1F';x.font='700 30px "JetBrains Mono", monospace';x.fillText('MI CUADRO · PLAYOFFS SEGUNDA',W/2,250);
-  const shot=await html2canvas(B,{backgroundColor:null,scale:1});
-  const bw=W-40,bh=shot.height*bw/shot.width;x.drawImage(shot,20,300,bw,bh);
+  const shot=await html2canvas(B,{backgroundColor:null,scale:MODE==='v'?3:1});
+  const sc2=Math.min((W-40)/shot.width,1150/shot.height),bw=shot.width*sc2,bh=shot.height*sc2;x.drawImage(shot,(W-bw)/2,300,bw,bh);
   const ch=T[pick[14]];const ci=await load(ch.img);
   let y=300+bh+60;x.fillStyle='#FFC46B';x.font='700 30px "JetBrains Mono", monospace';x.fillText('MI CAMPEÓN',W/2,y);
   x.drawImage(ci,W/2-90,y+25,180,180);
@@ -205,20 +234,68 @@ document.getElementById('share').addEventListener('click',async()=>{
     else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();t.textContent='Imagen descargada: subila a tu historia desde la galería.';}
   }catch(e){t.textContent=e&&e.name==='AbortError'?'':'No se pudo compartir. Sacale captura a la pantalla.';}
 });
+
+const CODE={drink:'DRK',fontana:'FON',siempre:'LDS',juve:'JUV',tanin:'TAN',kratos:'KRA',camorra:'CAM',conti:'CON',estilo:'EST',lores:'LOR',city:'CIT',banda:'BAN',jauria:'JAU',corte:'CDS',franj:'FRA',conta:'CTD'};
+const isV=()=>innerWidth<720;
+let MODE=null;
+const VW=340,VH=730,CW=36,CHH=50;
+const YT=[22,120,206,290],YB=[652,554,468,384]; // filas: octavos, cuartos, semis, finalista (arriba / abajo)
+const RND=m=>m<8?0:m<12?1:m<14?2:3;
+const isTop=m=>[0,1,2,3,8,9,12].includes(m);
+const NEXTNAME=['cuartos','semis','la final','campeón'];
+function chipCenters(m){ // x de centro de los dos chips del partido m
+  if(m<8){const i=m%4,base=4+i*85;return[base+CW/2,base+40+CW/2];}
+  if(m===14)return[VW/2,VW/2];
+  const f=FEED[m];return f.map(k=>{const c=chipCenters(k);return(c[0]+c[1])/2;});
+}
+function renderV(){
+  B.innerHTML='';B.style.width=VW+'px';B.style.height=VH+'px';
+  el('vlab',{top:'4px'},'OCTAVOS');el('vlab',{top:(VH-22)+'px'},'OCTAVOS');
+  for(let m=0;m<14;m++){
+    const top=isTop(m),r=RND(m),Y=(top?YT:YB)[r],Yn=(top?YT:YB)[r+1];
+    const cs=chipCenters(m),[a,b]=teams(m),f=FEED[m]||[];
+    [a,b].forEach((id,k)=>vchip(m,id,k?a:b,cs[k]-CW/2,Y));
+    // conectores
+    const on=!!pick[m],mc=(cs[0]+cs[1])/2;
+    const yA=top?Y+CHH:Y,yB=top?Yn:Yn+CHH,ym=(yA+yB)/2;
+    cs.forEach((cx,k)=>{const sel=on&&pick[m]===(k?b:a);wire(cx-1,Math.min(yA,ym),2,Math.abs(ym-yA),sel);
+      wire(Math.min(cx,mc),ym-1,Math.abs(mc-cx)+ (k?2:0),2,sel);});
+    wire(mc-1,Math.min(ym,yB),2,Math.abs(yB-ym),on);
+  }
+  // final
+  const[fa,fb]=teams(14);vchip(14,fa,fb,VW/2-CW/2,YT[3]);vchip(14,fb,fa,VW/2-CW/2,YB[3]);
+  el('vs',{left:(VW/2-30)+'px',width:'60px',top:(YT[3]+CHH+8)+'px'},'FINAL');
+  const img=document.createElement('img');img.className='cupv';img.src=DATA.cup;img.alt='Copa de Segunda División';
+  Object.assign(img.style,{left:'28px',top:(YT[3]-14)+'px',width:'96px',height:(YB[3]+CHH-YT[3]+28)+'px'});B.appendChild(img);
+  const ch=pick[14],c=el('champv'+(ch?' on':''),{left:'206px',width:'130px',top:(YT[3]+4)+'px'});
+  c.innerHTML=ch?`<small>TU CAMPEÓN</small><img src="${T[ch].img}" alt=""><b>${T[ch].n}</b>`
+     :`<small>TU CAMPEÓN</small><p>Te faltan ${15-Object.keys(pick).length} cruces</p>`;
+}
+function vchip(m,id,other,x,y){
+  if(!id){el('chip tbd',{left:x+'px',top:y+'px'},'?');return;}
+  const t=T[id],b=document.createElement('button');b.type='button';
+  b.className='chip'+(pick[m]===id?' sel':'')+(pick[m]&&pick[m]!==id?' out':'');
+  Object.assign(b.style,{left:x+'px',top:y+'px'});
+  b.setAttribute('aria-pressed',pick[m]===id?'true':'false');b.setAttribute('aria-label',`${t.n} pasa (${LBL(m)})`);
+  b.innerHTML=`<span class="ci"><img src="${t.img}" alt=""></span><span class="cd">${CODE[id]}</span>`;
+  b.disabled=!other;
+  b.addEventListener('click',()=>{const was=pick[m]===id;choose(m,id);
+    document.getElementById('hint').textContent=was?'':`${t.n} ${m===14?'es tu campeón 🏆':'pasa a '+NEXTNAME[RND(m)]}`;});
+  B.appendChild(b);
+}
+
 function __noop(){
 }
 const BW=1180,BH=690;
 function fit(){
   const sc=document.getElementById('scroller'),st=document.getElementById('stage');
+  if(MODE==='v'){const s=Math.min(1.35,sc.clientWidth/VW);B.style.transform=`scale(${s})`;st.style.width=(VW*s)+'px';st.style.height=(VH*s)+'px';document.getElementById('swipe').style.display='none';return;}
   const avail=sc.clientWidth;let s=Math.min(1,avail/BW);const minS=0.62;
   const scroll=s<minS; if(scroll)s=minS;
   B.style.transform=`scale(${s})`;st.style.width=(BW*s)+'px';st.style.height=(BH*s)+'px';
   document.getElementById('swipe').style.display=scroll?'block':'none';
 }
-addEventListener('resize',fit);
+addEventListener('resize',()=>{if((isV()?'v':'h')!==MODE)render();else fit();});
 document.getElementById('reset').addEventListener('click',()=>{pick={};save();render();});
 render();
 </script>
-
-</body>
-</html>
