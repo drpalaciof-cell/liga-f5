@@ -530,7 +530,9 @@
 // v94: planilla.html -- los botones de agregar jugador no aparecian al tocar "ARRANCO EL
 // PARTIDO" (confirmarArranque no los refrescaba), habia que recargar. Ahora
 // actualizarGateArranque los refresca en cada cambio de estado.
-const CACHE = 'ligaf5-v94';
+// v95: pestaña pública "🏆 Playoffs" con el cuadro de cada división y estética de los flyers
+// (fondo neón con la copa, títulos en Anybody itálica, cian Primera / naranja Segunda).
+const CACHE = 'ligaf5-v95';
 const ASSETS = [
   './index.html',
   './planilla.html',

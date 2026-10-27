@@ -1,3 +1,21 @@
+# 2026-10-27 — Pestaña pública "🏆 Playoffs" + estética de los flyers (sw v95)
+
+- Nueva pestaña **Playoffs** (al lado de Posiciones) con la llave de la división elegida:
+  Segunda desde octavos (1°A vs 8°B…, orden de la llave igual al flyer), Primera desde cuartos (1v8, 4v5, 2v7, 3v6).
+  Escritorio: llave espejada con la copa al centro. Celular (<720px): llave vertical con escudos y siglas.
+- Los cruces salen de la tabla. Mientras quede algún partido regular sin jugar se rotula "proyectado".
+- **Resultados de playoffs**: se leen de `partidos` con campo `fase` ('octavos'|'cuartos'|'semis'|'final'),
+  `jugado: true`, entre los dos equipos del cruce. Empate → `penalesLocal`/`penalesVisitante`; si no hay,
+  pasa el 1° de zona/tabla (ventaja deportiva); si ninguno la tiene, el cruce queda abierto.
+  ⚠️ Los partidos con `fase` ya NO suman a la tabla de posiciones (filtro en calcularTablaPosiciones).
+  ⏳ Pendiente: que el admin/fixture cree los partidos de playoffs con ese campo.
+- Estética flyer en la vista pública (`body.torneo-flyer`): fondos neón con la copa
+  (assets/bg-flyer-*.jpg, versión -v para pantallas verticales), títulos en Anybody itálica,
+  acento cian/naranja también en los botones de arriba (setDivisionAccent al cambiar de división).
+  Copas: assets/copa-primera-neon.webp, assets/copa-segunda-neon.webp.
+
+---
+
 # 2026-10-24 (cont.) — INSTITUTO F.C. (Primera) se baja
 
 - Fecha 11, cancha 1: `INSTITUTO F.C 0 - 3 EL CLAN FC`, cerrado, **sin horario** (va al final como

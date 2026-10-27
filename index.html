@@ -21,7 +21,7 @@
 <link rel="prefetch" as="image" href="assets/bg-shapes-segunda.jpg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@1,50..150,900&family=Big+Shoulders+Display:wght@600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
   color-scheme:dark;
@@ -745,6 +745,85 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     .rec-fecha-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12.5px;}
     .rec-cumplieron{font-size:11.5px;line-height:1.6;margin-top:4px;padding:6px 9px;border-radius:6px;background:rgba(140,140,160,.10);border:1px solid rgba(140,140,160,.24);}
     .rec-fecha-total{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:2px solid var(--line,rgba(255,255,255,.14));font-size:12.5px;}
+/* ===================== ESTILO FLYER (pedido 2026-10-27) =====================
+   La vista pública toma la estética de las placas de Instagram: fondo neón con la copa de cada
+   división, títulos en Anybody itálica condensada, cian en Primera y naranja en Segunda. */
+:root{--font-flyer:'Anybody','Big Shoulders Display',sans-serif;--po-hot:#a5f3fc;}
+body.division-accent-segunda,#divisions-wrap[data-division="Segunda"]{--po-hot:#FFC46B;}
+body.torneo-flyer .bg-fixed-layer{
+  background-image:linear-gradient(180deg,rgba(2,2,4,.72),rgba(2,2,4,.80) 55%,rgba(2,2,4,.9)),url("assets/bg-flyer-primera.jpg");
+  background-size:auto,cover;background-position:center,center 30%;
+}
+body.torneo-flyer.division-segunda-bg .bg-fixed-layer{
+  background-image:linear-gradient(180deg,rgba(4,1,1,.70),rgba(4,1,1,.80) 55%,rgba(4,1,1,.9)),url("assets/bg-flyer-segunda.jpg");
+}
+@media (max-aspect-ratio:1/1){
+  body.torneo-flyer .bg-fixed-layer{background-image:linear-gradient(180deg,rgba(2,2,4,.66),rgba(2,2,4,.82) 50%,rgba(2,2,4,.9)),url("assets/bg-flyer-primera-v.jpg");background-position:center,center top;}
+  body.torneo-flyer.division-segunda-bg .bg-fixed-layer{background-image:linear-gradient(180deg,rgba(4,1,1,.66),rgba(4,1,1,.82) 50%,rgba(4,1,1,.9)),url("assets/bg-flyer-segunda-v.jpg");}
+}
+body.torneo-flyer .tab-btn.active{box-shadow:0 4px 18px var(--division-glow1,rgba(34,211,238,.35));}
+body.torneo-flyer .division-title,
+body.torneo-flyer #divisions-wrap .zona-block-title,
+body.torneo-flyer #divisions-wrap .goleadores-goles,
+body.torneo-flyer #divisions-wrap .posiciones-table .pts-cell strong,
+body.torneo-flyer #divisions-wrap .partido-card-public .marcador .goles,
+body.torneo-flyer #divisions-wrap .envivo-fecha-actual{font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;letter-spacing:.01em;}
+body.torneo-flyer #divisions-wrap .zona-block-title{font-size:26px;text-transform:uppercase;text-shadow:0 0 18px var(--division-glow1,rgba(34,211,238,.35));}
+body.torneo-flyer #divisions-wrap .posiciones-table .pts-cell strong{font-size:19px;}
+body.torneo-flyer #divisions-wrap .goleadores-goles{font-size:24px;}
+body.torneo-flyer #divisions-wrap .section-card{border-color:color-mix(in srgb,var(--division-color,var(--cyan)) 35%,transparent);background:rgba(6,4,4,.62);}
+
+/* ===================== PLAYOFFS ===================== */
+.po-head{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;margin:4px 0 16px;}
+.po-eyebrow{font-size:12px;font-weight:800;letter-spacing:.28em;text-transform:uppercase;color:var(--division-color,var(--cyan));}
+.po-title{margin:0;font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:clamp(44px,8vw,78px);line-height:.9;text-transform:uppercase;color:#fff;text-shadow:0 0 30px var(--division-glow1,rgba(34,211,238,.4));}
+.po-title span{color:var(--division-color,var(--cyan));}
+.po-badge{display:inline-block;padding:6px 16px;border-top:2px solid var(--division-color,var(--cyan));border-bottom:2px solid var(--division-color,var(--cyan));background:rgba(0,0,0,.55);font-size:12.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;}
+.po-proy{font-size:12.5px;color:var(--po-hot);opacity:.9;}
+.po-scroller{overflow:hidden;border:1px solid color-mix(in srgb,var(--division-color,var(--cyan)) 35%,transparent);border-radius:14px;background:rgba(6,3,3,.6);padding:10px 0;}
+.po-stage{position:relative;margin:0 auto;}
+.po-board{position:absolute;left:0;top:0;transform-origin:0 0;}
+.po-note{text-align:center;font-size:12.5px;color:var(--text-dim);margin:10px 0 0;}
+.po-rl{position:absolute;text-align:center;font-size:11px;font-weight:800;letter-spacing:.2em;color:var(--text-dim);}
+.po-slot{position:absolute;height:38px;display:flex;align-items:center;background:rgba(20,14,12,.92);border:1px solid color-mix(in srgb,var(--division-color,var(--cyan)) 30%,transparent);overflow:hidden;}
+.po-slot .cr{width:40px;height:100%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);border-right:2px solid color-mix(in srgb,var(--division-color,var(--cyan)) 30%,transparent);}
+.po-slot .cr img{width:30px;height:30px;object-fit:contain;}
+.po-slot .nm{flex:1;min-width:0;padding:0 8px;font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:17px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.po-slot .sd{font-size:10.5px;font-weight:800;color:var(--division-color,var(--cyan));padding-right:8px;white-space:nowrap;}
+.po-slot .sc{font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:22px;padding:0 10px;color:#fff;}
+.po-slot .sc small{font-size:12px;color:var(--text-dim);}
+.po-slot.r{flex-direction:row-reverse;text-align:right;}
+.po-slot.r .cr{border-right:0;border-left:2px solid color-mix(in srgb,var(--division-color,var(--cyan)) 30%,transparent);}
+.po-slot.r .sd{padding-right:0;padding-left:8px;}
+.po-slot.sel{border-color:var(--division-color,var(--cyan));background:linear-gradient(90deg,color-mix(in srgb,var(--division-color,var(--cyan)) 38%,#100806),rgba(20,10,6,.95));box-shadow:0 0 14px var(--division-glow1,rgba(34,211,238,.4));}
+.po-slot.sel .sc{color:var(--po-hot);}
+.po-slot.out{opacity:.38;}
+.po-slot.tbd{border-style:dashed;background:transparent;}
+.po-slot.tbd .nm{font-family:var(--font-body);font-style:normal;font-weight:600;font-size:12px;text-transform:none;color:var(--text-dim);}
+.po-w{position:absolute;background:color-mix(in srgb,var(--division-color,var(--cyan)) 45%,#2a2a2a);}
+.po-w.on{background:var(--division-color,var(--cyan));box-shadow:0 0 6px var(--division-glow2,rgba(34,211,238,.6));}
+.po-cup{position:absolute;object-fit:contain;filter:drop-shadow(0 0 24px var(--division-glow1,rgba(34,211,238,.45)));}
+.po-finlab{position:absolute;text-align:center;font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:34px;line-height:1;color:#fff;}
+.po-champ{position:absolute;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;}
+.po-champ small{font-size:11px;font-weight:800;letter-spacing:.24em;color:var(--division-color,var(--cyan));}
+.po-champ img{width:70px;height:70px;object-fit:contain;}
+.po-champ b{font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:32px;line-height:.95;text-transform:uppercase;}
+.po-champ p{margin:0;color:var(--text-dim);font-size:14px;}
+.po-champ.v img{width:46px;height:46px;}
+.po-champ.v b{font-size:21px;}
+.po-chip{position:absolute;height:46px;background:rgba(20,14,12,.92);border:1px solid color-mix(in srgb,var(--division-color,var(--cyan)) 30%,transparent);display:flex;flex-direction:column;align-items:center;overflow:hidden;}
+.po-chip .ci{width:100%;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-bottom:1px solid color-mix(in srgb,var(--division-color,var(--cyan)) 25%,transparent);}
+.po-chip .ci img{width:26px;height:26px;object-fit:contain;}
+.po-chip .cd{font-size:10.5px;font-weight:800;line-height:15px;letter-spacing:.03em;}
+.po-chip.sel{border-color:var(--division-color,var(--cyan));background:color-mix(in srgb,var(--division-color,var(--cyan)) 35%,#100806);box-shadow:0 0 12px var(--division-glow1,rgba(34,211,238,.5));}
+.po-chip.sel .cd{color:var(--po-hot);}
+.po-chip.out{opacity:.32;}
+.po-chip.tbd{border-style:dashed;background:transparent;justify-content:center;font-size:14px;color:var(--text-dim);}
+.po-vlab{position:absolute;left:0;width:340px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.2em;color:var(--text-dim);}
+body.torneo-flyer .hero-headline{background:linear-gradient(135deg,#fff,var(--division-color,var(--cyan)));-webkit-background-clip:text;background-clip:text;}
+@media (max-width:719px){.po-badge{font-size:11px;letter-spacing:.08em;padding:6px 10px;}.po-eyebrow{font-size:10.5px;letter-spacing:.2em;}}
+.po-vs{position:absolute;text-align:center;font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:17px;color:var(--division-color,var(--cyan));}
+#divisions-wrap[data-division="Segunda"]{--division-glow1:rgba(251,146,60,.35);--division-glow2:rgba(251,146,60,.6);}
 </style>
 </head>
 <body>
@@ -813,6 +892,7 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
     <div class="divisions" id="divisions-wrap" data-division="Primera">
       <div class="content-tabs-sub">
         <button class="tab-btn active" data-content-tab="posiciones" onclick="switchContentTab('posiciones')">Posiciones</button>
+        <button class="tab-btn" data-content-tab="playoffs" onclick="switchContentTab('playoffs')">🏆 Playoffs</button>
         <button class="tab-btn" data-content-tab="goleadores" onclick="switchContentTab('goleadores')">Goleadores</button>
         <button class="tab-btn" data-content-tab="partidos" onclick="switchContentTab('partidos')">Resultados</button>
         <button class="tab-btn" data-content-tab="envivo" onclick="switchContentTab('envivo')">🔴 En vivo</button>
@@ -825,6 +905,9 @@ footer{padding:30px 0;text-align:center;color:var(--text-dim);font-size:12.5px;b
       </div>
       <div id="contenttab-posiciones" class="contenttab">
         <div id="posiciones-wrap"></div>
+      </div>
+      <div id="contenttab-playoffs" class="contenttab hidden">
+        <div id="playoffs-wrap"></div>
       </div>
       <div id="contenttab-goleadores" class="contenttab hidden">
         <div id="goleadores-wrap"></div>
@@ -2089,7 +2172,8 @@ function showView(name) {
   document.getElementById('view-' + name).classList.remove('hidden');
   window.scrollTo(0, 0);
   updateNavAuthUI();
-  if (name === 'landing') { loadLanding(); setDivisionBg(state.divisionActiva === 'Segunda'); setDivisionAccent(false); }
+  document.body.classList.toggle('torneo-flyer', name === 'landing');
+  if (name === 'landing') { loadLanding(); setDivisionBg(state.divisionActiva === 'Segunda'); setDivisionAccent(state.divisionActiva === 'Segunda'); }
   if (name === 'login-equipo') { setDivisionBg(false); setDivisionAccent(false); }
   if (name === 'registro-equipo') resetWizardRegistro();
   if (name === 'panel-equipo') { setDivisionBg(state.equipo && state.equipo.division === 'Segunda'); setDivisionAccent(state.equipo && state.equipo.division === 'Segunda'); }
@@ -2225,9 +2309,247 @@ function switchDivisionTab(div) {
   document.getElementById('division-cup-logo').alt = `Copa ${div} División`;
   document.getElementById('division-title').textContent = div + ' División';
   setDivisionBg(div === 'Segunda');
+  setDivisionAccent(div === 'Segunda');
   switchContentTab('posiciones');
   cargarEquiposCache();
 }
+
+/* ===================== PLAYOFFS (público) ===================== */
+// Pedido del usuario (2026-10-27): pestaña "Playoffs" con el cuadro de cada división, con la
+// estética de los flyers (cian Primera, naranja Segunda).
+//
+// - Los cruces de la primera ronda salen de la tabla (Segunda: 1°A vs 8°B y así, desde octavos;
+//   Primera: 1v8, 4v5, 2v7, 3v6, desde cuartos). Mientras quede algún partido de la fase regular
+//   sin jugar, el cuadro se muestra como "proyectado con la tabla actual".
+// - Los resultados de playoffs se toman de los partidos que tengan el campo `fase`
+//   ('octavos' | 'cuartos' | 'semis' | 'final'), cerrados (`jugado`) y entre los dos equipos del
+//   cruce. Esos partidos NO suman a la tabla de posiciones (ver calcularTablaPosiciones).
+// - Empate: si el partido tiene `penalesLocal`/`penalesVisitante`, gana el de más penales; si no,
+//   pasa el 1° de zona/tabla (ventaja deportiva); si ninguno la tiene, el cruce queda abierto.
+const PLAYOFF_CFG = {
+  Segunda: {
+    rondas: ['OCTAVOS', 'CUARTOS', 'SEMIS', 'FINAL'],
+    // orden de la llave: mitad izquierda (4 cruces) y mitad derecha (4 cruces)
+    seeds: [['A1','B8'],['B4','A5'],['A3','B6'],['B2','A7'],['B1','A8'],['A4','B5'],['B3','A6'],['A2','B7']],
+    copa: 'assets/copa-segunda-neon.webp',
+    inicio: 'Octavos de final · Sábado 7 de noviembre'
+  },
+  Primera: {
+    rondas: ['CUARTOS', 'SEMIS', 'FINAL'],
+    seeds: [['1','8'],['4','5'],['2','7'],['3','6']],
+    copa: 'assets/copa-primera-neon.webp',
+    inicio: 'Cuartos de final · Sábado 14 de noviembre'
+  }
+};
+const PO_STOP = new Set(['LA','LOS','LAS','EL','DE','DEL','FC','F.C','F.C.','CLUB','DEPORTIVO','DEP.','CA','C.A']);
+function poSigla(nombre) {
+  const ws = String(nombre || '').toUpperCase().replace(/[^A-ZÁÉÍÓÚÑ0-9. ]/g, ' ').split(/\s+/).filter(Boolean);
+  const w = ws.find(x => !PO_STOP.has(x)) || ws[0] || '?';
+  return w.normalize('NFD').replace(/[̀-ͯ.]/g, '').slice(0, 3);
+}
+function poSeedLabel(seed) { return seed.length === 2 ? `${seed[1]}°${seed[0]}` : `${seed}°`; }
+
+function calcularCuadroPlayoffs(div) {
+  const cfg = PLAYOFF_CFG[div];
+  const tablas = {};
+  if (div === 'Segunda') { tablas.A = calcularPosiciones('A'); tablas.B = calcularPosiciones('B'); }
+  else tablas._ = calcularPosicionesDivision();
+  const bySeed = s => {
+    const t = s.length === 2 ? tablas[s[0]] : tablas._;
+    const pos = Number(s.length === 2 ? s[1] : s) - 1;
+    const enJuego = (t || []).filter(x => !x.descalificado);
+    const e = enJuego[pos];
+    return e ? { id: e.id, nombre: e.nombre, escudo: e.escudo, seed: s, ventaja: pos === 0 } : null;
+  };
+  const regular = state.partidosCache.filter(p => !p.fase);
+  const proyectado = regular.some(p => !p.jugado);
+  const playoffs = state.partidosCache.filter(p => p.fase && p.jugado);
+  const M0 = cfg.seeds.length, R = cfg.rondas.length;
+  const rondas = []; let start = 0;
+  for (let r = 0; r < R; r++) { const n = M0 >> r; rondas.push([...Array(n).keys()].map(j => start + j)); start += n; }
+  const matches = [];
+  const feed = {};
+  for (let r = 1; r < R; r++) rondas[r].forEach((m, j) => { feed[m] = [rondas[r - 1][2 * j], rondas[r - 1][2 * j + 1]]; });
+  for (let r = 0; r < R; r++) {
+    for (const m of rondas[r]) {
+      let a, b;
+      if (r === 0) { a = bySeed(cfg.seeds[m][0]); b = bySeed(cfg.seeds[m][1]); }
+      else { a = matches[feed[m][0]].ganador || null; b = matches[feed[m][1]].ganador || null; }
+      const mt = { m, r, a, b, feed: feed[m] || null, ganador: null, partido: null };
+      if (a && b) {
+        const p = playoffs.filter(p => (p.equipoLocalId === a.id && p.equipoVisitanteId === b.id) || (p.equipoLocalId === b.id && p.equipoVisitanteId === a.id))
+          .sort((x, y) => (y.numeroFecha || 0) - (x.numeroFecha || 0))[0];
+        if (p) {
+          const ga = p.equipoLocalId === a.id ? p.golesLocal : p.golesVisitante;
+          const gb = p.equipoLocalId === a.id ? p.golesVisitante : p.golesLocal;
+          const pa = p.equipoLocalId === a.id ? p.penalesLocal : p.penalesVisitante;
+          const pb = p.equipoLocalId === a.id ? p.penalesVisitante : p.penalesLocal;
+          mt.partido = { ga: ga ?? 0, gb: gb ?? 0, pa, pb };
+          if ((ga ?? 0) !== (gb ?? 0)) mt.ganador = (ga ?? 0) > (gb ?? 0) ? a : b;
+          else if (pa != null && pb != null && pa !== pb) mt.ganador = pa > pb ? a : b;
+          else if (a.ventaja !== b.ventaja) mt.ganador = a.ventaja ? a : b;
+        }
+      }
+      matches[m] = mt;
+    }
+  }
+  return { cfg, matches, rondas, proyectado, campeon: matches[matches.length - 1].ganador };
+}
+
+let _poModo = null;
+function renderPlayoffsPublico() {
+  const wrap = document.getElementById('playoffs-wrap');
+  if (!wrap) return;
+  const div = state.divisionActiva;
+  if (!state.equiposCache.length) { wrap.innerHTML = `<div class="empty-state">Cargando...</div>`; return; }
+  const cu = calcularCuadroPlayoffs(div);
+  const ventajas = cu.matches.filter(m => m.r === 0).flatMap(m => [m.a, m.b]).filter(t => t && t.ventaja).map(t => escapeHtml(t.nombre));
+  wrap.innerHTML = `
+    <div class="po-head">
+      <div class="po-eyebrow">${div} División · Torneo Clausura</div>
+      <h3 class="po-title">Rumbo a la <span>final</span></h3>
+      <div class="po-badge">${cu.cfg.inicio}</div>
+      ${cu.proyectado ? `<div class="po-proy">Cuadro proyectado con la tabla actual: se confirma al terminar la fase regular.</div>` : ''}
+    </div>
+    <div class="po-scroller" id="po-scroller"><div class="po-stage" id="po-stage"><div class="po-board" id="po-board"></div></div></div>
+    ${ventajas.length ? `<p class="po-note">★ ${ventajas.join(' y ')} ${ventajas.length > 1 ? 'tienen' : 'tiene'} ventaja deportiva en caso de empate.</p>` : ''}`;
+  _poModo = window.innerWidth < 720 ? 'v' : 'h';
+  const B = document.getElementById('po-board');
+  if (_poModo === 'v') poDibujarV(B, cu); else poDibujarH(B, cu);
+  poAjustar();
+}
+function poEl(B, cls, css, html) { const d = document.createElement('div'); d.className = cls; Object.assign(d.style, css); if (html != null) d.innerHTML = html; B.appendChild(d); return d; }
+function poWire(B, x, y, w, h, on) { poEl(B, 'po-w' + (on ? ' on' : ''), { left: x + 'px', top: y + 'px', width: Math.max(w, 0) + 'px', height: Math.max(h, 0) + 'px' }); }
+function poFromLabel(cu, mt, k) {
+  const f = mt.feed && mt.feed[k];
+  if (f == null) return '';
+  const fr = cu.matches[f].r; const nombre = cu.cfg.rondas[fr].toLowerCase();
+  const idx = cu.rondas[fr].indexOf(f) + 1;
+  return `Ganador ${nombre} ${idx}`;
+}
+// ---------- horizontal (escritorio): llave espejada ----------
+function poDibujarH(B, cu) {
+  const R = cu.cfg.rondas.length, RS = R - 1, M0 = cu.cfg.seeds.length, H = M0 / 2;
+  const CW = 188, CG = 26, SH = 38, GAP = 4, MH = SH * 2 + GAP, FW = 200;
+  const BW = 2 * RS * (CW + CG) + FW;
+  const firstTops = H === 4 ? [70, 220, 370, 520] : [150, 450];
+  const pos = {};
+  const colX = (side, r) => side === 'L' ? r * (CW + CG) : BW - CW - r * (CW + CG);
+  for (let r = 0; r < RS; r++) {
+    const ms = cu.rondas[r]; const half = ms.length / 2;
+    ms.forEach((m, j) => {
+      const side = j < half ? 'L' : 'R'; const jj = j % half;
+      let top;
+      if (r === 0) top = firstTops[jj];
+      else { const [c0, c1] = cu.matches[m].feed; top = ((pos[c0].top + pos[c1].top) / 2); }
+      pos[m] = { side, r, top, x: colX(side, r) };
+    });
+  }
+  const semis = cu.rondas[RS - 1];
+  const semiC = pos[semis[0]].top + MH / 2;
+  const FX = (BW - FW) / 2, FT = semiC - SH - GAP / 2;
+  const fin = cu.rondas[R - 1][0];
+  const BH = Math.max(firstTops[H - 1] + MH + 40, FT + MH + 190);
+  B.style.width = BW + 'px'; B.style.height = BH + 'px';
+  B.dataset.bw = BW; B.dataset.bh = BH;
+  for (let r = 0; r < RS; r++) for (const s of ['L', 'R']) poEl(B, 'po-rl', { left: colX(s, r) + 'px', width: CW + 'px', top: '26px' }, cu.cfg.rondas[r]);
+  const slot = (mt, t, k, x, y, w, right) => {
+    const lado = right ? ' r' : '';
+    if (!t) { poEl(B, 'po-slot tbd' + lado, { left: x + 'px', top: y + 'px', width: w + 'px' }, `<span class="cr"></span><span class="nm">${poFromLabel(cu, mt, k)}</span>`); return; }
+    const win = mt.ganador && mt.ganador.id === t.id, lose = mt.ganador && mt.ganador.id !== t.id;
+    const g = mt.partido ? (k === 0 ? mt.partido.ga : mt.partido.gb) : null;
+    const pen = mt.partido && mt.partido.pa != null && mt.partido.pb != null && mt.partido.ga === mt.partido.gb ? ` <small>(${k === 0 ? mt.partido.pa : mt.partido.pb})</small>` : '';
+    const tag = g != null ? `<span class="sc">${g}${pen}</span>` : (mt.r === 0 ? `<span class="sd">${t.ventaja ? '★' : ''}${poSeedLabel(t.seed)}</span>` : '');
+    poEl(B, 'po-slot' + lado + (win ? ' sel' : '') + (lose ? ' out' : ''), { left: x + 'px', top: y + 'px', width: w + 'px' },
+      `<span class="cr">${t.escudo ? `<img src="${t.escudo}" alt="">` : ''}</span><span class="nm">${escapeHtml(t.nombre)}</span>${tag}`);
+  };
+  for (let r = 0; r < RS; r++) for (const m of cu.rondas[r]) {
+    const mt = cu.matches[m], p = pos[m], right = p.side === 'R';
+    slot(mt, mt.a, 0, p.x, p.top, CW, right); slot(mt, mt.b, 1, p.x, p.top + SH + GAP, CW, right);
+    // conector al cruce siguiente
+    const nextR = r + 1; const nm = cu.rondas[nextR].find(x => cu.matches[x].feed.includes(m));
+    const k = cu.matches[nm].feed.indexOf(m);
+    let tx, ty;
+    if (nextR < RS) { const q = pos[nm]; ty = q.top + k * (SH + GAP) + SH / 2; tx = right ? q.x + CW : q.x; }
+    else { ty = FT + (right ? SH + GAP : 0) + SH / 2; tx = right ? FX + FW : FX; }
+    const on = !!mt.ganador, ys = [p.top + SH / 2, p.top + SH + GAP + SH / 2], yc = p.top + MH / 2;
+    const selA = on && mt.ganador.id === (mt.a && mt.a.id), selB = on && mt.ganador.id === (mt.b && mt.b.id);
+    if (!right) { const x0 = p.x + CW, xm = x0 + 10;
+      poWire(B, x0, ys[0] - 1, 10, 2, selA); poWire(B, x0, ys[1] - 1, 10, 2, selB);
+      poWire(B, xm, ys[0] - 1, 2, ys[1] - ys[0] + 2, on); poWire(B, xm, Math.min(yc, ty) - 1, 2, Math.abs(ty - yc) + 2, on); poWire(B, xm, ty - 1, tx - xm, 2, on);
+    } else { const x0 = p.x, xm = x0 - 12;
+      poWire(B, xm, ys[0] - 1, 12, 2, selA); poWire(B, xm, ys[1] - 1, 12, 2, selB);
+      poWire(B, xm, ys[0] - 1, 2, ys[1] - ys[0] + 2, on); poWire(B, xm, Math.min(yc, ty) - 1, 2, Math.abs(ty - yc) + 2, on); poWire(B, tx, ty - 1, xm - tx, 2, on); }
+  }
+  const cupH = Math.min(260, FT - 70);
+  const cup = document.createElement('img'); cup.className = 'po-cup'; cup.src = cu.cfg.copa; cup.alt = 'Copa';
+  Object.assign(cup.style, { left: (FX + 20) + 'px', width: (FW - 40) + 'px', top: (FT - 52 - cupH) + 'px', height: cupH + 'px' }); B.appendChild(cup);
+  poEl(B, 'po-finlab', { left: FX + 'px', width: FW + 'px', top: (FT - 46) + 'px' }, 'FINAL');
+  const fm = cu.matches[fin];
+  slot(fm, fm.a, 0, FX, FT, FW, false); slot(fm, fm.b, 1, FX, FT + SH + GAP, FW, false);
+  const ch = cu.campeon;
+  poEl(B, 'po-champ', { left: (FX - 30) + 'px', width: (FW + 60) + 'px', top: (FT + MH + 22) + 'px' },
+    ch ? `<small>CAMPEÓN</small>${ch.escudo ? `<img src="${ch.escudo}" alt="">` : ''}<b>${escapeHtml(ch.nombre)}</b>` : `<small>CAMPEÓN</small><p>A definir</p>`);
+}
+// ---------- vertical (celular): llave de arriba hacia abajo ----------
+function poDibujarV(B, cu) {
+  const R = cu.cfg.rondas.length, RS = R - 1, M0 = cu.cfg.seeds.length, H = M0 / 2;
+  const VW = 340, CHH = 46, STEP = 70;
+  const CWv = H === 4 ? 37 : 60;
+  const YT = [...Array(RS + 1).keys()].map(r => 20 + r * STEP);
+  const finB = YT[RS] + CHH + 30;
+  const YB = [...Array(RS + 1).keys()].map(r => finB + (RS - r) * STEP);
+  const VH = YB[0] + CHH + 22;
+  B.style.width = VW + 'px'; B.style.height = VH + 'px'; B.dataset.bw = VW; B.dataset.bh = VH;
+  const centers = {};
+  const span = VW / H;
+  const cc = m => {
+    if (centers[m]) return centers[m];
+    const mt = cu.matches[m]; let c;
+    if (mt.r === 0) { const j = cu.rondas[0].indexOf(m) % H; const mid = span * j + span / 2; c = [mid - CWv / 2 - 2, mid + CWv / 2 + 2]; }
+    else c = mt.feed.map(f => { const x = cc(f); return (x[0] + x[1]) / 2; });
+    return (centers[m] = c);
+  };
+  const top = m => { const r = cu.matches[m].r; const half = cu.rondas[r].length / 2; return cu.rondas[r].indexOf(m) < half; };
+  const chip = (mt, t, x, y) => {
+    if (!t) { poEl(B, 'po-chip tbd', { left: x + 'px', top: y + 'px', width: CWv + 'px' }, '?'); return; }
+    const win = mt.ganador && mt.ganador.id === t.id, lose = mt.ganador && mt.ganador.id !== t.id;
+    const d = poEl(B, 'po-chip' + (win ? ' sel' : '') + (lose ? ' out' : ''), { left: x + 'px', top: y + 'px', width: CWv + 'px' },
+      `<span class="ci">${t.escudo ? `<img src="${t.escudo}" alt="">` : ''}</span><span class="cd">${poSigla(t.nombre)}</span>`);
+    d.title = t.nombre;
+  };
+  poEl(B, 'po-vlab', { top: '2px' }, cu.cfg.rondas[0]); poEl(B, 'po-vlab', { top: (VH - 17) + 'px' }, cu.cfg.rondas[0]);
+  for (let r = 0; r < RS; r++) for (const m of cu.rondas[r]) {
+    const mt = cu.matches[m], isTop = top(m), Y = (isTop ? YT : YB)[r], Yn = (isTop ? YT : YB)[r + 1];
+    const cs = cc(m);
+    chip(mt, mt.a, cs[0] - CWv / 2, Y); chip(mt, mt.b, cs[1] - CWv / 2, Y);
+    const on = !!mt.ganador, mc = (cs[0] + cs[1]) / 2;
+    const yA = isTop ? Y + CHH : Y, yB = isTop ? Yn : Yn + CHH, ym = (yA + yB) / 2;
+    [mt.a, mt.b].forEach((t, k) => { const sel = on && t && mt.ganador.id === t.id; const cx = cs[k];
+      poWire(B, cx - 1, Math.min(yA, ym), 2, Math.abs(ym - yA), sel); poWire(B, Math.min(cx, mc), ym - 1, Math.abs(mc - cx) + (k ? 2 : 0), 2, sel); });
+    poWire(B, mc - 1, Math.min(ym, yB), 2, Math.abs(yB - ym), on);
+  }
+  const fm = cu.matches[cu.rondas[R - 1][0]];
+  chip(fm, fm.a, VW / 2 - CWv / 2, YT[RS]); chip(fm, fm.b, VW / 2 - CWv / 2, YB[RS]);
+  poEl(B, 'po-vs', { left: (VW / 2 - 40) + 'px', width: '80px', top: (YT[RS] + CHH + 6) + 'px' }, 'FINAL');
+  const cup = document.createElement('img'); cup.className = 'po-cup'; cup.src = cu.cfg.copa; cup.alt = 'Copa';
+  Object.assign(cup.style, { left: '30px', top: (YT[RS] - 26) + 'px', width: '92px', height: (YB[RS] + CHH - YT[RS] + 52) + 'px' }); B.appendChild(cup);
+  const ch = cu.campeon;
+  poEl(B, 'po-champ v', { left: '206px', width: '130px', top: (YT[RS] - 4) + 'px' },
+    ch ? `<small>CAMPEÓN</small>${ch.escudo ? `<img src="${ch.escudo}" alt="">` : ''}<b>${escapeHtml(ch.nombre)}</b>` : `<small>CAMPEÓN</small><p>A definir</p>`);
+}
+function poAjustar() {
+  const sc = document.getElementById('po-scroller'), st = document.getElementById('po-stage'), B = document.getElementById('po-board');
+  if (!sc || !B) return;
+  const bw = Number(B.dataset.bw), bh = Number(B.dataset.bh), avail = sc.clientWidth - 2;
+  const s = _poModo === 'v' ? Math.min(1.3, avail / bw) : Math.min(1, avail / bw);
+  B.style.transform = `scale(${s})`; st.style.width = (bw * s) + 'px'; st.style.height = (bh * s) + 'px';
+}
+window.addEventListener('resize', () => {
+  if (state.contentTabActivo !== 'playoffs') return;
+  const modo = window.innerWidth < 720 ? 'v' : 'h';
+  if (modo !== _poModo) renderPlayoffsPublico(); else poAjustar();
+});
 
 /* ===================== FIXTURE / POSICIONES / GOLEADORES (público) ===================== */
 // Escucha en vivo: cuando un planillero cierra un partido (o el admin carga
@@ -2329,6 +2651,7 @@ function renderContentTabActivo() {
   if (state.contentTabActivo === 'envivo') { cargarPartidosTotal(); renderEnVivoPublico(); }
   else if (state.contentTabActivo === 'posiciones') renderPosicionesPublico();
   else if (state.contentTabActivo === 'goleadores') renderGoleadoresPublico();
+  else if (state.contentTabActivo === 'playoffs') renderPlayoffsPublico();
   else if (state.contentTabActivo === 'fixture') renderFixturePublico();
   else if (state.contentTabActivo === 'partidos') renderPartidosPublico();
 }
@@ -2342,7 +2665,8 @@ function calcularTablaPosiciones(equipos, partidos) {
   // Ordenados por fecha para que "historial" (usado para las últimas 5) quede
   // en orden cronológico real -- para los totales el orden no importa, pero
   // sin esto el forma-guide saldría mezclado.
-  const jugados = partidos.filter(p => p.jugado).sort((a, b) => (a.numeroFecha || 0) - (b.numeroFecha || 0));
+  // Los partidos de playoffs (campo `fase`) no suman a la tabla: van al cuadro.
+  const jugados = partidos.filter(p => p.jugado && !p.fase).sort((a, b) => (a.numeroFecha || 0) - (b.numeroFecha || 0));
   jugados.forEach(p => {
     const local = byId[p.equipoLocalId];
     const visitante = byId[p.equipoVisitanteId];
