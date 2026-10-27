@@ -8,7 +8,12 @@
   `jugado: true`, entre los dos equipos del cruce. Empate → `penalesLocal`/`penalesVisitante`; si no hay,
   pasa el 1° de zona/tabla (ventaja deportiva); si ninguno la tiene, el cruce queda abierto.
   ⚠️ Los partidos con `fase` ya NO suman a la tabla de posiciones (filtro en calcularTablaPosiciones).
-  ⏳ Pendiente: que el admin/fixture cree los partidos de playoffs con ese campo.
+  ✅ (v96) El admin los crea desde Fixture → bloque "🏆 Playoffs" → "Crear partidos de <ronda>":
+  pide el número de fecha (sugiere el mismo que la otra división si tiene playoffs sin jugar, si no
+  la siguiente), cancha por defecto (Primera 1; Segunda mitad izq. 2 / der. 3), horario vacío → 🕐.
+  Cada partido lleva `fase` + `llave` (índice del cruce). Resultados/Fixture/En vivo rotulan la ronda
+  ("🏆 Octavos de final") y muestran penales; el modal de resultado del admin y la planilla
+  (cierre) piden penales si el cruce termina empatado (vacío = pasa el de ventaja deportiva).
 - Estética flyer en la vista pública (`body.torneo-flyer`): fondos neón con la copa
   (assets/bg-flyer-*.jpg, versión -v para pantallas verticales), títulos en Anybody itálica,
   acento cian/naranja también en los botones de arriba (setDivisionAccent al cambiar de división).

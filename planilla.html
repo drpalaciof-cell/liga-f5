@@ -1026,6 +1026,15 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <span style="font-size:11px;font-weight:700;color:var(--muted)" id="cierre-visitante-nombre">VISITANTE</span>
       </div>
     </div>
+    <div id="penales-box" style="display:none;margin-bottom:12px;padding:12px;border:1px solid rgba(255,255,255,0.12);border-radius:12px;background:rgba(255,255,255,0.04);">
+      <div class="section-label" style="margin-top:0;">Penales (empate en playoffs)</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+        <div style="text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;" id="pen-local-nombre">LOCAL</div><input type="number" min="0" inputmode="numeric" id="pen-local" style="width:80px;font-size:26px;text-align:center;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;"></div>
+        <div style="font-size:22px;font-weight:900;padding-top:16px;">:</div>
+        <div style="text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;" id="pen-visitante-nombre">VISITANTE</div><input type="number" min="0" inputmode="numeric" id="pen-visitante" style="width:80px;font-size:26px;text-align:center;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Si no se patean penales porque pasa el equipo con ventaja deportiva, dejalo vacío.</div>
+    </div>
     <div class="section-label">Observaciones / Informes del árbitro</div>
     <textarea class="obs" id="obs-text" placeholder="Protestas, informes del árbitro, incidentes, sanciones..."></textarea>
     <div class="section-label" style="margin-top:14px;">Confirmación de capitanes</div>
@@ -1299,6 +1308,9 @@ async function confirmarPlanillero(){
   goScreen('screen-cancha');
 }
 function toast(msg,ms=2200){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),ms);}
+// Playoffs (2026-10-27): los cruces son partidos comunes con `fase`. Se rotulan con la ronda en
+// lugar de "Fecha N" y, si terminan empatados, el cierre pide los penales.
+const FASE_LABEL={octavos:'Octavos de final',cuartos:'Cuartos de final',semis:'Semifinales',final:'Final'};
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");} // para strings en onclick='...'
 function numCamiseta(n){return String(n||'').padStart(2,'0');}
@@ -1504,7 +1516,7 @@ async function cargarLista(){
     if(divisionCancha&&fechaActiva!=null){
       body.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;margin-bottom:12px;">
         <img src="assets/copa-${esPrimera?'primera':esSegunda?'segunda':''}.png" style="height:160px;width:auto;object-fit:contain;" onerror="this.style.display='none'">
-        <div><div style="font-size:14px;font-weight:800;color:${colorDiv};letter-spacing:.5px;">${divisionCancha}</div><div style="font-size:11px;color:rgba(255,255,255,0.35);">Fecha ${fechaActiva} &nbsp;·&nbsp; Cancha ${st.cancha}</div></div>
+        <div><div style="font-size:14px;font-weight:800;color:${colorDiv};letter-spacing:.5px;">${divisionCancha}</div><div style="font-size:11px;color:rgba(255,255,255,0.35);">${partidos[0]&&partidos[0].fase?`<b style="font-size:16px;font-style:italic;font-weight:900;color:${colorDiv};letter-spacing:.3px;">🏆 ${FASE_LABEL[partidos[0].fase]||partidos[0].fase}</b> &nbsp;·&nbsp; `:`Fecha ${fechaActiva} &nbsp;·&nbsp; `}Cancha ${st.cancha}</div></div>
       </div>`;
     }
     if(!partidos.length){body.innerHTML+='<div class="empty-msg">Todos los partidos de esta cancha ya fueron cerrados.</div>';return;}
@@ -2297,6 +2309,16 @@ function finPartido(){
   const gV=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoVisitanteId).length;
   document.getElementById('cierre-local-goles').textContent=gL;
   document.getElementById('cierre-visitante-goles').textContent=gV;
+  // Playoffs empatados: se habilita la carga de penales.
+  const penBox=document.getElementById('penales-box');
+  const conPenales=!!p.fase&&gL===gV;
+  penBox.style.display=conPenales?'block':'none';
+  if(conPenales){
+    document.getElementById('pen-local-nombre').textContent=p.equipoLocalNombre||'LOCAL';
+    document.getElementById('pen-visitante-nombre').textContent=p.equipoVisitanteNombre||'VISITANTE';
+    document.getElementById('pen-local').value=p.penalesLocal??'';
+    document.getElementById('pen-visitante').value=p.penalesVisitante??'';
+  }
   // Pre-poblar obs desde Firestore si el textarea está vacío
   const obsEl=document.getElementById('obs-text');
   if(obsEl&&!obsEl.value&&p.observaciones)obsEl.value=p.observaciones;
@@ -2649,11 +2671,24 @@ function cerrarPlanilla(){
     toast('Falta la confirmación del capitán de '+(nombre||falta)+' — tocá el botón resaltado.',5000);
     return;
   }
-  if(!confirm('¿Cerrar la planilla definitivamente?'))return;
-  const obs=document.getElementById('obs-text').value.trim();
   const p=st.partido;
   const gL=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoLocalId).length;
   const gV=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoVisitanteId).length;
+  // Penales: solo en playoffs y solo si terminó empatado.
+  let penales={penalesLocal:null,penalesVisitante:null};
+  if(p.fase&&gL===gV){
+    const pl=document.getElementById('pen-local').value,pv=document.getElementById('pen-visitante').value;
+    if(pl===''&&pv===''){
+      if(!confirm('Terminó empatado y no cargaste penales: pasa el equipo con ventaja deportiva. ¿Cerrar así?'))return;
+    }else if(pl===''||pv===''||Number(pl)===Number(pv)){
+      toast('Completá los penales de los dos equipos (no pueden quedar iguales).',5000);
+      document.getElementById('penales-box').scrollIntoView({block:'center',behavior:'smooth'});
+      return;
+    }else penales={penalesLocal:Number(pl),penalesVisitante:Number(pv)};
+  }
+  if(!confirm('¿Cerrar la planilla definitivamente?'))return;
+  const obs=document.getElementById('obs-text').value.trim();
+  if(p.fase){st.partido.penalesLocal=penales.penalesLocal;st.partido.penalesVisitante=penales.penalesVisitante;}
   // Reusa la hora que ya se marcó al tocar "FIN DEL PARTIDO" (finPartido()) -- no genera una
   // nueva acá, porque completar observaciones y firmas siempre tarda un rato y eso NO es parte
   // del tiempo de juego.
@@ -2674,7 +2709,7 @@ function cerrarPlanilla(){
   // de nuevo con el estado real (además ya llama a goScreen('screen-lista') internamente).
   setTimeout(()=>cargarLista(),1500);
   guardarPartido();
-  db.collection('partidos').doc(st.partidoId).update({estado:'cerrado',jugado:true,observaciones:obs,golesLocal:gL,golesVisitante:gV,horaFin})
+  db.collection('partidos').doc(st.partidoId).update(Object.assign({estado:'cerrado',jugado:true,observaciones:obs,golesLocal:gL,golesVisitante:gV,horaFin},p.fase?penales:{}))
     .catch(e=>{ console.error('cerrarPlanilla:',e); if(navigator.onLine)toast('⚠ No se guardó el cierre — reintentá con señal.',6000); });
 }
 
@@ -2807,7 +2842,7 @@ function construirHtmlPlanilla(p,eventos,alinLocal,alinVisitante,faltas,firmas,p
   </div>
   <div class="hdr-info">
     <div><b>${esc(p.division||'Sin división')}</b></div>
-    <div>Fecha N° <b>${p.numeroFecha||'—'}</b> &nbsp;·&nbsp; Cancha <b>${p.cancha||'—'}</b></div>
+    <div>${p.fase?`<b>${FASE_LABEL[p.fase]||p.fase}</b> (fecha ${p.numeroFecha||'—'})`:`Fecha N° <b>${p.numeroFecha||'—'}</b>`} &nbsp;·&nbsp; Cancha <b>${p.cancha||'—'}</b></div>
     <div>Horario: <b>${p.horario||'—'}</b> &nbsp;·&nbsp; ${today}</div>
   </div>
 </div>
@@ -2821,7 +2856,7 @@ function construirHtmlPlanilla(p,eventos,alinLocal,alinVisitante,faltas,firmas,p
   <span class="info-pair"><b>Árbitro Asistente</b>${esc(p.arbitro2||'—')}</span>
 </div>
 
-<div class="marcador">${esc(p.equipoLocalNombre)} &nbsp; ${gL} : ${gV} &nbsp; ${esc(p.equipoVisitanteNombre)}</div>
+<div class="marcador">${esc(p.equipoLocalNombre)} &nbsp; ${gL} : ${gV} &nbsp; ${esc(p.equipoVisitanteNombre)}${p.fase&&gL===gV&&p.penalesLocal!=null&&p.penalesVisitante!=null?` &nbsp; (penales ${p.penalesLocal} : ${p.penalesVisitante})`:''}</div>
 
 <div class="two">
   <table>
@@ -2938,7 +2973,8 @@ async function cambiarDivisionHistorial(div){
     snap.forEach(doc=>_histPartidos.push({id:doc.id,...doc.data()}));
     _histPartidos.sort((a,b)=>(a.cancha||0)-(b.cancha||0)||horarioAMin(a.horario)-horarioAMin(b.horario));
     const fechas=[...new Set(_histPartidos.map(p=>p.numeroFecha||'?'))].sort((a,b)=>Number(a)-Number(b));
-    sel.innerHTML='<option value="">— Seleccioná —</option>'+fechas.map(f=>`<option value="${f}">Fecha ${f}</option>`).join('');
+    const faseDe=f=>{const x=_histPartidos.find(q=>String(q.numeroFecha)===String(f)&&q.fase);return x?FASE_LABEL[x.fase]:null;};
+    sel.innerHTML='<option value="">— Seleccioná —</option>'+fechas.map(f=>`<option value="${f}">${faseDe(f)?'🏆 '+faseDe(f):'Fecha '+f}</option>`).join('');
     if(fechas.length){sel.value=fechas[fechas.length-1];renderHistorialLista();}
     else document.getElementById('hist-lista').innerHTML='<div class="empty-msg">No hay partidos en esta división.</div>';
   }catch(e){sel.innerHTML='<option value="">Error</option>';toast('Error al cargar: '+e.message,3000);}

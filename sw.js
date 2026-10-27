@@ -532,7 +532,10 @@
 // actualizarGateArranque los refresca en cada cambio de estado.
 // v95: pestaña pública "🏆 Playoffs" con el cuadro de cada división y estética de los flyers
 // (fondo neón con la copa, títulos en Anybody itálica, cian Primera / naranja Segunda).
-const CACHE = 'ligaf5-v95';
+// v96: playoffs en todo el circuito -- el admin crea los cruces de cada ronda (partidos con
+// `fase`/`llave`), Resultados/Fixture/En vivo los rotulan con la ronda y muestran penales, y la
+// planilla pide penales si un cruce de playoffs termina empatado.
+const CACHE = 'ligaf5-v96';
 const ASSETS = [
   './index.html',
   './planilla.html',

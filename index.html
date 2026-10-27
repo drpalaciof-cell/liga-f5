@@ -822,6 +822,14 @@ body.torneo-flyer #divisions-wrap .section-card{border-color:color-mix(in srgb,v
 .po-vlab{position:absolute;left:0;width:340px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.2em;color:var(--text-dim);}
 body.torneo-flyer .hero-headline{background:linear-gradient(135deg,#fff,var(--division-color,var(--cyan)));-webkit-background-clip:text;background-clip:text;}
 @media (max-width:719px){.po-badge{font-size:11px;letter-spacing:.08em;padding:6px 10px;}.po-eyebrow{font-size:10.5px;letter-spacing:.2em;}}
+.fx-po-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:10px;}
+.pen-txt{font-size:.62em;opacity:.85;font-style:normal;font-weight:700;white-space:nowrap;}
+body.torneo-flyer #divisions-wrap .fx-fecha-title span,
+body.torneo-flyer #divisions-wrap .fecha-group-title,
+body.torneo-flyer #divisions-wrap .fx-vs{font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;letter-spacing:.02em;}
+body.torneo-flyer #divisions-wrap .fx-fecha-title span{font-size:20px;}
+body.torneo-flyer #divisions-wrap .fx-vs{font-size:20px;}
+body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26px;color:#fff;text-shadow:0 0 16px var(--division-glow1,rgba(34,211,238,.4));}
 .po-vs{position:absolute;text-align:center;font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:17px;color:var(--division-color,var(--cyan));}
 #divisions-wrap[data-division="Segunda"]{--division-glow1:rgba(251,146,60,.35);--division-glow2:rgba(251,146,60,.6);}
 </style>
@@ -2349,11 +2357,38 @@ function poSigla(nombre) {
 }
 function poSeedLabel(seed) { return seed.length === 2 ? `${seed[1]}°${seed[0]}` : `${seed}°`; }
 
-function calcularCuadroPlayoffs(div) {
+const FASE_KEY = { OCTAVOS: 'octavos', CUARTOS: 'cuartos', SEMIS: 'semis', FINAL: 'final' };
+const FASE_LABEL = { octavos: 'Octavos de final', cuartos: 'Cuartos de final', semis: 'Semifinales', final: 'Final' };
+/** Si esa fecha de esa división es de playoffs, devuelve la fase ('octavos'...); si no, null. */
+function faseDeFecha(nf, division) {
+  const div = division || state.divisionActiva;
+  const fuentes = [state.partidosCache || [], partidosTotalCache || [], partidosCacheAdmin || []];
+  for (const f of fuentes) {
+    const x = f.find(q => q.fase && Number(q.numeroFecha) === Number(nf) && (!div || q.division === div));
+    if (x) return x.fase;
+  }
+  return null;
+}
+/** "2 - 2 (4-3 pen.)" -- los penales solo aparecen si el partido de playoffs terminó empatado. */
+function marcadorPartido(p, sep = ' - ') {
+  if (!p.jugado) return 'vs';
+  const base = `${p.golesLocal ?? 0}${sep}${p.golesVisitante ?? 0}`;
+  const pen = p.fase && p.penalesLocal != null && p.penalesVisitante != null && (p.golesLocal ?? 0) === (p.golesVisitante ?? 0);
+  return pen ? `${base} <small class="pen-txt">(${p.penalesLocal}-${p.penalesVisitante} pen.)</small>` : base;
+}
+function tablaParaPlayoffs(equipos, partidos, zona) {
+  if (!zona) return calcularTablaPosiciones(equipos, partidos);
+  const eqs = equipos.filter(eq => eq.zona === zona);
+  const ids = new Set(eqs.map(e => e.id));
+  return calcularTablaPosiciones(eqs, partidos.filter(p => p.zona === zona || (p.interzonal && (ids.has(p.equipoLocalId) || ids.has(p.equipoVisitanteId)))));
+}
+function calcularCuadroPlayoffs(div, equiposIn, partidosIn) {
   const cfg = PLAYOFF_CFG[div];
+  const equiposDiv = equiposIn || state.equiposCache;
+  const partidosDiv = partidosIn || state.partidosCache;
   const tablas = {};
-  if (div === 'Segunda') { tablas.A = calcularPosiciones('A'); tablas.B = calcularPosiciones('B'); }
-  else tablas._ = calcularPosicionesDivision();
+  if (div === 'Segunda') { tablas.A = tablaParaPlayoffs(equiposDiv, partidosDiv, 'A'); tablas.B = tablaParaPlayoffs(equiposDiv, partidosDiv, 'B'); }
+  else tablas._ = tablaParaPlayoffs(equiposDiv, partidosDiv, null);
   const bySeed = s => {
     const t = s.length === 2 ? tablas[s[0]] : tablas._;
     const pos = Number(s.length === 2 ? s[1] : s) - 1;
@@ -2361,9 +2396,10 @@ function calcularCuadroPlayoffs(div) {
     const e = enJuego[pos];
     return e ? { id: e.id, nombre: e.nombre, escudo: e.escudo, seed: s, ventaja: pos === 0 } : null;
   };
-  const regular = state.partidosCache.filter(p => !p.fase);
+  const regular = partidosDiv.filter(p => !p.fase);
   const proyectado = regular.some(p => !p.jugado);
-  const playoffs = state.partidosCache.filter(p => p.fase && p.jugado);
+  const playoffs = partidosDiv.filter(p => p.fase && p.jugado);
+  const creados = partidosDiv.filter(p => p.fase);
   const M0 = cfg.seeds.length, R = cfg.rondas.length;
   const rondas = []; let start = 0;
   for (let r = 0; r < R; r++) { const n = M0 >> r; rondas.push([...Array(n).keys()].map(j => start + j)); start += n; }
@@ -2375,7 +2411,8 @@ function calcularCuadroPlayoffs(div) {
       let a, b;
       if (r === 0) { a = bySeed(cfg.seeds[m][0]); b = bySeed(cfg.seeds[m][1]); }
       else { a = matches[feed[m][0]].ganador || null; b = matches[feed[m][1]].ganador || null; }
-      const mt = { m, r, a, b, feed: feed[m] || null, ganador: null, partido: null };
+      const mt = { m, r, a, b, feed: feed[m] || null, ganador: null, partido: null,
+        creado: creados.find(p => Number(p.llave) === m && p.fase === FASE_KEY[cfg.rondas[r]]) || null };
       if (a && b) {
         const p = playoffs.filter(p => (p.equipoLocalId === a.id && p.equipoVisitanteId === b.id) || (p.equipoLocalId === b.id && p.equipoVisitanteId === a.id))
           .sort((x, y) => (y.numeroFecha || 0) - (x.numeroFecha || 0))[0];
@@ -2588,6 +2625,8 @@ function esFechaPostergada(nf, division) {
 }
 /** Rótulo de una fecha para el fixture, con el aviso de postergada si corresponde. */
 function tituloFecha(nf, division) {
+  const fase = faseDeFecha(nf, division);
+  if (fase) return `🏆 ${FASE_LABEL[fase] || fase}`;
   return `Fecha ${nf}${esFechaPostergada(nf, division) ? ' <span class="fx-postergada">(postergada)</span>' : ''}`;
 }
 
@@ -2845,7 +2884,7 @@ function escudoEquipoHtml(id, nombre, size) {
 // que las dos zonas queden alineadas fila a fila.
 function fxMatchHtml(p) {
   const meta = `🕐 ${p.horario || '--:--'} · Cancha ${p.cancha || '—'}${p.interzonal ? ` · <span style="color:#c4b5fd;font-weight:800;">⚔ Interzonal</span>` : ''}`;
-  const marcador = p.jugado ? `${p.golesLocal}-${p.golesVisitante}` : 'vs';
+  const marcador = marcadorPartido(p, '-');
   const eqLocal = state.equiposCache.find(eq => eq.id === p.equipoLocalId);
   const eqVisit = state.equiposCache.find(eq => eq.id === p.equipoVisitanteId);
   return `<div class="fx-match${p.interzonal ? ' fx-inter' : ''}">
@@ -2860,6 +2899,7 @@ function fxMatchHtml(p) {
 // El equipo que queda libre en esa fecha, mirando TODOS los partidos de la
 // fecha (incluido el interzonal, que puede estar en la otra columna).
 function fxByeHtml(equiposGrupo, nf) {
+  if (faseDeFecha(nf)) return ''; // en playoffs no hay "libre": juegan solo los que siguen
   const teamIds = equiposGrupo.map(eq => eq.id);
   const todosFecha = state.partidosCache.filter(p => p.numeroFecha === nf);
   const playing = new Set([...todosFecha.map(p => p.equipoLocalId), ...todosFecha.map(p => p.equipoVisitanteId)]);
@@ -2922,7 +2962,12 @@ function renderFixturePublico() {
     return `<section class="fx-fecha"><div class="fx-fecha-title"><span>${tituloFecha(nf)}</span></div><div class="fx-cols">${cols}</div></section>`;
   }).join('');
 
-  wrap.innerHTML = tabs + cabecera + bloques;
+  // Playoffs: una sola columna por ronda, debajo de las fechas de las zonas.
+  const po = state.partidosCache.filter(p => p.fase);
+  const poFechas = [...new Set(po.map(p => p.numeroFecha))].sort((a, b) => a - b);
+  const poHtml = poFechas.map(nf => `<section class="fx-fecha fx-playoffs"><div class="fx-fecha-title"><span>${tituloFecha(nf)}</span></div>
+    <div class="fx-po-grid">${ordenarPorHorario(po.filter(p => p.numeroFecha === nf)).map(fxMatchHtml).join('')}</div></section>`).join('');
+  wrap.innerHTML = tabs + cabecera + bloques + poHtml;
 }
 function seleccionarZonaFixture(z) {
   state.fixtureZonaActiva = z;
@@ -2957,7 +3002,7 @@ function renderPartidosPublico() {
       });
       return html || `<div class="evento-linea muted">Sin novedades</div>`;
     };
-    const zonaLabel = p.interzonal ? '⚔ Interzonal' : (p.zona && p.zona !== 'INT') ? `Zona ${p.zona}` : '';
+    const zonaLabel = p.fase ? `🏆 ${FASE_LABEL[p.fase] || p.fase}` : p.interzonal ? '⚔ Interzonal' : (p.zona && p.zona !== 'INT') ? `Zona ${p.zona}` : '';
     const eqLocal = state.equiposCache.find(eq => eq.id === p.equipoLocalId);
     const eqVisit = state.equiposCache.find(eq => eq.id === p.equipoVisitanteId);
     return `<div class="glass partido-card-public">
@@ -2968,7 +3013,7 @@ function renderPartidosPublico() {
           <span>${escapeHtml(p.equipoLocalNombre)}</span>
           ${eqLocal && eqLocal.escudo ? `<img style="width:26px;height:26px;object-fit:cover;border-radius:6px;flex-shrink:0;" src="${eqLocal.escudo}">` : ''}
         </span>
-        <span class="goles" style="font-size:18px;">${p.jugado ? `${p.golesLocal} - ${p.golesVisitante}` : 'vs'}</span>
+        <span class="goles" style="font-size:18px;">${marcadorPartido(p)}</span>
         <span class="equipo-nombre visitante" style="text-align:left;font-size:19px;display:flex;align-items:center;justify-content:flex-start;gap:8px;">
           ${eqVisit && eqVisit.escudo ? `<img style="width:26px;height:26px;object-fit:cover;border-radius:6px;flex-shrink:0;" src="${eqVisit.escudo}">` : ''}
           <span>${escapeHtml(p.equipoVisitanteNombre)}</span>
@@ -7896,7 +7941,7 @@ function renderEnVivoCards(contId, isAdmin) {
     const p = enCurso || deCancha.find(p => !p.jugado) || deCancha[deCancha.length - 1];
     const fase = faseCrono(p);
     const estadoTxt = enCurso ? labels[fase] : (p.jugado ? '✓ Cerrado' : `⏳ Próximo · ${p.horario || '--:--'}`);
-    const marcador = (enCurso || p.jugado) ? `${p.golesLocal ?? 0} - ${p.golesVisitante ?? 0}` : 'vs';
+    const marcador = p.jugado ? marcadorPartido(p) : enCurso ? `${p.golesLocal ?? 0} - ${p.golesVisitante ?? 0}` : 'vs';
     const eqLocalEV = equiposTotalCache.find(eq => eq.id === p.equipoLocalId);
     const eqVisitEV = equiposTotalCache.find(eq => eq.id === p.equipoVisitanteId);
     const escudoImg = eq => eq && eq.escudo ? `<img src="${eq.escudo}" style="width:22px;height:22px;object-fit:cover;border-radius:5px;">` : '';
@@ -7906,6 +7951,7 @@ function renderEnVivoCards(contId, isAdmin) {
     // el marcador de ahora mismo -- deja de moverse sola en cuanto el partido cierra de
     // verdad, porque calcularTablaPosiciones ya cuenta ese resultado como el real.
     const posEnVivoDe = equipoId => {
+      if (p.fase) return ''; // en playoffs no hay tabla que mover
       const esPrimera = p.division === 'Primera';
       const equiposGrupo = equiposTotalCache.filter(eq => eq.division === p.division && (esPrimera || eq.zona === p.zona));
       const idsGrupo = new Set(equiposGrupo.map(eq => eq.id));
@@ -7962,7 +8008,7 @@ function renderEnVivoCards(contId, isAdmin) {
       </div>
       <div style="font-size:13px;color:var(--text-dim);margin-bottom:2px;display:flex;align-items:center;gap:5px;">
         <img src="${divShieldEV}" style="width:16px;height:16px;object-fit:contain;flex-shrink:0;">
-        ${escapeHtml(p.division || '')}${p.zona && p.zona !== 'INT' ? ' · Zona ' + p.zona : ''}${interBadge}
+        ${escapeHtml(p.division || '')}${p.fase ? ` · <b style="color:${divColorEV};">🏆 ${FASE_LABEL[p.fase] || p.fase}</b>` : (p.zona && p.zona !== 'INT' ? ' · Zona ' + p.zona : '')}${interBadge}
       </div>
       <div style="display:grid;grid-template-columns:1fr 24px auto 24px 1fr;align-items:center;gap:8px;">
         <div style="min-width:0;text-align:right;">
@@ -8422,13 +8468,14 @@ function renderFechasFixtureAdmin(partidosGrupo, equiposGrupo, fuenteTodos) {
     const btnBorrar = Number.isFinite(Number(nf))
       ? `<button class="btn btn-sm" style="background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.45);color:#f87171;font-size:11px;padding:3px 9px;" onclick="borrarFechaFixture(${Number(nf)}, '${divFecha}')" title="Borrar todos los partidos de esta fecha">🗑 Eliminar fecha</button>`
       : '';
+    const faseNf = faseDeFecha(nf, divFecha);
     html += `<div class="fecha-group"><div class="fecha-group-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <span>Fecha ${nf}</span>${btnBorrar}
+      <span>${faseNf ? `🏆 ${FASE_LABEL[faseNf]} <small class="muted">(fecha ${nf})</small>` : `Fecha ${nf}`}</span>${btnBorrar}
     </div>`;
     // "Libre" mirando todos los partidos de la fecha (incluye interzonal).
     const todosFecha = todos.filter(p => p.numeroFecha === nf);
     const playing = new Set([...todosFecha.map(p => p.equipoLocalId), ...todosFecha.map(p => p.equipoVisitanteId)]);
-    const byeId = teamIds.find(id => !playing.has(id));
+    const byeId = faseNf ? null : teamIds.find(id => !playing.has(id));
     const byeEq = byeId ? equiposGrupo.find(e => e.id === byeId) : null;
     partidosFecha.forEach(p => {
       const pCancha = p.cancha ? `Cancha ${p.cancha}` : 'Cancha —';
@@ -8439,7 +8486,7 @@ function renderFechasFixtureAdmin(partidosGrupo, equiposGrupo, fuenteTodos) {
       const rowStyle = p.interzonal ? ' style="background:rgba(167,139,250,.09);border-left:3px solid #a78bfa;border-radius:8px;padding-left:8px;"' : '';
       html += `<div class="partido-row"${rowStyle}>
         <span class="partido-cancha-info" style="font-size:11px;color:var(--text-muted);margin-right:6px;">${pHorario} · ${pCancha}</span>
-        <span class="partido-equipos">${escapeHtml(p.equipoLocalNombre)} ${p.jugado ? `<strong>${p.golesLocal} - ${p.golesVisitante}</strong>` : '<span class="muted">vs</span>'} ${escapeHtml(p.equipoVisitanteNombre)} ${interBadge} ${rectBadge} ${pEstado}</span>
+        <span class="partido-equipos">${escapeHtml(p.equipoLocalNombre)} ${p.jugado ? `<strong>${marcadorPartido(p)}</strong>` : '<span class="muted">vs</span>'} ${escapeHtml(p.equipoVisitanteNombre)} ${interBadge} ${rectBadge} ${pEstado}</span>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm" style="background:var(--surface3)" onclick="abrirModalCancha('${p.id}','${p.cancha||''}','${p.horario||''}')">🕐 Cancha/Hora</button>
           <button class="btn btn-sm" onclick="abrirModalResultado('${p.id}')">${p.jugado ? 'Editar resultado' : 'Cargar resultado'}</button>
@@ -8457,8 +8504,9 @@ function renderFixtureAdminList() {
   if (partidosCacheAdmin.length === 0) { wrap.innerHTML = `<div class="empty-state">Todavía no se generó el fixture de esta división.</div>`; return; }
   const div = state.adminDivisionActiva;
   const equiposDivision = equiposCacheAdmin.filter(eq => eq.division === div);
+  const bloquePO = adminPlayoffsHtml(div, equiposDivision);
   if (div === 'Primera') {
-    wrap.innerHTML = renderFechasFixtureAdmin(partidosCacheAdmin, equiposDivision);
+    wrap.innerHTML = bloquePO + renderFechasFixtureAdmin(partidosCacheAdmin.filter(p => !p.fase), equiposDivision);
     return;
   }
   const zonas = ['A', 'B'].filter(z => partidosCacheAdmin.some(p => p.zona === z));
@@ -8472,7 +8520,77 @@ function renderFixtureAdminList() {
     );
     html += renderFechasFixtureAdmin(grupo, equiposDivision.filter(eq => eq.zona === zona));
   });
-  wrap.innerHTML = html || `<div class="empty-state">Todavía no se generó el fixture de esta división.</div>`;
+  wrap.innerHTML = bloquePO + (html || `<div class="empty-state">Todavía no se generó el fixture de esta división.</div>`);
+}
+
+/* ---------- Playoffs en el admin ----------
+   Pedido del usuario (2026-10-27): que los playoffs "impacten en todo" (resultados, en vivo,
+   planilleros). Para eso cada cruce es un partido común en `partidos`, con:
+     fase: 'octavos'|'cuartos'|'semis'|'final', llave: índice del cruce en el cuadro,
+     zona: null (no suma a ninguna tabla), numeroFecha: la jornada en que se juega.
+   El número de fecha es el que ordena todo (fecha activa del planillero, "En vivo", sanciones),
+   por eso las dos divisiones tienen que compartir número cuando juegan el mismo día. */
+function _poRondaPendiente(cu) {
+  for (let r = 0; r < cu.rondas.length; r++) {
+    const faltan = cu.rondas[r].map(m => cu.matches[m]).filter(mt => !mt.creado);
+    if (faltan.length) return { r, faltan, listos: faltan.every(mt => mt.a && mt.b) };
+  }
+  return null;
+}
+function adminPlayoffsHtml(div, equiposDivision) {
+  if (!PLAYOFF_CFG[div] || !equiposDivision.length || !partidosCacheAdmin.length) return '';
+  const cu = calcularCuadroPlayoffs(div, equiposDivision, partidosCacheAdmin);
+  const pend = _poRondaPendiente(cu);
+  const poPartidos = partidosCacheAdmin.filter(p => p.fase);
+  let accion;
+  if (!pend) accion = cu.campeon ? `<p style="margin:0;">🏆 Campeón: <b>${escapeHtml(cu.campeon.nombre)}</b></p>` : `<p class="muted" style="margin:0;">Todos los cruces ya están creados.</p>`;
+  else {
+    const ronda = cu.cfg.rondas[pend.r];
+    const cruces = pend.faltan.map(mt => mt.a && mt.b ? `${escapeHtml(mt.a.nombre)} vs ${escapeHtml(mt.b.nombre)}` : 'a definir').join(' · ');
+    accion = pend.listos
+      ? `<p class="muted" style="margin:0 0 10px;font-size:12.5px;">${cruces}</p>
+         ${pend.r === 0 && cu.proyectado ? `<p style="margin:0 0 10px;font-size:12.5px;color:var(--warn);">⚠ Todavía hay partidos de la fase regular sin jugar: los cruces pueden cambiar.</p>` : ''}
+         <button class="btn btn-primary btn-sm" onclick="crearRondaPlayoffs('${div}')">Crear partidos de ${ronda.toLowerCase()}</button>`
+      : `<p class="muted" style="margin:0;">Para crear ${ronda.toLowerCase()} faltan resultados de la ronda anterior.</p>`;
+  }
+  return `<div class="glass section-card" style="margin-bottom:16px;border-left:4px solid var(--division-color,var(--cyan));">
+    <h3 style="margin:0 0 8px;">🏆 Playoffs</h3>${accion}
+    ${poPartidos.length ? `<div style="margin-top:12px;">${renderFechasFixtureAdmin(poPartidos, equiposDivision)}</div>` : ''}
+  </div>`;
+}
+async function crearRondaPlayoffs(div) {
+  const equipos = equiposCacheAdmin.filter(eq => eq.division === div);
+  const cu = calcularCuadroPlayoffs(div, equipos, partidosCacheAdmin);
+  const pend = _poRondaPendiente(cu);
+  if (!pend || !pend.listos) { showToast('No hay cruces listos para crear.', 'error'); return; }
+  const ronda = cu.cfg.rondas[pend.r], fase = FASE_KEY[ronda];
+  // Número de fecha sugerido: si la otra división tiene partidos de playoffs sin jugar, el
+  // mismo número (se juegan el mismo día); si no, la siguiente a la última cargada.
+  let todos = [];
+  try { const snap = await db.collection('partidos').get(); snap.forEach(d => todos.push(d.data())); } catch (e) { todos = partidosCacheAdmin; }
+  const otra = todos.filter(p => p.division !== div && p.fase && !p.jugado).map(p => Number(p.numeroFecha)).filter(n => !isNaN(n));
+  const sugerida = otra.length ? Math.min(...otra) : Math.max(0, ...todos.map(p => Number(p.numeroFecha) || 0)) + 1;
+  const txt = prompt(`${ronda} de ${div}: ${pend.faltan.length} partido(s).\n\nNúmero de fecha (ordena la planilla, "En vivo" y las sanciones). Si se juegan el mismo día que partidos de la otra división, tiene que ser el mismo número.`, String(sugerida));
+  if (txt === null) return;
+  const nf = Number(txt);
+  if (!Number.isInteger(nf) || nf < 1) { showToast('Número de fecha inválido.', 'error'); return; }
+  const half = cu.rondas[pend.r].length / 2;
+  try {
+    const batch = db.batch();
+    pend.faltan.forEach(mt => {
+      const izquierda = cu.rondas[pend.r].indexOf(mt.m) < half;
+      const cancha = div === 'Primera' ? 1 : (fase === 'final' ? 2 : (izquierda ? 2 : 3));
+      // Local: el de mejor ubicación (el que viene de arriba en la llave).
+      batch.set(db.collection('partidos').doc(), basePartido({
+        division: div, numeroFecha: nf, zona: null, interzonal: false, fase, llave: mt.m,
+        cancha, horario: '',
+        equipoLocalId: mt.a.id, equipoLocalNombre: mt.a.nombre,
+        equipoVisitanteId: mt.b.id, equipoVisitanteNombre: mt.b.nombre
+      }));
+    });
+    await batch.commit();
+    showToast(`${ronda} de ${div} creados. Asigná horario (y cancha si hace falta) con 🕐.`, 'ok');
+  } catch (e) { console.error(e); showToast('No se pudieron crear los partidos.', 'error'); }
 }
 function abrirModalCancha(partidoId, canchaActual, horarioActual) {
   const p = buscarPartidoAdmin(partidoId);
@@ -8590,13 +8708,19 @@ function abrirModalResultado(partidoId) {
 
   openModal(`
     <h2 style="margin-bottom:4px;">${escapeHtml(p.equipoLocalNombre)} vs ${escapeHtml(p.equipoVisitanteNombre)}</h2>
-    <p class="muted" style="margin-bottom:16px;">${p.zona ? `Zona ${p.zona} · ` : ''}Fecha ${p.numeroFecha}${yaCerrado ? ' · <b style="color:#fbbf24;">partido ya cerrado</b>' : ''}</p>
+    <p class="muted" style="margin-bottom:16px;">${p.fase ? `🏆 ${FASE_LABEL[p.fase]} · ` : p.zona ? `Zona ${p.zona} · ` : ''}Fecha ${p.numeroFecha}${yaCerrado ? ' · <b style="color:#fbbf24;">partido ya cerrado</b>' : ''}</p>
     ${bloqueFirmada}
     <div class="row" style="align-items:flex-end;justify-content:center;gap:18px;margin-bottom:8px;">
       <div class="field" style="max-width:90px;text-align:center;margin-bottom:0;"><label>${escapeHtml(p.equipoLocalNombre)}</label><input type="number" min="0" id="res-goles-local" value="${p.golesLocal ?? ''}" oninput="_avisoGolesResultado()"></div>
       <span style="font-size:20px;font-weight:800;padding-bottom:10px;">-</span>
       <div class="field" style="max-width:90px;text-align:center;margin-bottom:0;"><label>${escapeHtml(p.equipoVisitanteNombre)}</label><input type="number" min="0" id="res-goles-visitante" value="${p.golesVisitante ?? ''}" oninput="_avisoGolesResultado()"></div>
     </div>
+    ${p.fase ? `<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0 8px;font-size:13px;">
+      <span class="muted">Penales (solo si empataron):</span>
+      <input type="number" min="0" id="res-pen-local" value="${p.penalesLocal ?? ''}" style="width:64px;text-align:center;">
+      <span>-</span>
+      <input type="number" min="0" id="res-pen-visitante" value="${p.penalesVisitante ?? ''}" style="width:64px;text-align:center;">
+    </div>` : ''}
     <div id="res-aviso-goles" style="text-align:center;font-size:12px;min-height:18px;margin-bottom:14px;"></div>
     <h3 style="font-size:14px;margin-bottom:8px;">${escapeHtml(p.equipoLocalNombre)}</h3>
     <div class="tbl-wrap"><table class="jugadores-table"><thead>${encabezado}</thead><tbody>${jugadoresLocal.map(j => filaJugador(j, p.equipoLocalId)).join('') || '<tr><td colspan="5" class="empty-state">Sin lista de buena fe cargada.</td></tr>'}</tbody></table></div>
@@ -8694,6 +8818,16 @@ async function guardarResultadoPartido(partidoId) {
   });
 
   const cambios = { golesLocal, golesVisitante, goleadores, tarjetas, jugado: true, estado: 'cerrado', fechaResultado: new Date().toISOString() };
+  if (p.fase) {
+    // Playoffs: los penales solo valen si el partido terminó empatado. Vacíos = lo define la
+    // ventaja deportiva (o queda abierto en el cuadro si ninguno la tiene).
+    const pl = document.getElementById('res-pen-local').value, pv = document.getElementById('res-pen-visitante').value;
+    if (golesLocal !== golesVisitante || (pl === '' && pv === '')) { cambios.penalesLocal = null; cambios.penalesVisitante = null; }
+    else {
+      if (pl === '' || pv === '' || Number(pl) === Number(pv) || Number(pl) < 0 || Number(pv) < 0) { showToast('Penales inválidos: completá los dos y que no sean iguales.', 'error'); return; }
+      cambios.penalesLocal = Number(pl); cambios.penalesVisitante = Number(pv);
+    }
+  }
   if (yaCerrado) {
     // La planilla firmada (`eventos`) queda intacta a propósito: el PDF tiene que
     // seguir siendo el documento que firmaron los capitanes. Lo que se guarda acá
