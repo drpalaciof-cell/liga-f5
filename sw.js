@@ -535,7 +535,10 @@
 // v96: playoffs en todo el circuito -- el admin crea los cruces de cada ronda (partidos con
 // `fase`/`llave`), Resultados/Fixture/En vivo los rotulan con la ronda y muestran penales, y la
 // planilla pide penales si un cruce de playoffs termina empatado.
-const CACHE = 'ligaf5-v96';
+// v97: imágenes optimizadas para no agotar el cupo gratis de tráfico de Firebase Hosting
+// (copas/escudos/logo del Clausura de ~1 MB a 15-40 KB, fondos recomprimidos) y bg-lacquer.jpg
+// (no se usa) fuera del precache. La primera carga baja de ~6 MB a ~1.5 MB.
+const CACHE = 'ligaf5-v97';
 const ASSETS = [
   './index.html',
   './planilla.html',
@@ -545,7 +548,6 @@ const ASSETS = [
   './assets/logo-clausura.png',
   './assets/copa-primera.png',
   './assets/copa-segunda.png',
-  './assets/bg-lacquer.jpg',
   './assets/bg-shapes.jpg',
   './assets/bg-shapes-segunda.jpg',
   './assets/favicon.png',
