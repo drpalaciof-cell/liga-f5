@@ -9793,7 +9793,14 @@ async function cargarAdminsList() {
         <button class="btn btn-sm btn-danger" onclick="eliminarAdmin('${a.usuario}', ${total})" ${total <= 1 ? 'disabled title="Debe quedar al menos un administrador"' : ''}>Eliminar</button>
       </div>`;
     }).join('') + `<p class="wizard-help" style="margin-top:10px;">Con <strong>Panel de Control</strong> tildado, ese usuario entra a un panel reducido: solo <strong>🔴 En vivo</strong> (las 3 canchas en tiempo real y los avisos con los planilleros) y <strong>📋 Planillas</strong> (ver/descargar/compartir el PDF, corregir un resultado y cerrar la fecha). No ve datos de la temporada, pagos, fixture, sanciones ni esta pantalla.</p>`;
-  } catch (e) { console.error(e); showToast('No se pudieron cargar los administradores.', 'error'); }
+  } catch (e) {
+    console.error(e);
+    // Con la Cloud Function fuera de servicio (proyecto sin facturación) no hay lista de admins:
+    // se avisa en la propia sección en vez de un cartel rojo cada vez que se abre el panel.
+    const w = document.getElementById('pa-admins-list') || document.querySelector('[id*="admins-list"]');
+    if (w && e && (e.code === 'functions/internal' || e.code === 'functions/unavailable')) w.innerHTML = `<p class="muted">La lista de administradores no está disponible por ahora (el servidor de Firebase está fuera de servicio). Los administradores entran con su mail.</p>`;
+    else showToast('No se pudieron cargar los administradores.', 'error');
+  }
 }
 async function marcarPanelControl(usuario, activar) {
   const actuales = panelControlUsuarios.filter(u => String(u).toLowerCase() !== String(usuario).toLowerCase());

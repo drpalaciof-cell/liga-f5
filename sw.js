@@ -548,7 +548,8 @@
 // v101: "🔑 Accesos de equipos" con la fase regular terminada genera solo los del cuadro de playoffs.
 // v102: En vivo con una sola cancha (fecha postergada) muestra una tarjeta por partido con su
 // horario; y no mezcla partidos viejos de la otra división con el mismo número de fecha.
-const CACHE = 'ligaf5-v102';
+// v103: sin cartel rojo de "administradores" mientras la Function está fuera de servicio.
+const CACHE = 'ligaf5-v103';
 const ASSETS = [
   './index.html',
   './planilla.html',
