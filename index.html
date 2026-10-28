@@ -1531,6 +1531,7 @@ body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26
             <h3>Equipos inscriptos <span class="muted" id="pa-equipos-count" style="font-size:12px;font-weight:500;"></span></h3>
             <div class="section-actions" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;">
               <button class="btn btn-primary" onclick="abrirModalNuevoEquipo()">+ Nuevo equipo</button>
+              <button class="btn" onclick="generarAccesosDivision()" title="Usuario y contraseña de cada equipo para entrar a la web">🔑 Accesos de equipos</button>
             </div>
             <div id="pa-equipos-list"></div>
           </div>
@@ -2198,6 +2199,28 @@ function esAdminPorMail(user) {
   return !!(user && user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
     && (user.providerData || []).some(p => p && p.providerId === 'password'));
 }
+async function entrarComoEquipo(equipoId) {
+  const doc = await db.collection('equipos').doc(equipoId).get();
+  if (!doc.exists) { await auth.signOut(); return false; }
+  state.equipoId = equipoId; state.equipo = doc.data();
+  state.equipo.fotosJugadores = await cargarFotosJugadores(equipoId, state.equipo.fotosJugadores);
+  renderPanelEquipo(); showView('panel-equipo');
+  subscribirPush('equipo', equipoId); iniciarBadgeEquipo();
+  return true;
+}
+/** Login de equipo con el acceso nuevo (Firebase Authentication). El equipo escribe su usuario
+ *  de siempre; el mail interno (equipos/{id}.authEmail) se busca por usuario. */
+async function loginEquipoPorAuth(usuario, pass) {
+  const u = usuario.trim().toLowerCase();
+  let snap = await db.collection('equipos').where('usuarioLower', '==', u).limit(1).get();
+  if (snap.empty) snap = await db.collection('equipos').where('nombreLower', '==', u).limit(1).get();
+  if (snap.empty) throw Object.assign(new Error('No existe un equipo con ese usuario.'), { codigoLiga: 'sin-equipo' });
+  const eqDoc = snap.docs[0];
+  const email = eqDoc.data().authEmail;
+  if (!email) throw Object.assign(new Error('Tu equipo todavía no tiene el acceso nuevo. Pedíselo a la organización.'), { codigoLiga: 'sin-acceso' });
+  await auth.signInWithEmailAndPassword(email, pass);
+  return eqDoc.id;
+}
 async function entrarComoAdminPorMail(user) {
   state.admin = user.email.toLowerCase();
   await renderPanelAdmin();
@@ -2210,6 +2233,14 @@ async function aplicarSesionDesdeAuth(user) {
     if (esAdminPorMail(user)) {
       if (state.admin !== user.email.toLowerCase()) await entrarComoAdminPorMail(user);
       return;
+    }
+    if ((user.providerData || []).some(p => p && p.providerId === 'password')) {
+      const vinc = await db.collection('authEquipos').doc(user.uid).get().catch(() => null);
+      const equipoId = vinc && vinc.exists ? vinc.data().equipoId : null;
+      if (equipoId) {
+        if (state.equipoId !== equipoId) await entrarComoEquipo(equipoId);
+        return;
+      }
     }
     const tokenResult = await user.getIdTokenResult();
     const role = tokenResult.claims.role;
@@ -2276,7 +2307,13 @@ function abrirModalCambiarPassword(tipo) {
     if (nueva.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
     if (!/[a-zA-Z]/.test(nueva) || !/[0-9]/.test(nueva)) { showToast('La contraseña debe tener al menos una letra y un número.', 'error'); return; }
     try {
-      if (tipo === 'equipo') {
+      const uAuth = auth.currentUser;
+      if (uAuth && uAuth.email && (uAuth.providerData || []).some(p => p && p.providerId === 'password')) {
+        // Acceso de Firebase Authentication (equipo con acceso nuevo o admin por mail).
+        const cred = firebase.auth.EmailAuthProvider.credential(uAuth.email, actual);
+        await uAuth.reauthenticateWithCredential(cred);
+        await uAuth.updatePassword(nueva);
+      } else if (tipo === 'equipo') {
         await functions.httpsCallable('cambiarPasswordEquipo')({ passActual: actual, passNueva: nueva });
       } else {
         await functions.httpsCallable('cambiarPasswordAdmin')({ passActual: actual, passNueva: nueva });
@@ -3100,7 +3137,15 @@ document.getElementById('form-login-equipo').addEventListener('submit', async e 
     try { res = await functions.httpsCallable('login')({ usuario, pass }); }
     catch (err) {
       if (err && (err.code === 'functions/internal' || err.code === 'functions/unavailable')) {
-        showToast('El ingreso con usuario está fuera de servicio por ahora. Si sos administrador, entrá con tu mail.', 'error');
+        // Servidor de login fuera de servicio: entra con el acceso nuevo del equipo.
+        try {
+          const equipoId = await loginEquipoPorAuth(usuario, pass);
+          if (await entrarComoEquipo(equipoId)) showToast(`Bienvenido, ${state.equipo.nombre}`, 'ok');
+        } catch (e2) {
+          console.error(e2);
+          const malos = ['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials'];
+          showToast(e2.codigoLiga ? e2.message : malos.includes(e2.code) ? 'Contraseña incorrecta. Si no tenés la contraseña nueva, pedísela a la organización.' : (e2.message || 'No se pudo ingresar.'), 'error');
+        }
         return;
       }
       throw err;
@@ -9487,11 +9532,84 @@ async function resetPasswordEquipo(id, nombre) {
     if (pass.length < 6) { showToast('La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
     if (!/[a-zA-Z]/.test(pass) || !/[0-9]/.test(pass)) { showToast('La contraseña debe tener al menos una letra y un número.', 'error'); return; }
     try {
-      await functions.httpsCallable('resetPasswordEquipoServer')({ equipoId: id, passNueva: pass });
+      await generarAccesoEquipo(id, pass);
       closeModal();
-      showToast('Contraseña actualizada.', 'ok');
-    } catch (err) { console.error(err); showToast(err.message || 'No se pudo actualizar la contraseña.', 'error'); }
+      const eq = (equiposCacheAdmin || []).find(e => e.id === id) || {};
+      mostrarAccesosGenerados([{ nombre, usuario: eq.usuario || eq.nombre || nombre, pass }]);
+    } catch (err) { console.error(err); showToast(err.message || 'No se pudo generar el acceso.', 'error'); }
   });
+}
+/* ---------- Accesos de equipos con Firebase Authentication ----------
+   Mientras la Cloud Function de login está fuera de servicio (proyecto sin facturación), cada
+   equipo entra con un usuario de correo y contraseña de Firebase Authentication (gratis). El
+   correo es interno (el equipo nunca lo ve: escribe su usuario de siempre) y cambia en cada
+   regeneración, porque desde el navegador no se puede pisar la contraseña de otro usuario:
+   se crea uno nuevo y se mueve el vínculo authEquipos/{uid}. */
+let _appAltas = null;
+function _authAltas() {
+  if (!_appAltas) _appAltas = firebase.initializeApp(firebase.app().options, 'altasEquipos');
+  return _appAltas.auth();
+}
+function passAleatoria() {
+  const a = 'abcdefghjkmnpqrstuvwxyz', n = '23456789';
+  let s = '';
+  for (let i = 0; i < 5; i++) s += a[Math.floor(Math.random() * a.length)];
+  for (let i = 0; i < 3; i++) s += n[Math.floor(Math.random() * n.length)];
+  return s;
+}
+async function generarAccesoEquipo(equipoId, pass) {
+  const eqDoc = await db.collection('equipos').doc(equipoId).get();
+  if (!eqDoc.exists) throw new Error('No se encontró el equipo.');
+  const eq = eqDoc.data();
+  const email = `${equipoId.toLowerCase()}.${Date.now().toString(36)}@equipos.ligaf5.app`;
+  const a = _authAltas();
+  const cred = await a.createUserWithEmailAndPassword(email, pass);
+  const uid = cred.user.uid;
+  await a.signOut();
+  const batch = db.batch();
+  batch.set(db.collection('authEquipos').doc(uid), { equipoId, email, creado: new Date().toISOString() });
+  if (eq.authUid && eq.authUid !== uid) batch.delete(db.collection('authEquipos').doc(eq.authUid));
+  batch.update(db.collection('equipos').doc(equipoId), { authEmail: email, authUid: uid, usuarioLower: String(eq.usuario || eq.usuarioLower || eq.nombre || '').toLowerCase() });
+  batch.set(db.collection('accesosEquipos').doc(equipoId), { pass, email, generado: new Date().toISOString(), nombre: eq.nombre || '' });
+  await batch.commit();
+}
+async function generarAccesosDivision() {
+  const div = state.adminDivisionActiva;
+  const equipos = (equiposCacheAdmin || []).filter(e => e.division === div && !e.descalificado && !e.bajaLiga);
+  const sinAcceso = equipos.filter(e => !e.authEmail);
+  const lista = sinAcceso.length ? sinAcceso : equipos;
+  if (!lista.length) { showToast('No hay equipos.', 'error'); return; }
+  if (!confirm(sinAcceso.length
+    ? `Generar acceso a los ${sinAcceso.length} equipo(s) de ${div} que todavía no lo tienen?`
+    : `Todos los equipos de ${div} ya tienen acceso. ¿Ver las contraseñas que se les generaron?`)) return;
+  const out = [];
+  if (!sinAcceso.length) {
+    for (const e of equipos) {
+      const d = await db.collection('accesosEquipos').doc(e.id).get();
+      out.push({ nombre: e.nombre, usuario: e.usuario || e.nombre, pass: d.exists ? d.data().pass : '(cambiada por el equipo)' });
+    }
+    mostrarAccesosGenerados(out); return;
+  }
+  showToast(`Generando ${lista.length} acceso(s)…`, 'ok');
+  for (const e of lista) {
+    const pass = passAleatoria();
+    try { await generarAccesoEquipo(e.id, pass); out.push({ nombre: e.nombre, usuario: e.usuario || e.nombre, pass }); }
+    catch (err) { console.error(e.nombre, err); out.push({ nombre: e.nombre, usuario: e.usuario || e.nombre, pass: '⚠ error: ' + (err.code || err.message) }); }
+  }
+  mostrarAccesosGenerados(out);
+}
+function mostrarAccesosGenerados(lista) {
+  const txt = lista.map(x => `${x.nombre}\nUsuario: ${x.usuario}\nContraseña: ${x.pass}`).join('\n\n');
+  window._accesosTxt = 'Accesos a la web de la Liga F5 (https://drpalaciof-cell.github.io/liga-f5/)\n\n' + txt;
+  openModal(`<h2 style="margin-bottom:8px;">Accesos de equipos</h2>
+    <p class="muted" style="margin-bottom:12px;font-size:13px;">Pasale a cada equipo su usuario y contraseña. Entran con el usuario de siempre y esta contraseña; después la pueden cambiar desde su panel.</p>
+    <div class="tbl-wrap"><table class="jugadores-table"><thead><tr><th>Equipo</th><th>Usuario</th><th>Contraseña</th></tr></thead><tbody>
+    ${lista.map(x => `<tr><td>${escapeHtml(x.nombre)}</td><td>${escapeHtml(x.usuario)}</td><td><b style="font-family:monospace;font-size:15px;">${escapeHtml(x.pass)}</b></td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="section-actions" style="justify-content:flex-end;margin-top:14px;">
+      <button class="btn" onclick="navigator.clipboard.writeText(window._accesosTxt).then(()=>showToast('Copiado','ok'))">📋 Copiar todo</button>
+      <button class="btn btn-primary" onclick="closeModal()">Listo</button>
+    </div>`);
 }
 async function eliminarEquipo(id, nombre) {
   openModal(`

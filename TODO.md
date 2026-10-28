@@ -7,8 +7,13 @@
   (index.html) y `esAdminPorMail()` (firestore.rules) — mantener las dos iguales.
   Requiere: Authentication → Método de acceso → Correo electrónico/contraseña activado; usuario creado
   a mano en Authentication → Usuarios; `firebase deploy --only firestore:rules`.
-- ⏳ Login de EQUIPOS sigue caído (depende de la Function). Opciones: reactivar Blaze o migrar equipos
-  a Authentication (contraseña nueva por equipo).
+- ✅ Login de EQUIPOS migrado (v100): el admin genera el acceso (Equipos → "🔑 Accesos de equipos",
+  o el 🔑 de cada equipo = contraseña elegida). Crea un usuario de Authentication con mail interno
+  `<equipoId>.<ts>@equipos.ligaf5.app` (app secundaria 'altasEquipos'), vínculo `authEquipos/{uid}`,
+  `equipos/{id}.authEmail/authUid`, y guarda la contraseña inicial en `accesosEquipos/{id}` (solo admin).
+  El equipo entra con su usuario de siempre: si la Function falla, `loginEquipoPorAuth` busca el
+  authEmail por usuarioLower/nombreLower. Reglas: `equipoSesion()` (claim viejo o vínculo).
+  Cambiar contraseña desde el panel: reauthenticate + updatePassword.
 - Lo que sigue andando sin login: vista pública, planilla (sesión anónima), inscripción NO (usa la Function al final).
 
 ---

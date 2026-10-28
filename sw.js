@@ -543,7 +543,9 @@
 // activa; el arancel de esa fecha sigue sin cobrarse.
 // v99: el admin entra con mail y contraseña (Firebase Authentication) porque la Cloud Function
 // `login` quedó fuera de servicio al perder la facturación el proyecto. Reglas: esAdminPorMail().
-const CACHE = 'ligaf5-v99';
+// v100: equipos entran con acceso de Firebase Authentication (el admin lo genera desde
+// Equipos → "🔑 Accesos de equipos" o el 🔑 de cada equipo). Reglas: equipoSesion()/authEquipos.
+const CACHE = 'ligaf5-v100';
 const ASSETS = [
   './index.html',
   './planilla.html',

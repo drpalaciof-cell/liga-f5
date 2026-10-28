@@ -25,8 +25,25 @@ service cloud.firestore {
     function isAdmin() {
       return autenticado() && (request.auth.token.get('role','') == 'admin' || esAdminPorMail());
     }
+    // Equipos con acceso de Firebase Authentication (2026-10-28, mientras la Cloud Function
+    // `login` está fuera de servicio): el admin les genera un usuario de correo y contraseña
+    // y deja el vínculo en authEquipos/{uid} = { equipoId }. equipoSesion() devuelve el equipo
+    // de la sesión venga del claim viejo (token de la Function) o de ese vínculo.
+    function equipoPorVinculo() {
+      return exists(/databases/$(database)/documents/authEquipos/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/authEquipos/$(request.auth.uid)).data.get('equipoId', '')
+        : '';
+    }
+    function equipoSesion() {
+      return !autenticado() ? ''
+        : (request.auth.token.get('role','') == 'equipo' ? request.auth.token.get('equipoId','')
+          : (request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'password' ? equipoPorVinculo() : ''));
+    }
+    function esEquipo() {
+      return equipoSesion() != '';
+    }
     function isEquipoPropio(id) {
-      return autenticado() && request.auth.token.get('role','') == 'equipo' && request.auth.token.get('equipoId','') == id;
+      return esEquipo() && equipoSesion() == id;
     }
     // Campos que solo las acciones de admin pueden tocar (aprobar/rechazar
     // pago o seguro, habilitación tardía). Un equipo puede seguir editando su
@@ -51,6 +68,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Vínculo usuario de Authentication -> equipo. Lo escribe solo el admin (al generar el
+    // acceso); cada sesión puede leer el suyo para saber de qué equipo es.
+    match /authEquipos/{uid} {
+      allow read: if isAdmin() || (autenticado() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+    // Contraseña inicial que el admin le pasó a cada equipo (para poder reenviarla). Solo admin.
+    match /accesosEquipos/{id} {
+      allow read, write: if isAdmin();
+    }
     match /equipos/{id} {
       allow read: if autenticado();
       allow create: if autenticado();
@@ -100,7 +127,7 @@ service cloud.firestore {
     // partido, incluida la del rival.
     function equipoTocaSuAlineacion() {
       let tocados = request.resource.data.diff(resource.data).affectedKeys();
-      let miEquipoId = request.auth.token.get('equipoId','');
+      let miEquipoId = equipoSesion();
       let esLocal = miEquipoId == resource.data.equipoLocalId;
       let esVisitante = miEquipoId == resource.data.equipoVisitanteId;
       return (esLocal || esVisitante) && tocados.hasOnly(
@@ -114,7 +141,7 @@ service cloud.firestore {
       // planillero ni un equipo pueden modificarla. Solo el admin puede
       // corregir un error después, desde "Editar resultado".
       allow update: if isAdmin() || (autenticado() && resource.data.get('estado','') != 'cerrado'
-        && (request.auth.token.get('role','') == 'equipo' ? equipoTocaSuAlineacion() : soloCamposPlanilla()));
+        && (esEquipo() ? equipoTocaSuAlineacion() : soloCamposPlanilla()));
       allow delete: if isAdmin();
     }
     // Pagos semanales de arancel. Un equipo carga el suyo (estado 'pagado' al
@@ -122,8 +149,8 @@ service cloud.firestore {
     // propios (filtrados por equipoId); el admin ve y gestiona todos, incluido
     // rechazar un comprobante mal cargado.
     match /aranceles/{id} {
-      allow read: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && resource.data.equipoId == request.auth.token.get('equipoId',''));
-      allow create: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && request.resource.data.equipoId == request.auth.token.get('equipoId','') && request.resource.data.estado == 'pagado');
+      allow read: if isAdmin() || (esEquipo() && resource.data.equipoId == equipoSesion());
+      allow create: if isAdmin() || (esEquipo() && request.resource.data.equipoId == equipoSesion() && request.resource.data.estado == 'pagado');
       allow update: if isAdmin();
       // El equipo puede BORRAR su propio pago porque se equivocan de imagen seguido (suben
       // el comprobante de otra fecha, o una foto que no es). Antes tenían que pedirle al
@@ -131,8 +158,8 @@ service cloud.firestore {
       // Borrarse un pago propio sólo los perjudica a ellos: vuelven a deber esa fecha.
       // Lo que NO pueden tocar es un pago con constancia de la organización (los que se
       // reconocieron a mano cuando se postergó una fecha) — ése es registro nuestro.
-      allow delete: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo'
-        && resource.data.equipoId == request.auth.token.get('equipoId','')
+      allow delete: if isAdmin() || (esEquipo()
+        && resource.data.equipoId == equipoSesion()
         && !('reasignadoDe' in resource.data) && !('reconocidoMotivo' in resource.data));
     }
     // Pago de una sanción de un jugador (roja, doble amarilla, acumulación de amarillas).
@@ -140,8 +167,8 @@ service cloud.firestore {
     // propios; nunca puede ponerse 'aprobado' solo. Aprobar es lo que levanta la suspensión
     // (escribe en equipos/{id}.sancionesPagadas), así que queda sólo del lado del admin.
     match /pagosSanciones/{id} {
-      allow read: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && resource.data.equipoId == request.auth.token.get('equipoId',''));
-      allow create: if isAdmin() || (autenticado() && request.auth.token.get('role','') == 'equipo' && request.resource.data.equipoId == request.auth.token.get('equipoId','') && request.resource.data.estado == 'pagado');
+      allow read: if isAdmin() || (esEquipo() && resource.data.equipoId == equipoSesion());
+      allow create: if isAdmin() || (esEquipo() && request.resource.data.equipoId == equipoSesion() && request.resource.data.estado == 'pagado');
       allow update, delete: if isAdmin();
     }
     match /avisos/{id} {
