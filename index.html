@@ -8031,8 +8031,12 @@ function renderEnVivoCards(contId, isAdmin) {
   const pendientes = partidosTotalCache.filter(p => !p.jugado && !esFechaPostergada(p.numeroFecha, p.division));
   const fechasPend = [...new Set(pendientes.map(p => Number(p.numeroFecha)).filter(f => !isNaN(f)))].sort((a, b) => a - b);
   const fechaActiva = fechasPend.length ? fechasPend[0] : null;
+  // Solo las divisiones que tienen algo pendiente en esa fecha: cuando se juega una fecha
+  // postergada de Primera (ej. la 3), la fecha 3 de Segunda —jugada hace meses— no tiene que
+  // aparecer como "cerrado" en las otras canchas.
+  const divsActivas = new Set(pendientes.filter(p => Number(p.numeroFecha) === fechaActiva).map(p => p.division));
   const deHoy = fechaActiva != null
-    ? partidosTotalCache.filter(p => Number(p.numeroFecha) === fechaActiva && !esFechaPostergada(p.numeroFecha, p.division))
+    ? partidosTotalCache.filter(p => Number(p.numeroFecha) === fechaActiva && divsActivas.has(p.division) && !esFechaPostergada(p.numeroFecha, p.division))
     : [];
   if (!deHoy.length) { cont.innerHTML = `<div class="empty-state">No hay ninguna fecha en curso ahora mismo.</div>`; return; }
   const labels = { esperando_inicio: '⏸ Esperando arranque', primer_tiempo: '🔴 1er tiempo', entretiempo: '⏸ Entretiempo (ET)', segundo_tiempo: '🔴 2do tiempo', cerrado: '🏁 Terminado' };
@@ -8040,9 +8044,17 @@ function renderEnVivoCards(contId, isAdmin) {
   // Aclara de qué fecha son los partidos que siguen -- antes "En vivo" mostraba las tres
   // canchas sin decir nunca el número de fecha.
   const encabezadoFecha = `<div class="envivo-fecha-actual">${tituloFecha(deHoy[0].numeroFecha, deHoy[0].division)} en juego</div>`;
-  cont.innerHTML = encabezadoFecha + [1, 2, 3].map(cancha => {
-    const deCancha = deHoy.filter(p => Number(p.cancha) === cancha).sort((a, b) => horarioAMin(a.horario) - horarioAMin(b.horario));
-    if (!deCancha.length) return `<div class="glass" style="border-radius:14px;padding:16px;"><h4 style="margin:0 0 8px;">Cancha ${cancha}</h4><p class="muted" style="margin:0;">Sin partidos hoy.</p></div>`;
+  // Si todo se juega en UNA sola cancha (ej. fecha postergada), una tarjeta por partido con su
+  // horario, una al lado de la otra; si no, una tarjeta por cancha con el partido en curso.
+  const canchasDia = [...new Set(deHoy.map(p => Number(p.cancha)).filter(Boolean))];
+  const unaCancha = canchasDia.length === 1;
+  const slots = unaCancha
+    ? deHoy.filter(p => p.horario).sort((a, b) => horarioAMin(a.horario) - horarioAMin(b.horario))
+        .map(p => ({ cancha: Number(p.cancha), deCancha: [p], titulo: `🕐 ${p.horario} · Cancha ${p.cancha}` }))
+    : [1, 2, 3].map(c => ({ cancha: c, titulo: `Cancha ${c}`,
+        deCancha: deHoy.filter(p => Number(p.cancha) === c).sort((a, b) => horarioAMin(a.horario) - horarioAMin(b.horario)) }));
+  cont.innerHTML = encabezadoFecha + slots.map(({ cancha, deCancha, titulo }) => {
+    if (!deCancha.length) return `<div class="glass" style="border-radius:14px;padding:16px;"><h4 style="margin:0 0 8px;">${titulo}</h4><p class="muted" style="margin:0;">Sin partidos hoy.</p></div>`;
     // enCurso: partido que todavia no quedo del todo cerrado (p.jugado, recien se pone true al
     // final de cerrarPlanilla) pero cuya fase real (por los timestamps) ya arranco o termino --
     // esto cubre el rato entre tocar "FIN DEL PARTIDO" y terminar de firmar/cerrar la planilla.
@@ -8112,7 +8124,7 @@ function renderEnVivoCards(contId, isAdmin) {
     const tiempoHtml = tiempoLinea ? `<div style="text-align:center;font-variant-numeric:tabular-nums;font-weight:800;margin:2px 0 8px;font-size:${enVivoTick ? '24px' : '11.5px'};color:${enVivoTick ? '#ff6b6b' : 'var(--text-dim)'};">${tiempoLinea}</div>` : '';
     return `<div class="glass" style="border-radius:14px;padding:16px;${enCurso ? 'border:1px solid rgba(255,80,80,.4);' : ''}border-top:3px solid ${divColorEV};">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h4 style="margin:0;">Cancha ${cancha}</h4>
+        <h4 style="margin:0;">${titulo}</h4>
         <span style="font-size:11px;font-weight:700;color:${enCurso ? '#ff6b6b' : 'var(--text-dim)'};">${estadoTxt}</span>
       </div>
       <div style="font-size:13px;color:var(--text-dim);margin-bottom:2px;display:flex;align-items:center;gap:5px;">

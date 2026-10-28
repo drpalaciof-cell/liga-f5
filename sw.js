@@ -546,7 +546,9 @@
 // v100: equipos entran con acceso de Firebase Authentication (el admin lo genera desde
 // Equipos → "🔑 Accesos de equipos" o el 🔑 de cada equipo). Reglas: equipoSesion()/authEquipos.
 // v101: "🔑 Accesos de equipos" con la fase regular terminada genera solo los del cuadro de playoffs.
-const CACHE = 'ligaf5-v101';
+// v102: En vivo con una sola cancha (fecha postergada) muestra una tarjeta por partido con su
+// horario; y no mezcla partidos viejos de la otra división con el mismo número de fecha.
+const CACHE = 'ligaf5-v102';
 const ASSETS = [
   './index.html',
   './planilla.html',
