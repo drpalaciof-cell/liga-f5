@@ -2599,14 +2599,20 @@ window.addEventListener('resize', () => {
 // postergada, para que nadie se presente al partido.
 //
 // Formato en config/general: fechasPostergadas: ['Primera|3']
+// fechasHabilitadas (2026-10-28): una fecha postergada que YA se juega. Sigue en
+// fechasPostergadas -- así no pasa a cobrarse el arancel (ver _arancelFechaPostergada) -- pero
+// para el planillero, "En vivo" y el fixture deja de estar postergada y vuelve a ser la fecha
+// activa. Se habilita/deshabilita desde el Fixture del admin. Formato: ['Primera|3'].
 let _fechasPostergadas = [];
+let _fechasHabilitadas = [];
 let _postergadasListas = false;
 async function cargarFechasPostergadas() {
   if (_postergadasListas) return;
   try {
     const d = await db.collection('config').doc('general').get();
     _fechasPostergadas = (d.exists && d.data().fechasPostergadas) || [];
-  } catch (e) { _fechasPostergadas = []; }
+    _fechasHabilitadas = (d.exists && d.data().fechasHabilitadas) || [];
+  } catch (e) { _fechasPostergadas = []; _fechasHabilitadas = []; }
   _postergadasListas = true;
   // La config llega async y las pantallas pueden haberse dibujado antes con la lista vacía
   // (mostrando la fecha postergada como si fuera la de hoy). Se redibuja al tenerla.
@@ -2615,13 +2621,31 @@ async function cargarFechasPostergadas() {
     try { renderEnVivoPublico(); renderEnVivoAdmin(); } catch (e) {}
   }
 }
-function esFechaPostergada(nf, division) {
-  if (!_fechasPostergadas.length) return false;
+function _enListaFecha(lista, nf, division) {
   const div = String(division || state.divisionActiva || '').trim().toLowerCase();
-  return _fechasPostergadas.some(x => {
+  return (lista || []).some(x => {
     const [d, n] = String(x).split('|');
     return String(d || '').trim().toLowerCase() === div && Number(n) === Number(nf);
   });
+}
+function esFechaPostergada(nf, division) {
+  if (!_fechasPostergadas.length) return false;
+  return _enListaFecha(_fechasPostergadas, nf, division) && !_enListaFecha(_fechasHabilitadas, nf, division);
+}
+/** Admin: habilita (o vuelve a postergar) una fecha postergada para que se juegue. */
+async function toggleFechaHabilitada(nf, division) {
+  const clave = `${division}|${nf}`;
+  const habilitar = !_enListaFecha(_fechasHabilitadas, nf, division);
+  if (!confirm(habilitar
+    ? `¿Habilitar la Fecha ${nf} de ${division} para jugarse? Pasa a ser la fecha activa del planillero y de "En vivo". El arancel de esa fecha sigue sin cobrarse.`
+    : `¿Volver a postergar la Fecha ${nf} de ${division}? El planillero la deja de mostrar.`)) return;
+  try {
+    const FV = firebase.firestore.FieldValue;
+    await db.collection('config').doc('general').set({ fechasHabilitadas: habilitar ? FV.arrayUnion(clave) : FV.arrayRemove(clave) }, { merge: true });
+    _fechasHabilitadas = habilitar ? [..._fechasHabilitadas, clave] : _fechasHabilitadas.filter(x => x !== clave);
+    showToast(habilitar ? `Fecha ${nf} habilitada: ya aparece en el planillero.` : `Fecha ${nf} postergada de nuevo.`, 'ok');
+    renderFixtureAdminList();
+  } catch (e) { console.error(e); showToast('No se pudo guardar.', 'error'); }
 }
 /** Rótulo de una fecha para el fixture, con el aviso de postergada si corresponde. */
 function tituloFecha(nf, division) {
@@ -8469,8 +8493,14 @@ function renderFechasFixtureAdmin(partidosGrupo, equiposGrupo, fuenteTodos) {
       ? `<button class="btn btn-sm" style="background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.45);color:#f87171;font-size:11px;padding:3px 9px;" onclick="borrarFechaFixture(${Number(nf)}, '${divFecha}')" title="Borrar todos los partidos de esta fecha">🗑 Eliminar fecha</button>`
       : '';
     const faseNf = faseDeFecha(nf, divFecha);
-    html += `<div class="fecha-group"><div class="fecha-group-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <span>${faseNf ? `🏆 ${FASE_LABEL[faseNf]} <small class="muted">(fecha ${nf})</small>` : `Fecha ${nf}`}</span>${btnBorrar}
+    const posterg = _enListaFecha(_fechasPostergadas, nf, divFecha);
+    const habil = posterg && _enListaFecha(_fechasHabilitadas, nf, divFecha);
+    const btnPosterg = posterg
+      ? `<button class="btn btn-sm" style="font-size:11px;padding:3px 9px;${habil ? '' : 'background:rgba(74,222,128,.14);border-color:rgba(74,222,128,.5);color:#4ade80;'}" onclick="toggleFechaHabilitada(${Number(nf)}, '${divFecha}')">${habil ? '⏸ Volver a postergar' : '▶ Habilitar para jugar'}</button>`
+      : '';
+    html += `<div class="fecha-group"><div class="fecha-group-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <span>${faseNf ? `🏆 ${FASE_LABEL[faseNf]} <small class="muted">(fecha ${nf})</small>` : `Fecha ${nf}`}${posterg ? ` <small style="color:${habil ? '#4ade80' : 'var(--warn)'};">${habil ? '(postergada · habilitada para jugar)' : '(postergada)'}</small>` : ''}</span>
+      <span style="display:flex;gap:6px;">${btnPosterg}${btnBorrar}</span>
     </div>`;
     // "Libre" mirando todos los partidos de la fecha (incluye interzonal).
     const todosFecha = todos.filter(p => p.numeroFecha === nf);
@@ -8501,6 +8531,7 @@ function renderFechasFixtureAdmin(partidosGrupo, equiposGrupo, fuenteTodos) {
 function renderFixtureAdminList() {
   const wrap = document.getElementById('pa-fixture-list');
   if (!wrap) return;
+  if (!_postergadasListas) { cargarFechasPostergadas().then(() => renderFixtureAdminList()); }
   if (partidosCacheAdmin.length === 0) { wrap.innerHTML = `<div class="empty-state">Todavía no se generó el fixture de esta división.</div>`; return; }
   const div = state.adminDivisionActiva;
   const equiposDivision = equiposCacheAdmin.filter(eq => eq.division === div);

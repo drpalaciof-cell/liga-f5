@@ -1354,15 +1354,18 @@ async function getCfg(){
 // en la 4. Los partidos NO se tocan: cuando se juegue, se saca de la lista y vuelven solos.
 //
 // Formato en config/general: fechasPostergadas: ['Primera|3']
+// fechasHabilitadas: postergada que ya se juega (el admin la habilita desde el Fixture) -- deja
+// de saltearse y vuelve a ser la fecha activa de la cancha.
 function esPostergada(cfg, division, numeroFecha){
   const lista=(cfg&&cfg.fechasPostergadas)||[];
   if(!lista.length)return false;
   const div=String(division||'').trim().toLowerCase();
   const f=Number(numeroFecha);
-  return lista.some(x=>{
+  const en=l=>(l||[]).some(x=>{
     const [d,n]=String(x).split('|');
     return String(d||'').trim().toLowerCase()===div && Number(n)===f;
   });
+  return en(lista)&&!en(cfg&&cfg.fechasHabilitadas);
 }
 
 let _abriendo=false; // BUG4: lock para evitar race condition con doble tap

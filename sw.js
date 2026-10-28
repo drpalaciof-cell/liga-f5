@@ -538,7 +538,10 @@
 // v97: imágenes optimizadas para no agotar el cupo gratis de tráfico de Firebase Hosting
 // (copas/escudos/logo del Clausura de ~1 MB a 15-40 KB, fondos recomprimidos) y bg-lacquer.jpg
 // (no se usa) fuera del precache. La primera carga baja de ~6 MB a ~1.5 MB.
-const CACHE = 'ligaf5-v97';
+// v98: "▶ Habilitar para jugar" en el Fixture del admin para una fecha postergada
+// (config/general.fechasHabilitadas). El planillero y "En vivo" la vuelven a tomar como fecha
+// activa; el arancel de esa fecha sigue sin cobrarse.
+const CACHE = 'ligaf5-v98';
 const ASSETS = [
   './index.html',
   './planilla.html',

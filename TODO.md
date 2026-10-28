@@ -1,3 +1,15 @@
+# 2026-10-28 — Fecha 3 postergada de Primera: habilitarla para jugar (sw v98)
+
+- Nuevo `config/general.fechasHabilitadas` (['Primera|3']): la fecha sigue en `fechasPostergadas`
+  (el arancel NO se cobra) pero planillero, "En vivo" y fixture la tratan como fecha normal/activa.
+- Admin → Fixture de la división → en el título de la fecha postergada: "▶ Habilitar para jugar" /
+  "⏸ Volver a postergar".
+- Fecha 3 de Primera: se juegan 3 partidos (LA SUB 21-EL CLAN, MITOMANOS-ROTENS, IMPERIO-ELOSRA).
+  ⏳ Cargar los 3-0 administrativos: VALENCIA 0-3 STRONGEST, EL REJUNTE 3-0 RURAL (Valencia y Rural
+  descalificados), BEER UNITED 3-0 INSTITUTO (Instituto no se presenta).
+
+---
+
 # 2026-10-27 — Pestaña pública "🏆 Playoffs" + estética de los flyers (sw v95)
 
 - Nueva pestaña **Playoffs** (al lado de Posiciones) con la llave de la división elegida:
