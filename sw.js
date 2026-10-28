@@ -545,7 +545,8 @@
 // `login` quedó fuera de servicio al perder la facturación el proyecto. Reglas: esAdminPorMail().
 // v100: equipos entran con acceso de Firebase Authentication (el admin lo genera desde
 // Equipos → "🔑 Accesos de equipos" o el 🔑 de cada equipo). Reglas: equipoSesion()/authEquipos.
-const CACHE = 'ligaf5-v100';
+// v101: "🔑 Accesos de equipos" con la fase regular terminada genera solo los del cuadro de playoffs.
+const CACHE = 'ligaf5-v101';
 const ASSETS = [
   './index.html',
   './planilla.html',

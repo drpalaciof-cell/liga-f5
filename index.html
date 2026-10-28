@@ -9575,7 +9575,16 @@ async function generarAccesoEquipo(equipoId, pass) {
 }
 async function generarAccesosDivision() {
   const div = state.adminDivisionActiva;
-  const equipos = (equiposCacheAdmin || []).filter(e => e.division === div && !e.descalificado && !e.bajaLiga);
+  let equipos = (equiposCacheAdmin || []).filter(e => e.division === div && !e.descalificado && !e.bajaLiga);
+  // Con la fase regular terminada, solo los que siguen en carrera (los del cuadro de playoffs):
+  // los eliminados ya no necesitan entrar. Pedido del usuario (2026-10-28).
+  if (PLAYOFF_CFG[div] && partidosCacheAdmin.length) {
+    const cu = calcularCuadroPlayoffs(div, equipos, partidosCacheAdmin);
+    if (!cu.proyectado) {
+      const enCuadro = new Set(cu.matches.filter(m => m.r === 0).flatMap(m => [m.a, m.b]).filter(Boolean).map(t => t.id));
+      equipos = equipos.filter(e => enCuadro.has(e.id));
+    }
+  }
   const sinAcceso = equipos.filter(e => !e.authEmail);
   const lista = sinAcceso.length ? sinAcceso : equipos;
   if (!lista.length) { showToast('No hay equipos.', 'error'); return; }
