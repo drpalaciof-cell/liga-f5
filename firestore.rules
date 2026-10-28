@@ -12,8 +12,18 @@ service cloud.firestore {
     // cerrar planilla) desde que se agregó este patrón -- confirmado con una escritura de
     // prueba real, anónima, contra la base. `.get('role','')` es seguro con ausencia total
     // de claims, igual que ya se usaba en resource.data.get('estado','') más abajo.
+    // Admin por mail (2026-10-28): el proyecto quedó sin facturación y la Cloud Function `login`
+    // (la que emite el token con role=admin) dejó de responder. El admin entra con
+    // Firebase Authentication (correo y contraseña, gratis en el plan Spark): vale como admin si
+    // el mail está en esta lista y la sesión es de proveedor "password". El usuario se crea a
+    // mano en la consola (Authentication → Usuarios); para sumar otro admin, agregarlo acá.
+    function esAdminPorMail() {
+      return autenticado()
+        && request.auth.token.get('email', '') in ['dr.palaciof@gmail.com']
+        && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'password';
+    }
     function isAdmin() {
-      return autenticado() && request.auth.token.get('role','') == 'admin';
+      return autenticado() && (request.auth.token.get('role','') == 'admin' || esAdminPorMail());
     }
     function isEquipoPropio(id) {
       return autenticado() && request.auth.token.get('role','') == 'equipo' && request.auth.token.get('equipoId','') == id;

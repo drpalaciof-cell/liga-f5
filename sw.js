@@ -541,7 +541,9 @@
 // v98: "▶ Habilitar para jugar" en el Fixture del admin para una fecha postergada
 // (config/general.fechasHabilitadas). El planillero y "En vivo" la vuelven a tomar como fecha
 // activa; el arancel de esa fecha sigue sin cobrarse.
-const CACHE = 'ligaf5-v98';
+// v99: el admin entra con mail y contraseña (Firebase Authentication) porque la Cloud Function
+// `login` quedó fuera de servicio al perder la facturación el proyecto. Reglas: esAdminPorMail().
+const CACHE = 'ligaf5-v99';
 const ASSETS = [
   './index.html',
   './planilla.html',

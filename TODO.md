@@ -1,3 +1,18 @@
+# 2026-10-28 (cont.) — Login de admin por mail (sw v99)
+
+- El proyecto quedó SIN FACTURACIÓN: la Cloud Function `login` responde 503 ("service not available")
+  y Hosting volvió al cupo Spark (se cortó por tráfico: 42 GB en octubre).
+- Admin ahora entra con **mail y contraseña** (Firebase Authentication, gratis): en el login, si el
+  usuario tiene "@", va por `signInWithEmailAndPassword`. Lista de admins por mail: `ADMIN_EMAILS`
+  (index.html) y `esAdminPorMail()` (firestore.rules) — mantener las dos iguales.
+  Requiere: Authentication → Método de acceso → Correo electrónico/contraseña activado; usuario creado
+  a mano en Authentication → Usuarios; `firebase deploy --only firestore:rules`.
+- ⏳ Login de EQUIPOS sigue caído (depende de la Function). Opciones: reactivar Blaze o migrar equipos
+  a Authentication (contraseña nueva por equipo).
+- Lo que sigue andando sin login: vista pública, planilla (sesión anónima), inscripción NO (usa la Function al final).
+
+---
+
 # 2026-10-28 — Fecha 3 postergada de Primera: habilitarla para jugar (sw v98)
 
 - Nuevo `config/general.fechasHabilitadas` (['Primera|3']): la fecha sigue en `fechasPostergadas`

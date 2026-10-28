@@ -939,7 +939,7 @@ body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26
       <p class="sub">Accedé con tu nombre de usuario y tu contraseña.</p>
       <form id="form-login-equipo">
         <div class="field">
-          <label>Nombre de usuario</label>
+          <label>Nombre de usuario <span class="muted" style="font-weight:500;">(administradores: su mail)</span></label>
           <input type="text" id="le-nombre" required placeholder="Tu nombre de usuario" autocapitalize="none" autocorrect="off" autocomplete="username" spellcheck="false">
         </div>
         <div class="field">
@@ -2191,8 +2191,26 @@ function showView(name) {
 // La sesión real la maneja Firebase Auth (custom token con el rol adentro,
 // emitido por la Cloud Function `login`) — se persiste sola entre recargas,
 // no hace falta guardar nada en localStorage.
+// Admins que entran con mail y contraseña (Firebase Authentication). Misma lista que
+// esAdminPorMail() en firestore.rules -- si se suma uno, va en los dos lados.
+const ADMIN_EMAILS = ['dr.palaciof@gmail.com'];
+function esAdminPorMail(user) {
+  return !!(user && user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
+    && (user.providerData || []).some(p => p && p.providerId === 'password'));
+}
+async function entrarComoAdminPorMail(user) {
+  state.admin = user.email.toLowerCase();
+  await renderPanelAdmin();
+  showView('panel-admin');
+  subscribirPush('admin', null);
+  iniciarBadgeAdmin();
+}
 async function aplicarSesionDesdeAuth(user) {
   try {
+    if (esAdminPorMail(user)) {
+      if (state.admin !== user.email.toLowerCase()) await entrarComoAdminPorMail(user);
+      return;
+    }
     const tokenResult = await user.getIdTokenResult();
     const role = tokenResult.claims.role;
     if (role === 'admin') {
@@ -3064,7 +3082,29 @@ document.getElementById('form-login-equipo').addEventListener('submit', async e 
   const btnLogin = e.submitter || e.target.querySelector('button[type="submit"]');
   if (btnLogin) btnLogin.disabled = true;
   try {
-    const res = await functions.httpsCallable('login')({ usuario, pass });
+    // Admin con mail: Firebase Authentication directo (no depende de la Cloud Function).
+    if (usuario.includes('@')) {
+      try {
+        const cred = await auth.signInWithEmailAndPassword(usuario, pass);
+        if (!esAdminPorMail(cred.user)) { await auth.signOut(); showToast('Ese mail no está habilitado como administrador.', 'error'); return; }
+        await entrarComoAdminPorMail(cred.user);
+        showToast('Bienvenido al panel admin', 'ok');
+      } catch (err) {
+        console.error(err);
+        const malos = ['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/invalid-email'];
+        showToast(malos.includes(err.code) ? 'Mail o contraseña incorrectos.' : (err.code === 'auth/operation-not-allowed' ? 'Falta activar "Correo y contraseña" en Firebase Authentication.' : (err.message || 'No se pudo ingresar.')), 'error');
+      }
+      return;
+    }
+    let res;
+    try { res = await functions.httpsCallable('login')({ usuario, pass }); }
+    catch (err) {
+      if (err && (err.code === 'functions/internal' || err.code === 'functions/unavailable')) {
+        showToast('El ingreso con usuario está fuera de servicio por ahora. Si sos administrador, entrá con tu mail.', 'error');
+        return;
+      }
+      throw err;
+    }
     const { token, role, id } = res.data;
     await auth.signInWithCustomToken(token);
     if (role === 'admin') {
