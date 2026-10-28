@@ -549,7 +549,9 @@
 // v102: En vivo con una sola cancha (fecha postergada) muestra una tarjeta por partido con su
 // horario; y no mezcla partidos viejos de la otra división con el mismo número de fecha.
 // v103: sin cartel rojo de "administradores" mientras la Function está fuera de servicio.
-const CACHE = 'ligaf5-v103';
+// v104: el service worker ya no puede responder vacío (ERR_FAILED en iPhone abriendo el link de
+// GitHub Pages desde WhatsApp): las navegaciones van siempre por la rama HTML con respaldo.
+const CACHE = 'ligaf5-v104';
 const ASSETS = [
   './index.html',
   './planilla.html',
@@ -597,7 +599,11 @@ self.addEventListener('fetch', event => {
   if (url.hostname.includes('firestore.googleapis.com') ||
       url.hostname.includes('firebase.googleapis.com') ||
       url.hostname.includes('identitytoolkit.googleapis.com')) return;
-  const isHTML = url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname === '';
+  // req.mode === 'navigate': en GitHub Pages la página vive en /liga-f5/ (no termina en .html ni
+  // es '/'), así que antes caía en la rama de recursos; si no había copia y la red fallaba un
+  // instante, el service worker respondía null y el navegador mostraba ERR_FAILED (pasó en un
+  // iPhone abriendo el link desde WhatsApp, 28/10).
+  const isHTML = req.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/') || url.pathname === '';
   if (isHTML) {
     // Antes esto era network-first SIN timeout: fetch() primero y recién al
     // fallar se miraba el caché. Con señal mala (no ausente) ese fetch no
@@ -619,7 +625,8 @@ self.addEventListener('fetch', event => {
         const res = await red;
         if (res) return res;
         // Sin copia y sin red: se intenta el shell de la app antes de rendirse.
-        return (await cache.match('./planilla.html')) || (await cache.match('./index.html')) ||
+        const esPlanilla = url.pathname.includes('planilla');
+        return (await cache.match(esPlanilla ? './planilla.html' : './index.html')) || (await cache.match('./index.html')) ||
           new Response('<h1>Sin conexión</h1><p>Abrí la app una vez con internet para que quede guardada.</p>',
             { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
       })
@@ -632,7 +639,10 @@ self.addEventListener('fetch', event => {
           if (res && res.status === 200) cache.put(req, res.clone());
           return res;
         }).catch(() => null);
-        return cached || fetchPromise;
+        if (cached) return cached;
+        // Nunca devolver null a respondWith (el navegador lo muestra como ERR_FAILED): sin copia
+        // y con la red caída, se deja que el pedido falle como un fetch común.
+        return (await fetchPromise) || fetch(req);
       })
     );
   }
