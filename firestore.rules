@@ -130,7 +130,13 @@ service cloud.firestore {
       let miEquipoId = equipoSesion();
       let esLocal = miEquipoId == resource.data.equipoLocalId;
       let esVisitante = miEquipoId == resource.data.equipoVisitanteId;
-      return (esLocal || esVisitante) && tocados.hasOnly(
+      // Solo ANTES del pitazo (estado pendiente/alineación y sin hora de arranque marcada) y
+      // mientras el planillero no haya confirmado la de este equipo en la cancha. Una vez que
+      // arranca el partido, el equipo ya no puede agregar ni sacar jugadores de su planilla.
+      let estado = resource.data.get('estado', 'pendiente');
+      let antesDelPitazo = (estado == 'pendiente' || estado == 'alineacion') && resource.data.get('horaArranque', null) == null;
+      let confirmadaPlanillero = resource.data.get(esLocal ? 'alineacionLocalPor' : 'alineacionVisitantePor', '') == 'planillero';
+      return (esLocal || esVisitante) && antesDelPitazo && !confirmadaPlanillero && tocados.hasOnly(
         esLocal ? ['alineacionLocal', 'capitanLocalDni'] : ['alineacionVisitante', 'capitanVisitanteDni']
       );
     }

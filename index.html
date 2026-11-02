@@ -3875,7 +3875,7 @@ async function renderPlanillaEquipo() {
     // confirmara la del RIVAL -- estado 'alineacion' -- para que este equipo ya no pudiera cargar
     // la suya desde el panel.)
     const confirmadaPlanillero = (esLocal ? p.alineacionLocalPor : p.alineacionVisitantePor) === 'planillero';
-    const enCurso = !!(p.estado && !['pendiente', 'alineacion'].includes(p.estado)) || confirmadaPlanillero;
+    const enCurso = !!(p.estado && !['pendiente', 'alineacion'].includes(p.estado)) || !!p.horaArranque || confirmadaPlanillero;
 
     // Seguro médico: sólo bloquea después del plazo, igual que en el planillero.
     let cfg = {};

@@ -559,6 +559,8 @@
 // (cargada por el equipo / por el planillero / falta), en tiempo real; el planillero elige por cuál
 // arrancar. Si un equipo carga la suya mientras el planillero la está tildando, pregunta cuál usar.
 // Panel del equipo: ya no se bloquea porque el planillero confirmó la del rival.
+// ⚠ v105 NECESITA: firebase deploy --only hosting,firestore:rules (el equipo no puede tocar su
+// planilla una vez que arranca el partido o que el planillero la confirmó: ahora lo frena la regla).
 const CACHE = 'ligaf5-v105';
 const ASSETS = [
   './index.html',
