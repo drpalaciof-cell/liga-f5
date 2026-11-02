@@ -561,7 +561,9 @@
 // Panel del equipo: ya no se bloquea porque el planillero confirmó la del rival.
 // ⚠ v105 NECESITA: firebase deploy --only hosting,firestore:rules (el equipo no puede tocar su
 // planilla una vez que arranca el partido o que el planillero la confirmó: ahora lo frena la regla).
-const CACHE = 'ligaf5-v105';
+// v106: panel de admin -- pestaña "🏆 Playoffs" primera y abierta por defecto en cada división: el
+// cuadro igual que el público + crear cruces y horarios.
+const CACHE = 'ligaf5-v106';
 const ASSETS = [
   './index.html',
   './planilla.html',

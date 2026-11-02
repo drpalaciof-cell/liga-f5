@@ -340,7 +340,7 @@ table tbody tr:hover{background:rgba(34,211,238,.04);}
 .division-pick-card{padding:24px 18px;text-align:center;cursor:pointer;transition:border-color .2s ease, transform .2s ease;}
 .division-pick-card:hover{border-color:var(--division-color,var(--cyan));transform:translateY(-2px);}
 .division-pick-card[data-division="Segunda"]{--division-color:var(--segunda);--division-color2:var(--segunda2);--division-soft:var(--segunda-soft);}
-#torneo-division-detail[data-division="Segunda"]{--division-color:var(--segunda);--division-color2:var(--segunda2);--division-soft:var(--segunda-soft);}
+#torneo-division-detail[data-division="Segunda"]{--division-color:var(--segunda);--division-color2:var(--segunda2);--division-soft:var(--segunda-soft);--division-glow1:rgba(251,146,60,.35);--division-glow2:rgba(251,146,60,.6);--po-hot:#FFC46B;}
 .division-pick-card .trophy-case{display:none;}
 .division-pick-card .division-cup-logo{width:44vw;max-width:210px;height:44vw;max-height:210px;object-fit:contain;object-position:center center;margin:0 auto 8px;}
 .division-pick-card .division-title{font-size:22px;}
@@ -1540,7 +1540,8 @@ body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26
           <h3 id="division-detail-title" style="margin:0;"></h3>
         </div>
         <div class="tabs-admin-sub" id="division-subtabs">
-          <button class="tab-btn active" data-divtab="equipos" onclick="switchDivisionAdminTab('equipos')">Equipos</button>
+          <button class="tab-btn active" data-divtab="playoffs" onclick="switchDivisionAdminTab('playoffs')">🏆 Playoffs</button>
+          <button class="tab-btn" data-divtab="equipos" onclick="switchDivisionAdminTab('equipos')">Equipos</button>
           <button class="tab-btn" data-divtab="listabf" onclick="switchDivisionAdminTab('listabf')">📋 Lista de buena fe</button>
           <button class="tab-btn" data-divtab="inscripciones" onclick="switchDivisionAdminTab('inscripciones')">Inscripciones</button>
           <button class="tab-btn" data-divtab="seguro" onclick="switchDivisionAdminTab('seguro')">Seguro</button>
@@ -1549,8 +1550,13 @@ body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26
           <button class="tab-btn" data-divtab="planillas" onclick="switchDivisionAdminTab('planillas')">📋 Planillas</button>
         </div>
 
+        <!-- Playoffs: el cuadro (igual que la página pública) + crear cruces y horarios -->
+        <div id="divisiontab-playoffs" class="divisiontab">
+          <div id="pa-playoffs-acciones"></div>
+          <div id="pa-playoffs-cuadro"></div>
+        </div>
         <!-- Equipos -->
-        <div id="divisiontab-equipos" class="divisiontab">
+        <div id="divisiontab-equipos" class="divisiontab hidden">
           <div class="glass section-card">
             <h3>Equipos inscriptos <span class="muted" id="pa-equipos-count" style="font-size:12px;font-weight:500;"></span></h3>
             <div class="section-actions" style="justify-content:flex-start;margin-bottom:14px;margin-top:0;">
@@ -2524,7 +2530,9 @@ function renderPlayoffsPublico() {
   if (!wrap) return;
   const div = state.divisionActiva;
   if (!state.equiposCache.length) { wrap.innerHTML = `<div class="empty-state">Cargando...</div>`; return; }
-  const cu = calcularCuadroPlayoffs(div);
+  poRenderEn(wrap, div, calcularCuadroPlayoffs(div), 'po');
+}
+function poRenderEn(wrap, div, cu, pre) {
   const ventajas = cu.matches.filter(m => m.r === 0).flatMap(m => [m.a, m.b]).filter(t => t && t.ventaja).map(t => escapeHtml(t.nombre));
   wrap.innerHTML = `
     <div class="po-head">
@@ -2533,13 +2541,13 @@ function renderPlayoffsPublico() {
       <div class="po-badge">${cu.cfg.inicio}</div>
       ${cu.proyectado ? `<div class="po-proy">Cuadro proyectado con la tabla actual: se confirma al terminar la fase regular.</div>` : ''}
     </div>
-    <div class="po-scroller" id="po-scroller"><div class="po-stage" id="po-stage"><div class="po-board" id="po-board"></div></div></div>
+    <div class="po-scroller" id="${pre}-scroller"><div class="po-stage" id="${pre}-stage"><div class="po-board" id="${pre}-board"></div></div></div>
     ${ventajas.length ? `<p class="po-note">★ ${ventajas.join(' y ')} ${ventajas.length > 1 ? 'tienen' : 'tiene'} ventaja deportiva: en ${cu.cfg.rondas[0].toLowerCase()}, si empata${ventajas.length > 1 ? 'n' : ''}, pasa${ventajas.length > 1 ? 'n' : ''} sin penales.</p>` : ''}
     ${poResultadosHtml(cu)}`;
   _poModo = window.innerWidth < 720 ? 'v' : 'h';
-  const B = document.getElementById('po-board');
+  const B = document.getElementById(pre + '-board');
   if (_poModo === 'v') poDibujarV(B, cu); else poDibujarH(B, cu);
-  poAjustar();
+  poAjustar(pre);
 }
 function poHayPenales(mt) { return !!(mt.partido && mt.partido.pa != null && mt.partido.pb != null && mt.partido.ga === mt.partido.gb); }
 function poPenLeyenda(B, mt, x, y, w) {
@@ -2702,17 +2710,19 @@ function poDibujarV(B, cu) {
   poEl(B, 'po-champ v', { left: '218px', width: '120px', top: (YT[RS] - 4) + 'px' },
     ch ? `<small>CAMPEÓN</small>${ch.escudo ? `<img src="${ch.escudo}" alt="">` : ''}<b>${escapeHtml(ch.nombre)}</b>` : `<small>CAMPEÓN</small><p>A definir</p>`);
 }
-function poAjustar() {
-  const sc = document.getElementById('po-scroller'), st = document.getElementById('po-stage'), B = document.getElementById('po-board');
+function poAjustar(pre = 'po') {
+  const sc = document.getElementById(pre + '-scroller'), st = document.getElementById(pre + '-stage'), B = document.getElementById(pre + '-board');
   if (!sc || !B) return;
   const bw = Number(B.dataset.bw), bh = Number(B.dataset.bh), avail = sc.clientWidth - 2;
   const s = _poModo === 'v' ? Math.min(1.3, avail / bw) : Math.min(1, avail / bw);
   B.style.transform = `scale(${s})`; st.style.width = (bw * s) + 'px'; st.style.height = (bh * s) + 'px';
 }
 window.addEventListener('resize', () => {
-  if (state.contentTabActivo !== 'playoffs') return;
   const modo = window.innerWidth < 720 ? 'v' : 'h';
-  if (modo !== _poModo) renderPlayoffsPublico(); else poAjustar();
+  const adminVisible = document.getElementById('pa-po-board') && !document.getElementById('divisiontab-playoffs').classList.contains('hidden');
+  if (modo !== _poModo) { if (state.contentTabActivo === 'playoffs') renderPlayoffsPublico(); if (adminVisible) renderPlayoffsAdmin(); return; }
+  if (state.contentTabActivo === 'playoffs') poAjustar('po');
+  if (adminVisible) poAjustar('pa-po');
 });
 
 /* ===================== FIXTURE / POSICIONES / GOLEADORES (público) ===================== */
@@ -4839,7 +4849,7 @@ function elegirDivisionAdmin(div) {
   document.getElementById('torneo-division-detail').classList.remove('hidden');
   document.getElementById('division-detail-title').textContent = div === 'Segunda' ? 'Segunda División' : 'Primera División';
   document.getElementById('torneo-division-detail').dataset.division = div;
-  switchDivisionAdminTab(esPanelControl() ? 'planillas' : 'equipos');
+  switchDivisionAdminTab(esPanelControl() ? 'planillas' : 'playoffs');
   renderEquiposAdminList();
   renderPagosAdminList();
   renderSegurosAdminList();
@@ -4862,6 +4872,18 @@ function switchDivisionAdminTab(tab) {
   if (tab === 'sanciones') renderSancionesAdmin();
   if (tab === 'planillas') cargarPlanillasAdmin(state.adminDivisionActiva);
   if (tab === 'listabf') renderListaBFAdmin();
+  if (tab === 'playoffs') renderPlayoffsAdmin();
+}
+// Pestaña "🏆 Playoffs" del admin: arriba crear cruces / horarios (mismo bloque que estaba en
+// Fixture) y abajo el cuadro tal cual lo ve el público.
+function renderPlayoffsAdmin() {
+  const div = state.adminDivisionActiva;
+  const acc = document.getElementById('pa-playoffs-acciones'), wrap = document.getElementById('pa-playoffs-cuadro');
+  if (!acc || !wrap || !div) return;
+  const equipos = equiposCacheAdmin.filter(eq => eq.division === div);
+  if (!equipos.length || !partidosCacheAdmin.length) { wrap.innerHTML = `<div class="empty-state">Cargando...</div>`; acc.innerHTML = ''; return; }
+  acc.innerHTML = adminPlayoffsHtml(div, equipos);
+  poRenderEn(wrap, div, calcularCuadroPlayoffs(div, equipos, partidosCacheAdmin), 'pa-po');
 }
 function calcularTarjetasPorJugador(partidos) {
   const map = {};
@@ -8702,6 +8724,8 @@ function renderFechasFixtureAdmin(partidosGrupo, equiposGrupo, fuenteTodos) {
   return html;
 }
 function renderFixtureAdminList() {
+  const tabPO = document.getElementById('divisiontab-playoffs');
+  if (tabPO && !tabPO.classList.contains('hidden')) renderPlayoffsAdmin();
   const wrap = document.getElementById('pa-fixture-list');
   if (!wrap) return;
   if (!_postergadasListas) { cargarFechasPostergadas().then(() => renderFixtureAdminList()); }
@@ -10136,7 +10160,7 @@ auth.onAuthStateChanged(user => {
 /* ── PUSH NOTIFICATIONS ── */
 // Versión de la app, la misma que el service worker. Se muestra en el panel para poder
 // confirmar si este dispositivo ya bajó el deploy nuevo, sin adivinar.
-const APP_VERSION = '68';
+const APP_VERSION = '106';
 const VAPID_PUBLIC = 'BDZe4cNkg6SdSMRcaFej2v7dVwBli5FFxIe8i460m7jLIbvMdGATsuCQ2PZjxGjlBvHfM7TPqLwrt4L3M_9DgpU';
 function _b64ToUint8(b64) {
   const pad = '='.repeat((4 - b64.length % 4) % 4);
