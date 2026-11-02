@@ -810,7 +810,7 @@ body.torneo-flyer #divisions-wrap .section-card{border-color:color-mix(in srgb,v
 .po-champ b{font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:32px;line-height:.95;text-transform:uppercase;}
 .po-champ p{margin:0;color:var(--text-dim);font-size:14px;}
 .po-champ.v img{width:46px;height:46px;}
-.po-champ.v b{font-size:21px;}
+.po-champ.v b{font-size:19px;white-space:normal;overflow-wrap:anywhere;}
 .po-chip{position:absolute;height:46px;background:rgba(20,14,12,.92);border:1px solid color-mix(in srgb,var(--division-color,var(--cyan)) 30%,transparent);display:flex;flex-direction:column;align-items:center;overflow:hidden;}
 .po-chip .ci{width:100%;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-bottom:1px solid color-mix(in srgb,var(--division-color,var(--cyan)) 25%,transparent);}
 .po-chip .ci img{width:26px;height:26px;object-fit:contain;}
@@ -830,6 +830,30 @@ body.torneo-flyer #divisions-wrap .fx-vs{font-family:var(--font-flyer);font-styl
 body.torneo-flyer #divisions-wrap .fx-fecha-title span{font-size:20px;}
 body.torneo-flyer #divisions-wrap .fx-vs{font-size:20px;}
 body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26px;color:#fff;text-shadow:0 0 16px var(--division-glow1,rgba(34,211,238,.4));}
+.po-penlab{position:absolute;text-align:center;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--po-hot);}
+.po-chipsc{position:absolute;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#0d0907;border:1px solid color-mix(in srgb,var(--division-color,var(--cyan)) 60%,transparent);font-size:11px;font-weight:900;line-height:16px;text-align:center;color:#fff;white-space:nowrap;z-index:2;}
+.po-chipsc i{font-style:normal;font-size:9px;opacity:.8;margin-left:1px;}
+.po-chipsc.sel{background:var(--division-color,var(--cyan));color:#06121a;border-color:transparent;}
+.po-rs{margin-top:18px;display:flex;flex-direction:column;gap:16px;}
+.po-rs-tit{font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:24px;text-transform:uppercase;margin-bottom:8px;color:#fff;}
+.po-rs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;}
+.po-rs-card{border:1px solid color-mix(in srgb,var(--division-color,var(--cyan)) 30%,transparent);background:rgba(10,7,6,.75);border-radius:10px;overflow:hidden;}
+.po-rs-row{display:flex;align-items:center;gap:8px;padding:7px 10px;opacity:.55;}
+.po-rs-row+.po-rs-row{border-top:1px solid rgba(255,255,255,.06);}
+.po-rs-row.win{opacity:1;background:linear-gradient(90deg,color-mix(in srgb,var(--division-color,var(--cyan)) 22%,transparent),transparent);}
+.po-rs-cr img{width:26px;height:26px;object-fit:contain;display:block;}
+.po-rs-nm{flex:1;min-width:0;font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:18px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.po-rs-g{font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:24px;min-width:22px;text-align:right;}
+.po-rs-row.win .po-rs-g{color:var(--po-hot);}
+.po-rs-tanda{display:flex;align-items:center;gap:6px;}
+.po-rs-dots{display:flex;align-items:center;gap:3px;}
+.po-dot{font-size:10px;line-height:1;color:#f87171;width:11px;text-align:center;}
+.po-dot.ok{color:#4ade80;font-size:12px;}
+.po-rs-sep{width:1px;height:12px;background:rgba(255,255,255,.3);margin:0 3px;}
+.po-rs-pt{font-size:12px;font-weight:800;color:var(--text-dim);min-width:22px;text-align:center;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:1px 4px;}
+.po-rs-row.win .po-rs-pt{color:#fff;border-color:var(--division-color,var(--cyan));}
+.po-rs-pie{font-size:11.5px;color:var(--text-dim);padding:6px 10px;border-top:1px solid rgba(255,255,255,.06);}
+@media (max-width:719px){.po-rs-row{flex-wrap:wrap;}.po-rs-tanda{order:5;width:100%;padding-left:34px;}.po-rs-nm{font-size:17px;}}
 .po-vs{position:absolute;text-align:center;font-family:var(--font-flyer);font-style:italic;font-weight:900;font-stretch:62%;font-size:17px;color:var(--division-color,var(--cyan));}
 #divisions-wrap[data-division="Segunda"]{--division-glow1:rgba(251,146,60,.35);--division-glow2:rgba(251,146,60,.6);}
 </style>
@@ -899,8 +923,8 @@ body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26
 
     <div class="divisions" id="divisions-wrap" data-division="Primera">
       <div class="content-tabs-sub">
-        <button class="tab-btn active" data-content-tab="posiciones" onclick="switchContentTab('posiciones')">Posiciones</button>
-        <button class="tab-btn" data-content-tab="playoffs" onclick="switchContentTab('playoffs')">🏆 Playoffs</button>
+        <button class="tab-btn active" data-content-tab="playoffs" onclick="switchContentTab('playoffs')">🏆 Playoffs</button>
+        <button class="tab-btn" data-content-tab="posiciones" onclick="switchContentTab('posiciones')">Posiciones</button>
         <button class="tab-btn" data-content-tab="goleadores" onclick="switchContentTab('goleadores')">Goleadores</button>
         <button class="tab-btn" data-content-tab="partidos" onclick="switchContentTab('partidos')">Resultados</button>
         <button class="tab-btn" data-content-tab="envivo" onclick="switchContentTab('envivo')">🔴 En vivo</button>
@@ -911,10 +935,10 @@ body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26
         <p class="wizard-help" style="margin-bottom:14px;">Se actualiza solo, a medida que el planillero de cada cancha carga los goles y tarjetas — no hace falta recargar la página.</p>
         <div id="envivo-publico-cont" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;"><div class="empty-state">Cargando...</div></div>
       </div>
-      <div id="contenttab-posiciones" class="contenttab">
+      <div id="contenttab-posiciones" class="contenttab hidden">
         <div id="posiciones-wrap"></div>
       </div>
-      <div id="contenttab-playoffs" class="contenttab hidden">
+      <div id="contenttab-playoffs" class="contenttab">
         <div id="playoffs-wrap"></div>
       </div>
       <div id="contenttab-goleadores" class="contenttab hidden">
@@ -1867,7 +1891,7 @@ async function _sincronizarFechaLimiteSeguro() {
 _sincronizarFechaLimiteSeguro();
 setInterval(_sincronizarFechaLimiteSeguro, 5 * 60 * 1000);
 setInterval(_recalcularMontoSeguro, 30 * 1000);
-const state = { equipo: null, equipoId: null, admin: null, divisionActiva: 'Primera', equiposCache: [], pagoFiltroActivo: 'pendiente', seguroFiltroActivo: 'pendiente', seguroSeleccion: [], adminDivisionActiva: null, partidosCache: [], contentTabActivo: 'posiciones', fechaPublicaActiva: null };
+const state = { equipo: null, equipoId: null, admin: null, divisionActiva: 'Primera', equiposCache: [], pagoFiltroActivo: 'pendiente', seguroFiltroActivo: 'pendiente', seguroSeleccion: [], adminDivisionActiva: null, partidosCache: [], contentTabActivo: 'playoffs', fechaPublicaActiva: null };
 
 /* ===================== UTILS ===================== */
 async function sha256Hex(text) {
@@ -2373,7 +2397,7 @@ function switchDivisionTab(div) {
   document.getElementById('division-title').textContent = div + ' División';
   setDivisionBg(div === 'Segunda');
   setDivisionAccent(div === 'Segunda');
-  switchContentTab('posiciones');
+  switchContentTab('playoffs');
   cargarEquiposCache();
 }
 
@@ -2476,8 +2500,14 @@ function calcularCuadroPlayoffs(div, equiposIn, partidosIn) {
           const gb = p.equipoLocalId === a.id ? p.golesVisitante : p.golesLocal;
           const pa = p.equipoLocalId === a.id ? p.penalesLocal : p.penalesVisitante;
           const pb = p.equipoLocalId === a.id ? p.penalesVisitante : p.penalesLocal;
-          mt.partido = { ga: ga ?? 0, gb: gb ?? 0, pa, pb };
+          const det = p.penalesDetalle || null; // { local:[true,false,...], visitante:[...] } patada por patada
+          const da = det ? (p.equipoLocalId === a.id ? det.local : det.visitante) : null;
+          const db_ = det ? (p.equipoLocalId === a.id ? det.visitante : det.local) : null;
+          mt.partido = { ga: ga ?? 0, gb: gb ?? 0, pa, pb, da, db: db_, fecha: p.numeroFecha };
           if ((ga ?? 0) !== (gb ?? 0)) mt.ganador = (ga ?? 0) > (gb ?? 0) ? a : b;
+          // 1ª ronda (cuartos en Primera, octavos en Segunda): el 1° de tabla/zona que empata pasa
+          // directo, sin penales.
+          else if (r === 0 && a.ventaja !== b.ventaja) mt.ganador = a.ventaja ? a : b;
           else if (pa != null && pb != null && pa !== pb) mt.ganador = pa > pb ? a : b;
           else if (a.ventaja !== b.ventaja) mt.ganador = a.ventaja ? a : b;
         }
@@ -2504,11 +2534,17 @@ function renderPlayoffsPublico() {
       ${cu.proyectado ? `<div class="po-proy">Cuadro proyectado con la tabla actual: se confirma al terminar la fase regular.</div>` : ''}
     </div>
     <div class="po-scroller" id="po-scroller"><div class="po-stage" id="po-stage"><div class="po-board" id="po-board"></div></div></div>
-    ${ventajas.length ? `<p class="po-note">★ ${ventajas.join(' y ')} ${ventajas.length > 1 ? 'tienen' : 'tiene'} ventaja deportiva en caso de empate.</p>` : ''}`;
+    ${ventajas.length ? `<p class="po-note">★ ${ventajas.join(' y ')} ${ventajas.length > 1 ? 'tienen' : 'tiene'} ventaja deportiva: en ${cu.cfg.rondas[0].toLowerCase()}, si empata${ventajas.length > 1 ? 'n' : ''}, pasa${ventajas.length > 1 ? 'n' : ''} sin penales.</p>` : ''}
+    ${poResultadosHtml(cu)}`;
   _poModo = window.innerWidth < 720 ? 'v' : 'h';
   const B = document.getElementById('po-board');
   if (_poModo === 'v') poDibujarV(B, cu); else poDibujarH(B, cu);
   poAjustar();
+}
+function poHayPenales(mt) { return !!(mt.partido && mt.partido.pa != null && mt.partido.pb != null && mt.partido.ga === mt.partido.gb); }
+function poPenLeyenda(B, mt, x, y, w) {
+  if (!poHayPenales(mt)) return;
+  poEl(B, 'po-penlab', { left: x + 'px', top: y + 'px', width: w + 'px' }, `Penales ${mt.partido.pa}-${mt.partido.pb}`);
 }
 function poEl(B, cls, css, html) { const d = document.createElement('div'); d.className = cls; Object.assign(d.style, css); if (html != null) d.innerHTML = html; B.appendChild(d); return d; }
 function poWire(B, x, y, w, h, on) { poEl(B, 'po-w' + (on ? ' on' : ''), { left: x + 'px', top: y + 'px', width: Math.max(w, 0) + 'px', height: Math.max(h, 0) + 'px' }); }
@@ -2518,6 +2554,34 @@ function poFromLabel(cu, mt, k) {
   const fr = cu.matches[f].r; const nombre = cu.cfg.rondas[fr].toLowerCase();
   const idx = cu.rondas[fr].indexOf(f) + 1;
   return `Ganador ${nombre} ${idx}`;
+}
+// ---------- resultados de la llave, ronda por ronda (con la tanda de penales patada por patada) ----------
+function poTandaHtml(arr, tot) {
+  if (!arr || !arr.length) return tot != null ? `<span class="po-rs-pt">${tot}</span>` : '';
+  // 5 por lado; si siguen iguales, muerte súbita de a uno (separados con una rayita)
+  let html = '';
+  arr.forEach((ok, i) => { if (i === 5) html += '<span class="po-rs-sep"></span>'; html += `<span class="po-dot${ok ? ' ok' : ''}">${ok ? '●' : '✕'}</span>`; });
+  return `<span class="po-rs-dots">${html}</span><span class="po-rs-pt">${tot ?? arr.filter(Boolean).length}</span>`;
+}
+function poResultadosHtml(cu) {
+  const out = [];
+  for (let r = cu.rondas.length - 1; r >= 0; r--) {
+    const jugados = cu.rondas[r].map(m => cu.matches[m]).filter(mt => mt.partido && mt.a && mt.b);
+    if (!jugados.length) continue;
+    const filas = jugados.map(mt => {
+      const pen = poHayPenales(mt);
+      const fila = (t, g, pt, arr) => {
+        const win = mt.ganador && mt.ganador.id === t.id;
+        return `<div class="po-rs-row${win ? ' win' : ''}"><span class="po-rs-cr">${t.escudo ? `<img src="${t.escudo}" alt="">` : ''}</span>
+          <span class="po-rs-nm">${escapeHtml(t.nombre)}</span>${pen ? `<span class="po-rs-tanda">${poTandaHtml(arr, pt)}</span>` : ''}<span class="po-rs-g">${g}</span></div>`;
+      };
+      const pie = pen ? `Empate ${mt.partido.ga}-${mt.partido.gb} · ganó ${escapeHtml(mt.ganador ? mt.ganador.nombre : '')} por penales ${Math.max(mt.partido.pa, mt.partido.pb)}-${Math.min(mt.partido.pa, mt.partido.pb)}`
+        : (mt.partido.ga === mt.partido.gb && mt.ganador ? `Empate: pasa ${escapeHtml(mt.ganador.nombre)} por ventaja deportiva` : '');
+      return `<div class="po-rs-card">${fila(mt.a, mt.partido.ga, mt.partido.pa, mt.partido.da)}${fila(mt.b, mt.partido.gb, mt.partido.pb, mt.partido.db)}${pie ? `<div class="po-rs-pie">${pie}</div>` : ''}</div>`;
+    }).join('');
+    out.push(`<div class="po-rs-ronda"><div class="po-rs-tit">${FASE_LABEL[FASE_KEY[cu.cfg.rondas[r]]]}</div><div class="po-rs-grid">${filas}</div></div>`);
+  }
+  return out.length ? `<div class="po-rs">${out.join('')}</div>` : '';
 }
 // ---------- horizontal (escritorio): llave espejada ----------
 function poDibujarH(B, cu) {
@@ -2558,6 +2622,7 @@ function poDibujarH(B, cu) {
   for (let r = 0; r < RS; r++) for (const m of cu.rondas[r]) {
     const mt = cu.matches[m], p = pos[m], right = p.side === 'R';
     slot(mt, mt.a, 0, p.x, p.top, CW, right); slot(mt, mt.b, 1, p.x, p.top + SH + GAP, CW, right);
+    poPenLeyenda(B, mt, p.x, p.top + MH + 3, CW);
     // conector al cruce siguiente
     const nextR = r + 1; const nm = cu.rondas[nextR].find(x => cu.matches[x].feed.includes(m));
     const k = cu.matches[nm].feed.indexOf(m);
@@ -2579,8 +2644,9 @@ function poDibujarH(B, cu) {
   poEl(B, 'po-finlab', { left: FX + 'px', width: FW + 'px', top: (FT - 46) + 'px' }, 'FINAL');
   const fm = cu.matches[fin];
   slot(fm, fm.a, 0, FX, FT, FW, false); slot(fm, fm.b, 1, FX, FT + SH + GAP, FW, false);
+  poPenLeyenda(B, fm, FX, FT + MH + 3, FW);
   const ch = cu.campeon;
-  poEl(B, 'po-champ', { left: (FX - 30) + 'px', width: (FW + 60) + 'px', top: (FT + MH + 22) + 'px' },
+  poEl(B, 'po-champ', { left: (FX - 30) + 'px', width: (FW + 60) + 'px', top: (FT + MH + 26) + 'px' },
     ch ? `<small>CAMPEÓN</small>${ch.escudo ? `<img src="${ch.escudo}" alt="">` : ''}<b>${escapeHtml(ch.nombre)}</b>` : `<small>CAMPEÓN</small><p>A definir</p>`);
 }
 // ---------- vertical (celular): llave de arriba hacia abajo ----------
@@ -2609,6 +2675,12 @@ function poDibujarV(B, cu) {
     const d = poEl(B, 'po-chip' + (win ? ' sel' : '') + (lose ? ' out' : ''), { left: x + 'px', top: y + 'px', width: CWv + 'px' },
       `<span class="ci">${t.escudo ? `<img src="${t.escudo}" alt="">` : ''}</span><span class="cd">${poSigla(t.nombre)}</span>`);
     d.title = t.nombre;
+    if (mt.partido) {
+      const k = mt.a && mt.a.id === t.id ? 0 : 1;
+      const g = k === 0 ? mt.partido.ga : mt.partido.gb;
+      const pe = poHayPenales(mt) ? `<i>(${k === 0 ? mt.partido.pa : mt.partido.pb})</i>` : '';
+      poEl(B, 'po-chipsc' + (win ? ' sel' : ''), { left: Math.min(x + CWv - 9, VW - (pe ? 38 : 20)) + 'px', top: (y - 7) + 'px' }, `${g}${pe}`);
+    }
   };
   poEl(B, 'po-vlab', { top: '2px' }, cu.cfg.rondas[0]); poEl(B, 'po-vlab', { top: (VH - 17) + 'px' }, cu.cfg.rondas[0]);
   for (let r = 0; r < RS; r++) for (const m of cu.rondas[r]) {
@@ -2627,7 +2699,7 @@ function poDibujarV(B, cu) {
   const cup = document.createElement('img'); cup.className = 'po-cup'; cup.src = cu.cfg.copa; cup.alt = 'Copa';
   Object.assign(cup.style, { left: '30px', top: (YT[RS] - 26) + 'px', width: '92px', height: (YB[RS] + CHH - YT[RS] + 52) + 'px' }); B.appendChild(cup);
   const ch = cu.campeon;
-  poEl(B, 'po-champ v', { left: '206px', width: '130px', top: (YT[RS] - 4) + 'px' },
+  poEl(B, 'po-champ v', { left: '218px', width: '120px', top: (YT[RS] - 4) + 'px' },
     ch ? `<small>CAMPEÓN</small>${ch.escudo ? `<img src="${ch.escudo}" alt="">` : ''}<b>${escapeHtml(ch.nombre)}</b>` : `<small>CAMPEÓN</small><p>A definir</p>`);
 }
 function poAjustar() {
@@ -3798,8 +3870,12 @@ async function renderPlanillaEquipo() {
     const rival = esLocal ? p.equipoVisitanteNombre : p.equipoLocalNombre;
     const alinExistente = (esLocal ? p.alineacionLocal : p.alineacionVisitante) || [];
     const capDni = (esLocal ? p.capitanLocalDni : p.capitanVisitanteDni) || '';
-    // Una vez que el planillero arrancó el partido, la planilla es suya: el equipo no la pisa.
-    const enCurso = !!(p.estado && p.estado !== 'pendiente');
+    // Una vez que arranca el partido, o que el planillero ya confirmó la de ESTE equipo en la
+    // cancha, la planilla es suya: el equipo no la pisa. (Antes bastaba con que el planillero
+    // confirmara la del RIVAL -- estado 'alineacion' -- para que este equipo ya no pudiera cargar
+    // la suya desde el panel.)
+    const confirmadaPlanillero = (esLocal ? p.alineacionLocalPor : p.alineacionVisitantePor) === 'planillero';
+    const enCurso = !!(p.estado && !['pendiente', 'alineacion'].includes(p.estado)) || confirmadaPlanillero;
 
     // Seguro médico: sólo bloquea después del plazo, igual que en el planillero.
     let cfg = {};
@@ -3854,7 +3930,7 @@ async function renderPlanillaEquipo() {
         <p style="font-size:14px;margin-bottom:4px;"><strong>Fecha ${p.numeroFecha || '—'}</strong> · ${esLocal ? 'Local' : 'Visitante'} vs <strong>${escapeHtml(rival || '—')}</strong></p>
         <p class="muted" style="font-size:12.5px;margin-bottom:12px;">Cancha ${p.cancha || '—'} · ${p.horario || '—'} hs</p>
         ${enCurso
-          ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:11px 13px;font-size:13px;color:var(--warn);">🔒 El partido ya arrancó: la planilla la maneja el planillero desde la cancha. Lo que cargaste queda como estaba.</div>`
+          ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:11px 13px;font-size:13px;color:var(--warn);">🔒 ${confirmadaPlanillero ? 'El planillero ya confirmó tu planilla en la cancha.' : 'El partido ya arrancó: la planilla la maneja el planillero desde la cancha.'} Cualquier cambio, pedíselo a él.</div>`
           : `<p class="wizard-help" style="margin-bottom:10px;">Tildá a los que entran a la cancha y ponele el número a cada uno. Escribir el número lo tilda solo. Mínimo <strong>${MIN_ALINEACION}</strong>, máximo ${MAX_ALINEACION}. Cuando guardes, el planillero ya la va a encontrar cargada y no hay que dictarla en la cancha.</p>`}
         ${alinExistente.length ? `<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:13px;color:var(--ok);">✅ Ya cargaste ${alinExistente.length} jugador(es) para este partido.${enCurso ? '' : ' Podés seguir cambiándola hasta que arranque.'}</div>` : ''}
         <div class="ali-adm-tabs" style="margin-bottom:8px;"><button type="button" class="ali-adm-tab activa">Mi equipo <span class="ali-adm-badge" id="ali-adm-cont-propio">0</span></button></div>
@@ -8713,7 +8789,9 @@ async function crearRondaPlayoffs(div) {
         division: div, numeroFecha: nf, zona: null, interzonal: false, fase, llave: mt.m,
         cancha, horario: '',
         equipoLocalId: mt.a.id, equipoLocalNombre: mt.a.nombre,
-        equipoVisitanteId: mt.b.id, equipoVisitanteNombre: mt.b.nombre
+        equipoVisitanteId: mt.b.id, equipoVisitanteNombre: mt.b.nombre,
+        // 1ª ronda: el 1° de tabla/zona pasa con el empate (la planilla no pide penales).
+        ventajaEquipoId: pend.r === 0 ? (mt.a.ventaja ? mt.a.id : (mt.b.ventaja ? mt.b.id : null)) : null
       }));
     });
     await batch.commit();

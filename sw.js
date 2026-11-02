@@ -551,7 +551,15 @@
 // v103: sin cartel rojo de "administradores" mientras la Function está fuera de servicio.
 // v104: el service worker ya no puede responder vacío (ERR_FAILED en iPhone abriendo el link de
 // GitHub Pages desde WhatsApp): las navegaciones van siempre por la rama HTML con respaldo.
-const CACHE = 'ligaf5-v104';
+// v105: la página abre en "🏆 Playoffs"; el cuadro muestra resultado y penales en cada llave y la
+// lista de resultados con la tanda patada por patada. Planilla: tanda de penales penal por penal
+// (5 por lado; si empatan, muerte súbita de a uno), ventaja deportiva del 1° en la 1ª ronda (pasa con
+// el empate, sin penales) y estética de flyer por categoría (cian Primera / naranja Segunda).
+// v105 (cont.): al abrir un partido, pantalla "Planillas de juego" con los dos equipos y su estado
+// (cargada por el equipo / por el planillero / falta), en tiempo real; el planillero elige por cuál
+// arrancar. Si un equipo carga la suya mientras el planillero la está tildando, pregunta cuál usar.
+// Panel del equipo: ya no se bloquea porque el planillero confirmó la del rival.
+const CACHE = 'ligaf5-v105';
 const ASSETS = [
   './index.html',
   './planilla.html',
@@ -563,6 +571,10 @@ const ASSETS = [
   './assets/copa-segunda.png',
   './assets/bg-shapes.jpg',
   './assets/bg-shapes-segunda.jpg',
+'./assets/bg-flyer-primera-v.jpg',
+'./assets/bg-flyer-segunda-v.jpg',
+'./assets/copa-primera-neon.webp',
+'./assets/copa-segunda-neon.webp',
   './assets/favicon.png',
   './assets/apple-touch-icon.png',
   './assets/icon-192.png',

@@ -14,8 +14,8 @@
      cancha con señal mala eso deja la tablet en blanco esperando algo que no va a llegar.
      Así la app pinta SIEMPRE al instante con las fuentes de respaldo ('Segoe UI', sans-serif)
      y la tipografía linda entra después si hay red. -->
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@1,50..150,900&family=Big+Shoulders+Display:wght@700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@1,50..150,900&family=Big+Shoulders+Display:wght@700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -486,6 +486,66 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 #screen-partido.theme-segunda{--cyan:#FF7043;--cyan2:rgba(255,112,67,0.15);}
 #screen-partido.theme-segunda .partido-header{background:linear-gradient(180deg,rgba(255,112,67,0.12) 0%,rgba(3,4,10,0) 100%);}
 #screen-partido.theme-segunda .ph-div-badge{border-color:rgba(255,112,67,0.3);}
+/* ── ESTÉTICA DE PLAYOFFS / FLYERS por categoría (mismo look que la página: fondo neón con la
+   copa, títulos en Anybody itálica, cian Primera / naranja Segunda) ── */
+body.po-flyer{--cyan:#22d3ee;--cyan2:rgba(34,211,238,.15);--po-glow:rgba(34,211,238,.45);--po-font:'Anybody','Big Shoulders Display',sans-serif;}
+body.po-flyer.po-segunda,body.po-flyer.po-segunda #screen-partido.theme-segunda{--cyan:#FB923C;--cyan2:rgba(251,146,60,.15);--po-glow:rgba(251,146,60,.45);--orange:#FB923C;}
+body.po-flyer::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,rgba(2,2,4,.38),rgba(2,2,4,.62) 40%,rgba(2,2,4,.88) 75%,rgba(2,2,4,.95)),url('assets/bg-flyer-primera-v.jpg') center 12%/cover no-repeat;}
+body.po-flyer.po-segunda::before{background:linear-gradient(180deg,rgba(6,2,1,.38),rgba(6,2,1,.62) 40%,rgba(6,2,1,.88) 75%,rgba(6,2,1,.95)),url('assets/bg-flyer-segunda-v.jpg') center 12%/cover no-repeat;}
+body.po-flyer .ambient{display:none;}
+body.po-flyer .topbar,body.po-flyer .partido-header{background:rgba(3,3,6,.74);border-bottom:1px solid color-mix(in srgb,var(--cyan) 35%,transparent);}
+body.po-flyer .topbar-title{font-family:var(--po-font);font-style:italic;font-weight:900;font-stretch:62%;font-size:24px;line-height:1;text-transform:uppercase;letter-spacing:.01em;}
+body.po-flyer .ph-goles,body.po-flyer .score-num,body.po-flyer .mc-hora{font-family:var(--po-font);font-style:italic;font-weight:900;font-stretch:62%;}
+body.po-flyer .ph-goles{text-shadow:0 0 18px var(--po-glow);}
+body.po-flyer .ph-periodo{background:var(--cyan2);border-color:color-mix(in srgb,var(--cyan) 45%,transparent);}
+body.po-flyer .btn-primary{box-shadow:0 8px 32px var(--po-glow);}
+body.po-flyer .cancha-btn.selected .c-num{text-shadow:0 0 36px var(--po-glow);}
+body.po-flyer .match-card{border-color:color-mix(in srgb,var(--cyan) 28%,transparent);}
+body.po-flyer .mc-teams{font-family:var(--po-font);font-style:italic;font-weight:900;font-stretch:62%;font-size:19px;text-transform:uppercase;line-height:1.15;}
+body.po-flyer .cierre-score-card{border-color:color-mix(in srgb,var(--cyan) 45%,transparent);box-shadow:0 0 40px var(--po-glow),0 32px 72px rgba(0,0,0,.55);}
+body.po-flyer .score-num{color:#fff;text-shadow:0 0 30px var(--po-glow);}
+body.po-flyer .section-label{color:color-mix(in srgb,var(--cyan) 70%,#fff);}
+body.po-flyer .tn-head button.on,body.po-flyer .tn-d.now{border-color:var(--cyan);}
+body.po-flyer .tn-turno b{color:var(--cyan);}
+/* Vidrio mate negro donde hay cosas para leer: la copa del fondo solo se ve en los bordes. */
+body.po-flyer .planilla-col-wrap,body.po-flyer .col-ctrl{background:rgba(6,6,9,.84);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+body.po-flyer #screen-alineacion .scroll,body.po-flyer #screen-historial .scroll,body.po-flyer #screen-cierre .scroll{background:rgba(6,6,9,.8);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+body.po-flyer .match-card,body.po-flyer .player-row,body.po-flyer .firma-box,body.po-flyer #penales-box,body.po-flyer textarea.obs{background:rgba(8,8,11,.86)!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+body.po-flyer .player-row.selected{background:rgba(0,230,118,.14)!important;}
+.ali-hub-card{border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:14px;margin-bottom:12px;background:rgba(8,8,11,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+.ali-hub-card.ok{border-color:rgba(0,230,118,.55);box-shadow:0 0 0 1px rgba(0,230,118,.15) inset;}
+.ali-hub-card.falta{border-color:rgba(255,196,0,.55);}
+.ali-hub-top{display:flex;align-items:center;gap:10px;}
+.ali-hub-top img{width:44px;height:44px;object-fit:contain;}
+.ali-hub-nom{flex:1;min-width:0;}
+.ali-hub-nom b{display:block;font-size:17px;font-weight:900;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+body.po-flyer .ali-hub-nom b{font-family:var(--po-font);font-style:italic;font-stretch:62%;font-size:24px;}
+.ali-hub-nom small{font-size:11px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.ali-hub-est{margin:10px 0;font-size:13.5px;font-weight:800;padding:9px 11px;border-radius:10px;}
+.ali-hub-card.ok .ali-hub-est{background:rgba(0,230,118,.12);color:#4ade80;}
+.ali-hub-card.falta .ali-hub-est{background:rgba(255,196,0,.1);color:#fcd34d;}
+.ali-hub-est span{display:block;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);margin-top:3px;}
+.ali-hub-btn{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:800;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;}
+.ali-hub-card.falta .ali-hub-btn{background:var(--cyan);color:#000;border-color:var(--cyan);}
+.ali-hub-tip{font-size:12px;color:rgba(255,255,255,.55);text-align:center;margin:2px 0 12px;line-height:1.4;}
+.ali-remoto{margin-bottom:12px;padding:12px;border-radius:12px;border:1px solid rgba(0,230,118,.6);background:rgba(0,40,20,.92);font-size:13.5px;font-weight:700;line-height:1.4;}
+.ali-remoto .rb{display:flex;gap:8px;margin-top:10px;}
+.ali-remoto button{flex:1;padding:12px 6px;border-radius:10px;font-weight:800;font-size:13.5px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;}
+.ali-remoto button.si{background:#16a34a;border-color:#16a34a;}
+.mc-ali{display:flex;gap:6px;flex-wrap:wrap;margin:5px 0 3px;}
+.mc-ali span{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:8px;}
+.mc-ali .ok{background:rgba(0,230,118,.14);color:#4ade80;}
+.mc-ali .no{background:rgba(255,196,0,.12);color:#fcd34d;}
+.po-banner{position:relative;display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px;border:1px solid color-mix(in srgb,var(--cyan) 40%,transparent);border-radius:14px;background:linear-gradient(120deg,color-mix(in srgb,var(--cyan) 16%,transparent),rgba(0,0,0,.55));overflow:hidden;}
+.po-banner-cup{height:118px;width:auto;object-fit:contain;filter:drop-shadow(0 0 18px var(--po-glow));flex-shrink:0;}
+.po-banner-eye{font-size:10.5px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--cyan);}
+.po-banner-tit{font-family:var(--po-font);font-style:italic;font-weight:900;font-stretch:62%;font-size:40px;line-height:.9;text-transform:uppercase;color:#fff;text-shadow:0 0 22px var(--po-glow);margin:4px 0 6px;}
+.po-banner-tit span{display:block;color:var(--cyan);font-size:28px;}
+.po-banner-sub{font-size:12px;color:rgba(255,255,255,.6);font-weight:700;}
+.mc-ventaja{font-size:11px;font-weight:800;color:var(--cyan);margin-top:2px;}
+.po-ventaja{margin-bottom:12px;padding:14px;border:1px solid color-mix(in srgb,var(--cyan) 50%,transparent);border-radius:12px;background:var(--cyan2,rgba(0,212,255,.1));text-align:center;font-size:14px;line-height:1.4;}
+.po-ventaja b{display:block;font-family:var(--po-font);font-style:italic;font-weight:900;font-stretch:62%;font-size:24px;text-transform:uppercase;color:#fff;margin:2px 0;}
+.po-ventaja small{color:rgba(255,255,255,.6);font-size:12px;}
 #screen-partido .prow-cap{background:#00d4ff!important;color:#000!important;}
 
 /* ── PLAYER LIST ── */
@@ -739,7 +799,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v72</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v105</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -850,7 +910,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- ══ SCREEN: ALINEACION ══ -->
 <div class="screen" id="screen-alineacion">
   <div class="topbar">
-    <button class="topbar-back" onclick="cargarLista()">←</button>
+    <button class="topbar-back" onclick="volverAlineacion()">←</button>
     <div><div class="topbar-title" id="ali-topbar-title">Alineación</div><div class="topbar-sub" id="ali-topbar-sub"></div></div>
   </div>
   <div class="scroll">
@@ -859,6 +919,8 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
       <p>Marcá los jugadores que participan hoy (máx. 15)</p>
       <div class="counter-badge" id="ali-counter">0 / 15 seleccionados</div>
     </div>
+    <div id="ali-remoto-aviso" class="ali-remoto" style="display:none;"></div>
+    <div id="ali-hub"></div>
     <div id="ali-arranque-aviso" style="text-align:center;font-size:12.5px;font-weight:700;padding:10px 14px;margin-bottom:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;"></div>
 
     <!-- ÁRBITROS — solo visible al cargar equipo local -->
@@ -1026,15 +1088,42 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <span style="font-size:11px;font-weight:700;color:var(--muted)" id="cierre-visitante-nombre">VISITANTE</span>
       </div>
     </div>
+    <div id="ventaja-box" class="po-ventaja" style="display:none;"></div>
     <div id="penales-box" style="display:none;margin-bottom:12px;padding:12px;border:1px solid rgba(255,255,255,0.12);border-radius:12px;background:rgba(255,255,255,0.04);">
       <div class="section-label" style="margin-top:0;">Penales (empate en playoffs)</div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+      <div id="tanda-box"></div>
+      <details id="pen-manual" style="margin-top:10px;"><summary style="font-size:12px;color:var(--muted);cursor:pointer;">Cargar solo el resultado final de los penales</summary>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:8px;">
         <div style="text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;" id="pen-local-nombre">LOCAL</div><input type="number" min="0" inputmode="numeric" id="pen-local" style="width:80px;font-size:26px;text-align:center;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;"></div>
         <div style="font-size:22px;font-weight:900;padding-top:16px;">:</div>
         <div style="text-align:center;"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;" id="pen-visitante-nombre">VISITANTE</div><input type="number" min="0" inputmode="numeric" id="pen-visitante" style="width:80px;font-size:26px;text-align:center;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;"></div>
       </div>
+      </details>
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Si no se patean penales porque pasa el equipo con ventaja deportiva, dejalo vacío.</div>
     </div>
+    <style>
+    .tn-head{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;}
+    .tn-head button,.tn-btns button{border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.3);color:#fff;border-radius:10px;padding:10px 12px;font-weight:800;font-size:14px;}
+    .tn-head button.on{background:#22d3ee;color:#04121a;border-color:#22d3ee;}
+    .tn-row{display:flex;align-items:center;gap:8px;padding:6px 0;}
+    .tn-nm{flex:0 0 96px;font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tn-dots{flex:1;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+    .tn-d{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;border:1px dashed rgba(255,255,255,.25);color:transparent;}
+    .tn-d.ok{background:#22c55e;border:0;color:#04120a;}
+    .tn-d.x{background:#ef4444;border:0;color:#fff;}
+    .tn-d.now{border:2px solid #22d3ee;box-shadow:0 0 8px rgba(34,211,238,.6);}
+    .tn-sep{flex-basis:100%;height:2px;}
+    .tn-ms{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px;}
+    .tn-tot{font-size:24px;font-weight:900;min-width:30px;text-align:right;}
+    .tn-turno{text-align:center;font-size:13px;margin:10px 0 8px;}
+    .tn-turno b{color:#22d3ee;}
+    .tn-btns{display:flex;gap:8px;}
+    .tn-btns button{flex:1;padding:14px 8px;font-size:16px;}
+    .tn-btns .gol{background:#16a34a;border-color:#16a34a;}
+    .tn-btns .err{background:#b91c1c;border-color:#b91c1c;}
+    .tn-fin{text-align:center;font-size:15px;font-weight:900;color:#4ade80;margin:8px 0;}
+    .tn-serie{text-align:center;font-size:11px;color:var(--muted);margin-top:4px;}
+    </style>
     <div class="section-label">Observaciones / Informes del árbitro</div>
     <textarea class="obs" id="obs-text" placeholder="Protestas, informes del árbitro, incidentes, sanciones..."></textarea>
     <div class="section-label" style="margin-top:14px;">Confirmación de capitanes</div>
@@ -1296,6 +1385,11 @@ async function cargarDivisionesCanchas(){
         el.style.color=esP?'var(--cyan)':'var(--orange)';
       }else{el.textContent='Sin partidos';el.style.color='rgba(255,255,255,0.2)';}
     });
+    // Estética de la categoría: si hoy juega una sola división, ya desde la elección de cancha;
+    // si juegan las dos, se define al tocar la cancha (selCancha).
+    _divPorCancha={};Object.keys(byCancha).forEach(c=>{_divPorCancha[c]=byCancha[c].div;});
+    const divsHoy=[...new Set(Object.values(_divPorCancha))];
+    aplicarTemaFlyer(st.cancha&&_divPorCancha[st.cancha]?_divPorCancha[st.cancha]:(divsHoy.length===1?divsHoy[0]:'Primera'));
   }catch(e){console.error('cargarDivisionesCanchas:',e);toast('Error cargando partidos: '+(e.message||e.code||e),5000);}
 }
 async function confirmarPlanillero(){
@@ -1306,6 +1400,84 @@ async function confirmarPlanillero(){
   localStorage.setItem('ligaf5_planillero',nombre);
   await authReadyPromise;
   goScreen('screen-cancha');
+}
+// ── Playoffs: ventaja deportiva y estética por categoría ─────────────────────
+// En la 1ª ronda (cuartos de Primera, octavos de Segunda) el 1° de la tabla/zona pasa con el
+// empate: no se patean penales. El admin guarda ventajaEquipoId al crear los cruces; si el
+// partido es de antes, se deduce de la llave (el 1° siempre es el local de esas llaves).
+const PO_PRIMERA_RONDA={Primera:'cuartos',Segunda:'octavos'};
+const PO_LLAVES_VENTAJA={Primera:[0],Segunda:[0,4]};
+function ventajaDe(p){
+  if(!p||!p.fase)return null;
+  if(p.ventajaEquipoId!==undefined)return p.ventajaEquipoId||null;
+  const div=String(p.division||'').toLowerCase().includes('segunda')?'Segunda':'Primera';
+  if(PO_PRIMERA_RONDA[div]!==p.fase)return null;
+  return PO_LLAVES_VENTAJA[div].includes(Number(p.llave))?p.equipoLocalId:null;
+}
+function nombreConVentaja(p,lado){
+  const id=lado==='local'?p.equipoLocalId:p.equipoVisitanteId,n=lado==='local'?p.equipoLocalNombre:p.equipoVisitanteNombre;
+  return (ventajaDe(p)&&ventajaDe(p)===id?'★ ':'')+(n||'');
+}
+function aplicarTemaFlyer(division){
+  const b=document.body,on=!!division,seg=String(division||'').toLowerCase().includes('segunda');
+  b.classList.toggle('po-flyer',on);b.classList.toggle('po-segunda',on&&seg);
+}
+// ── Tanda de penales, patada por patada ──────────────────────────────────────
+// 5 por lado, alternando. Se corta apenas uno ya no puede alcanzar al otro. Si después de 5 y 5
+// siguen iguales, se patea de a uno (muerte súbita) hasta que en un par uno mete y el otro no.
+// El total que se guarda (penalesLocal/penalesVisitante) cuenta todos los penales; el detalle va
+// en penalesDetalle: { local:[true,false,...], visitante:[...], primero:'local'|'visitante' }.
+function estadoTanda(t){
+  const L=t.local,V=t.visitante,nl=L.length,nv=V.length;
+  const tl=L.filter(Boolean).length,tv=V.filter(Boolean).length;
+  let ganador=null;
+  const subita=nl>=5&&nv>=5&&L.slice(0,5).filter(Boolean).length===V.slice(0,5).filter(Boolean).length;
+  if(!subita){
+    if(tl>tv+(5-Math.min(nv,5)))ganador='local';else if(tv>tl+(5-Math.min(nl,5)))ganador='visitante';
+  }else if(nl===nv&&tl!==tv)ganador=tl>tv?'local':'visitante';
+  const otro=t.primero==='local'?'visitante':'local';
+  const turno=ganador?null:(t[t.primero].length<=t[otro].length?t.primero:otro);
+  return {ganador,turno,subita,tl,tv};
+}
+function renderTanda(){
+  const box=document.getElementById('tanda-box');if(!box||!st.tanda)return;
+  const p=st.partido,t=st.tanda;
+  const nom={local:p.equipoLocalNombre||'LOCAL',visitante:p.equipoVisitanteNombre||'VISITANTE'};
+  if(!t.primero){
+    box.innerHTML=`<div class="tn-turno">¿Qué equipo patea primero?</div><div class="tn-head"><button onclick="tandaPrimero('local')">${esc(nom.local)}</button><button onclick="tandaPrimero('visitante')">${esc(nom.visitante)}</button></div>`;
+    return;
+  }
+  const e=estadoTanda(t);
+  const fila=k=>{
+    const arr=t[k],slots=e.subita?Math.max(arr.length+(e.ganador?0:1),6):Math.max(5,arr.length);
+    let h='';
+    for(let i=0;i<slots;i++){
+      if(i===5)h+='<span class="tn-sep"></span><span class="tn-ms">Muerte súbita</span>';
+      const v=arr[i];
+      h+=`<span class="tn-d${v===true?' ok':v===false?' x':''}${!e.ganador&&e.turno===k&&i===arr.length?' now':''}">${v===true?'✓':v===false?'✕':''}</span>`;
+    }
+    return `<div class="tn-row"><span class="tn-nm">${esc(nom[k])}</span><span class="tn-dots">${h}</span><span class="tn-tot">${k==='local'?e.tl:e.tv}</span></div>`;
+  };
+  box.innerHTML=fila('local')+fila('visitante')+
+    (e.subita&&!e.ganador?`<div class="tn-serie">Empataron los 5: ahora se patea de a uno hasta que haya ganador.</div>`:'')+
+    (e.ganador?`<div class="tn-fin">🏆 Gana ${esc(nom[e.ganador])} por penales ${Math.max(e.tl,e.tv)}-${Math.min(e.tl,e.tv)}</div>`
+      :`<div class="tn-turno">Patea <b>${esc(nom[e.turno])}</b> · ${e.subita?`muerte súbita · penal ${t[e.turno].length+1}`:`penal ${t[e.turno].length+1} de 5`}</div>
+        <div class="tn-btns"><button class="gol" onclick="tandaPatada(true)">⚽ Gol</button><button class="err" onclick="tandaPatada(false)">✕ Erró / atajó</button></div>`)+
+    `<div class="tn-head" style="margin-top:10px;"><button onclick="tandaDeshacer()" ${t.local.length+t.visitante.length?'':'disabled'}>↩ Deshacer último</button></div>`;
+  document.getElementById('pen-local').value=t.local.length?e.tl:(p.penalesLocal??'');
+  document.getElementById('pen-visitante').value=t.visitante.length?e.tv:(p.penalesVisitante??'');
+}
+function tandaGuardar(){
+  const t=st.tanda;st.partido.penalesDetalle={local:t.local,visitante:t.visitante,primero:t.primero};
+  db.collection('partidos').doc(st.partidoId).update({penalesDetalle:st.partido.penalesDetalle}).catch(e=>console.warn('tanda',e));
+}
+function tandaPrimero(k){st.tanda.primero=k;tandaGuardar();renderTanda();}
+function tandaPatada(ok){const e=estadoTanda(st.tanda);if(e.ganador)return;st.tanda[e.turno].push(ok);tandaGuardar();renderTanda();}
+function tandaDeshacer(){
+  const t=st.tanda,otro=t.primero==='local'?'visitante':'local';
+  // el último en patear: si los dos tienen la misma cantidad, fue el segundo
+  const k=t[t.primero].length>t[otro].length?t.primero:otro;
+  if(!t[k].length)return;t[k].pop();tandaGuardar();renderTanda();
 }
 function toast(msg,ms=2200){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),ms);}
 // Playoffs (2026-10-27): los cruces son partidos comunes con `fase`. Se rotulan con la ronda en
@@ -1321,8 +1493,10 @@ function pulsarMarcador(side){
   setTimeout(()=>el.classList.remove('flash'),600);
 }
 
+let _divPorCancha={};
 function selCancha(n){
   st.cancha=n;
+  if(_divPorCancha[n])aplicarTemaFlyer(_divPorCancha[n]);
   document.querySelectorAll('.cancha-btn').forEach((b,i)=>b.classList.toggle('selected',i+1===n));
   document.getElementById('cancha-err').style.display='none';
 }
@@ -1335,6 +1509,7 @@ function irAlInicio(){
   sessionStorage.removeItem('ligaf5_pid');
   if(st.unsub){st.unsub();st.unsub=null;}
   Object.assign(st,{partido:null,partidoId:null,alineacionLocal:[],alineacionVisitante:[],faltas:{local:{t1:0,t2:0},visitante:{t1:0,t2:0}},minutos:{local:{t1:false,t2:false},visitante:{t1:false,t2:false}},tiempoActual:1,eventos:[],modalEquipo:null,modalAccion:null,modalJugadorSelec:null,firmas:{local:false,visitante:false}});
+  aplicarTemaFlyer(null);pararEscuchaAlineaciones();
   goScreen('screen-planillero');
 }
 
@@ -1516,7 +1691,15 @@ async function cargarLista(){
     const esPrimera=divisionCancha.toLowerCase().includes('primera');
     const esSegunda=divisionCancha.toLowerCase().includes('segunda');
     const colorDiv=esSegunda?'var(--orange)':'var(--cyan)';
-    if(divisionCancha&&fechaActiva!=null){
+    aplicarTemaFlyer(divisionCancha);
+    if(divisionCancha&&fechaActiva!=null&&partidos[0]&&partidos[0].fase){
+      const fl=(FASE_LABEL[partidos[0].fase]||partidos[0].fase).split(' ');
+      body.innerHTML+=`<div class="po-banner">
+        <img class="po-banner-cup" src="assets/copa-${esSegunda?'segunda':'primera'}-neon.webp" onerror="this.style.display='none'">
+        <div><div class="po-banner-eye">${esc(divisionCancha)} División · Cancha ${st.cancha}</div>
+        <div class="po-banner-tit">${esc(fl[0])}${fl.length>1?`<span>${esc(fl.slice(1).join(' '))}</span>`:''}</div>
+        <div class="po-banner-sub">Torneo Clausura · Playoffs</div></div></div>`;
+    }else if(divisionCancha&&fechaActiva!=null){
       body.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;margin-bottom:12px;">
         <img src="assets/copa-${esPrimera?'primera':esSegunda?'segunda':''}.png" style="height:160px;width:auto;object-fit:contain;" onerror="this.style.display='none'">
         <div><div style="font-size:14px;font-weight:800;color:${colorDiv};letter-spacing:.5px;">${divisionCancha}</div><div style="font-size:11px;color:rgba(255,255,255,0.35);">${partidos[0]&&partidos[0].fase?`<b style="font-size:16px;font-style:italic;font-weight:900;color:${colorDiv};letter-spacing:.3px;">🏆 ${FASE_LABEL[partidos[0].fase]||partidos[0].fase}</b> &nbsp;·&nbsp; `:`Fecha ${fechaActiva} &nbsp;·&nbsp; `}Cancha ${st.cancha}</div></div>
@@ -1538,7 +1721,9 @@ async function cargarLista(){
   <div class="mc-hora">${p.horario||'--:--'}</div>
   <div style="flex:1;">
     <div class="mc-teams">${esc(p.equipoLocalNombre)}<span class="mc-vs">vs</span>${esc(p.equipoVisitanteNombre)}</div>
-    <div class="mc-fecha">${p.interzonal?'⚔ Interzonal':'Zona '+(p.zona||'—')}</div>
+    <div class="mc-fecha">${p.fase?(FASE_LABEL[p.fase]||p.fase):p.interzonal?'⚔ Interzonal':'Zona '+(p.zona||'—')}</div>
+    ${['pendiente','alineacion'].includes(estado)?`<div class="mc-ali">${[['local','alineacionLocal',p.equipoLocalNombre],['visitante','alineacionVisitante',p.equipoVisitanteNombre]].map(([l,c,n])=>(p[c]||[]).length?`<span class="ok">✅ ${esc(n)}: planilla lista</span>`:`<span class="no">⏳ ${esc(n)}: falta planilla</span>`).join('')}</div>`:''}
+    ${ventajaDe(p)?`<div class="mc-ventaja">★ ${esc(ventajaDe(p)===p.equipoLocalId?p.equipoLocalNombre:p.equipoVisitanteNombre)} pasa con el empate (ventaja deportiva)</div>`:''}
     <span class="mc-estado ${estado}">${labels[estado]||estado}</span>${estado==='cerrado'?`<span class="mc-resultado">${p.golesLocal??0} - ${p.golesVisitante??0}</span>`:''}
     ${estado==='cerrado'&&p.observaciones?`<div class="mc-obs">${esc(p.observaciones)}</div>`:''}
   </div>
@@ -1670,16 +1855,102 @@ function refrescarPartidoEnSegundoPlano(id){
   }).catch(()=>{}); // sin señal no pasa nada: sigue el flujo normal de carga a mano
 }
 
+// Pantalla "Planillas de juego" (2026-11-02, a pedido del usuario): al abrir un partido ya no
+// se manda directo a cargar al local. Se ven los DOS equipos con su estado -- cargada por el
+// equipo desde su panel, cargada por el planillero, o falta -- y el planillero elige por cuál
+// arrancar (el que ya está en la cancha). Se actualiza sola en tiempo real (escucharAlineaciones):
+// si mientras tanto un equipo carga la suya desde el panel, la tarjeta pasa a verde y ya no hay
+// que tipearla. Con las dos listas, un botón lleva al partido.
 async function iniciarAlineacion(){
-  const localOk=st.alineacionLocal.length>0;
-  const visitanteOk=st.alineacionVisitante.length>0;
-  // A pedido explícito del usuario (22/08): se saca la pantalla "¿Quién arranca?" -- si
-  // los dos equipos ya cargaron desde su panel, esto ya va derecho a irAPartido() (rama de
-  // abajo); esta rama solo entra cuando falta cargar al menos uno a mano, y en ese caso
-  // arranca directo por el local en vez de preguntar con cuál seguir primero.
-  if(!localOk){await mostrarAlineacion('local');}
-  else if(!visitanteOk){await mostrarAlineacion('visitante');}
-  else{irAPartido();}
+  st.equipo=null;_aliTocada=false;
+  escucharAlineaciones();
+  mostrarHubAlineaciones();
+}
+function _aliInfo(lado){
+  const p=st.partido,arr=lado==='local'?st.alineacionLocal:st.alineacionVisitante;
+  const por=p[lado==='local'?'alineacionLocalPor':'alineacionVisitantePor'];
+  const capDni=p[lado==='local'?'capitanLocalDni':'capitanVisitanteDni'];
+  const cap=(arr||[]).find(j=>String(j.dni)===String(capDni));
+  return {ok:(arr||[]).length>0,n:(arr||[]).length,por:por==='planillero'?'planillero':'equipo',cap:cap?cap.nombre:''};
+}
+function mostrarHubAlineaciones(){
+  const p=st.partido;
+  document.getElementById('ali-topbar-title').textContent='Planillas de juego';
+  document.getElementById('ali-topbar-sub').textContent=(p.equipoLocalNombre||'')+' vs '+(p.equipoVisitanteNombre||'');
+  document.querySelector('#screen-alineacion .ali-header').style.display='none';
+  ['arbitros-section','ali-cap-section','ali-remoto-aviso'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('ali-lista').innerHTML='';
+  const L=_aliInfo('local'),V=_aliInfo('visitante'),ambas=L.ok&&V.ok;
+  const card=(lado,i)=>{
+    const nom=lado==='local'?p.equipoLocalNombre:p.equipoVisitanteNombre,esc_=p[lado==='local'?'equipoLocalEscudo':'equipoVisitanteEscudo'];
+    const est=i.ok?`✅ Planilla cargada ${i.por==='planillero'?'por el planillero':'por el equipo desde su panel'}<span>${i.n} jugadores${i.cap?' · Capitán: '+esc(i.cap):''}</span>`
+      :`⏳ Falta cargar la planilla<span>Si el equipo la carga desde su panel, aparece acá sola.</span>`;
+    return `<div class="ali-hub-card ${i.ok?'ok':'falta'}"><div class="ali-hub-top">${esc_?`<img src="${esc_}" alt="">`:''}<div class="ali-hub-nom"><small>${lado==='local'?'Local':'Visitante'}</small><b>${esc(nombreConVentaja(p,lado))}</b></div></div>
+      <div class="ali-hub-est">${est}</div>
+      <button class="ali-hub-btn" onclick="mostrarAlineacion('${lado}')">${i.ok?'👀 Revisar / corregir':'✍️ Cargar ahora'}</button></div>`;
+  };
+  document.getElementById('ali-hub').innerHTML=
+    `<div class="ali-hub-tip">${ambas?'Las dos planillas están listas. Revisalas si querés y arrancá el partido.':'Elegí el equipo que ya está en la cancha. No hace falta seguir un orden.'}</div>`+card('local',L)+card('visitante',V);
+  document.getElementById('ali-hub').style.display='';
+  document.getElementById('ali-counter').style.display='none';
+  const btn=document.getElementById('btn-confirmar-ali');
+  btn.style.display='';btn.onclick=()=>{if(_aliInfo('local').ok&&_aliInfo('visitante').ok){pararEscuchaAlineaciones();irAPartido();}};
+  btn.disabled=!ambas;btn.style.opacity=ambas?'1':'.4';btn.style.cursor=ambas?'pointer':'not-allowed';
+  btn.textContent=ambas?'▶ Ir al partido':(!L.ok&&!V.ok?'Faltan las dos planillas':'Falta la planilla de '+(!L.ok?p.equipoLocalNombre:p.equipoVisitanteNombre));
+  actualizarAvisoArranqueTemprano();
+  goScreen('screen-alineacion');
+}
+function volverAlineacion(){
+  if(st.equipo){
+    if(_aliTocada&&!confirm('¿Volver sin confirmar? Se pierde lo que tildaste de este equipo.'))return;
+    st.equipo=null;_aliTocada=false;mostrarHubAlineaciones();return;
+  }
+  pararEscuchaAlineaciones();cargarLista();
+}
+// Escucha en tiempo real el partido mientras se arman las planillas: si un equipo carga (o
+// cambia) la suya desde su panel, se ve al instante. NUNCA pisa una planilla que confirmó el
+// planillero, ni la que se está tildando en ese momento: en ese caso pregunta.
+let _unsubAli=null,_aliRemotaPendiente=null;
+function pararEscuchaAlineaciones(){if(_unsubAli){_unsubAli();_unsubAli=null;}}
+function escucharAlineaciones(){
+  pararEscuchaAlineaciones();
+  if(!st.partidoId)return;
+  const pid=st.partidoId;
+  _unsubAli=db.collection('partidos').doc(pid).onSnapshot(snap=>{
+    if(!snap.exists||st.partidoId!==pid||snap.metadata.hasPendingWrites)return;
+    const r=snap.data();
+    const nuevos=[];
+    [['local','alineacionLocal','capitanLocalDni','alineacionLocalPor'],['visitante','alineacionVisitante','capitanVisitanteDni','alineacionVisitantePor']].forEach(([lado,campo,capCampo,porCampo])=>{
+      const remota=r[campo]||[];
+      if(!remota.length)return;
+      const actual=st[campo]||[];
+      if(JSON.stringify(remota)===JSON.stringify(actual))return;
+      if(st.partido[porCampo]==='planillero'&&actual.length)return; // la confirmó el planillero: manda la suya
+      const nom=lado==='local'?st.partido.equipoLocalNombre:st.partido.equipoVisitanteNombre;
+      if(st.equipo===lado){ // justo la está cargando el planillero: que elija
+        _aliRemotaPendiente={lado,campo,capCampo,remota,cap:r[capCampo]||''};
+        const av=document.getElementById('ali-remoto-aviso');
+        av.innerHTML=`📲 <b>${esc(nom)}</b> acaba de cargar su planilla desde su panel (${remota.length} jugadores).<div class="rb"><button class="si" onclick="usarAlineacionRemota()">Usar la del equipo</button><button onclick="document.getElementById('ali-remoto-aviso').style.display='none'">Seguir con la mía</button></div>`;
+        av.style.display='';
+        document.querySelector('#screen-alineacion .scroll').scrollTop=0;
+        return;
+      }
+      st[campo]=remota;st.partido[campo]=remota;if(r[capCampo])st.partido[capCampo]=r[capCampo];
+      st.partido[porCampo]=r[porCampo]||'equipo';
+      nuevos.push(nom);
+    });
+    if(!nuevos.length)return;
+    toast('✅ '+nuevos.join(' y ')+' cargó su planilla desde el panel',4500);
+    if(!st.equipo&&document.getElementById('screen-alineacion').classList.contains('active'))mostrarHubAlineaciones();
+  },err=>console.warn('escucha alineaciones',err));
+}
+function usarAlineacionRemota(){
+  const x=_aliRemotaPendiente;if(!x)return;_aliRemotaPendiente=null;
+  st[x.campo]=x.remota;st.partido[x.campo]=x.remota;if(x.cap)st.partido[x.capCampo]=x.cap;
+  st.partido[x.campo+'Por']='equipo';
+  st.equipo=null;_aliTocada=false;
+  toast('✅ Se usa la planilla que cargó el equipo',3000);
+  mostrarHubAlineaciones();
 }
 
 function elegirEquipoPrimero(){
@@ -1706,6 +1977,10 @@ function elegirEquipoPrimero(){
 
 async function mostrarAlineacion(equipo){
   st.equipo=equipo;
+  document.getElementById('ali-hub').style.display='none';
+  document.getElementById('ali-remoto-aviso').style.display='none';
+  document.querySelector('#screen-alineacion .ali-header').style.display='';
+  const _b=document.getElementById('btn-confirmar-ali');_b.onclick=()=>confirmarAlineacion();
   // Por si se viene de elegirEquipoPrimero(), que los esconde para mostrar los dos botones.
   document.getElementById('ali-counter').style.display='';
   document.getElementById('btn-confirmar-ali').style.display='';
@@ -1884,7 +2159,7 @@ async function confirmarAlineacion(){
   const alineacion=[];
   rows.forEach(r=>{const dni=r.id.replace('prow-','');const val=document.getElementById('num-'+dni).value.trim().padStart(2,'0');alineacion.push({dni,numero:val,nombre:r.querySelector('.player-name').textContent});});
   const campo=st.equipo==='local'?'alineacionLocal':'alineacionVisitante';
-  const extraFields={};
+  const extraFields={[campo+'Por']:'planillero'};st.partido[campo+'Por']='planillero';
   if(st.equipo==='local'){
     extraFields.arbitro1=(document.getElementById('arb1-input').value||'').trim();
     extraFields.arbitro2=(document.getElementById('arb2-input').value||'').trim();
@@ -2019,12 +2294,14 @@ function actualizarEscudos(){
   });
 }
 function irAPartido(){
+  pararEscuchaAlineaciones();
   iniciarSyncPartido();
   const p=st.partido;
-  document.getElementById('ph-local-nombre').textContent=p.equipoLocalNombre;
-  document.getElementById('ph-visitante-nombre').textContent=p.equipoVisitanteNombre;
-  document.getElementById('col-local-header').textContent=p.equipoLocalNombre;
-  document.getElementById('col-visitante-header').textContent=p.equipoVisitanteNombre;
+  aplicarTemaFlyer(p.division);
+  document.getElementById('ph-local-nombre').textContent=nombreConVentaja(p,'local');
+  document.getElementById('ph-visitante-nombre').textContent=nombreConVentaja(p,'visitante');
+  document.getElementById('col-local-header').textContent=nombreConVentaja(p,'local');
+  document.getElementById('col-visitante-header').textContent=nombreConVentaja(p,'visitante');
   actualizarEscudos();
   // División en el header
   const div=(p.division||'').trim();
@@ -2034,7 +2311,7 @@ function irAPartido(){
   const divNombre=document.getElementById('ph-division-nombre');
   if(div){
     const zona=(p.zona||'').trim();
-    divNombre.textContent=div+(zona?' · Zona '+zona:'');
+    divNombre.textContent=p.fase?(FASE_LABEL[p.fase]||p.fase):div+(zona?' · Zona '+zona:'');
     if(divKey){divLogo.src='assets/copa-'+divKey+'.png';divLogo.style.display='';}
     else{divLogo.style.display='none';}
     divBadge.style.display='flex';
@@ -2306,7 +2583,8 @@ function finPartido(){
   const p=st.partido;
   document.getElementById('cierre-local-nombre').textContent=p.equipoLocalNombre;
   document.getElementById('cierre-visitante-nombre').textContent=p.equipoVisitanteNombre;
-  document.getElementById('cierre-sub').textContent=p.equipoLocalNombre+' vs '+p.equipoVisitanteNombre;
+  document.getElementById('cierre-sub').textContent=(p.fase?(FASE_LABEL[p.fase]||p.fase)+' · ':'')+p.equipoLocalNombre+' vs '+p.equipoVisitanteNombre;
+  aplicarTemaFlyer(p.division);
   renderFirmasCierre();
   const gL=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoLocalId).length;
   const gV=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoVisitanteId).length;
@@ -2314,13 +2592,24 @@ function finPartido(){
   document.getElementById('cierre-visitante-goles').textContent=gV;
   // Playoffs empatados: se habilita la carga de penales.
   const penBox=document.getElementById('penales-box');
-  const conPenales=!!p.fase&&gL===gV;
+  const vent=ventajaDe(p);
+  const conPenales=!!p.fase&&gL===gV&&!vent;
   penBox.style.display=conPenales?'block':'none';
+  const vBox=document.getElementById('ventaja-box');
+  if(vBox){
+    const pasa=!!p.fase&&gL===gV&&vent;
+    vBox.style.display=pasa?'block':'none';
+    if(pasa)vBox.innerHTML=`Empate ${gL}-${gV} · pasa por ventaja deportiva<b>★ ${esc(vent===p.equipoLocalId?p.equipoLocalNombre:p.equipoVisitanteNombre)}</b><small>Terminó 1° en la fase regular: en ${FASE_LABEL[p.fase].toLowerCase()} no se patean penales.</small>`;
+  }
   if(conPenales){
     document.getElementById('pen-local-nombre').textContent=p.equipoLocalNombre||'LOCAL';
     document.getElementById('pen-visitante-nombre').textContent=p.equipoVisitanteNombre||'VISITANTE';
     document.getElementById('pen-local').value=p.penalesLocal??'';
     document.getElementById('pen-visitante').value=p.penalesVisitante??'';
+    const d=p.penalesDetalle;
+    st.tanda=d&&(d.local||[]).length+(d.visitante||[]).length?{local:[...d.local],visitante:[...d.visitante],primero:d.primero||'local'}:(st.tanda&&st.tanda.pid===st.partidoId?st.tanda:{local:[],visitante:[],primero:null});
+    st.tanda.pid=st.partidoId;
+    renderTanda();
   }
   // Pre-poblar obs desde Firestore si el textarea está vacío
   const obsEl=document.getElementById('obs-text');
@@ -2679,7 +2968,11 @@ function cerrarPlanilla(){
   const gV=st.eventos.filter(e=>e.tipo==='gol'&&e.equipoId===p.equipoVisitanteId).length;
   // Penales: solo en playoffs y solo si terminó empatado.
   let penales={penalesLocal:null,penalesVisitante:null};
-  if(p.fase&&gL===gV){
+  if(p.fase&&gL===gV&&!ventajaDe(p)){
+    const tq=st.tanda;
+    if(tq&&tq.local.length+tq.visitante.length&&!estadoTanda(tq).ganador){
+      toast('La tanda de penales todavía no terminó.',5000);document.getElementById('penales-box').scrollIntoView({block:'center',behavior:'smooth'});return;
+    }
     const pl=document.getElementById('pen-local').value,pv=document.getElementById('pen-visitante').value;
     if(pl===''&&pv===''){
       if(!confirm('Terminó empatado y no cargaste penales: pasa el equipo con ventaja deportiva. ¿Cerrar así?'))return;
@@ -2688,6 +2981,10 @@ function cerrarPlanilla(){
       document.getElementById('penales-box').scrollIntoView({block:'center',behavior:'smooth'});
       return;
     }else penales={penalesLocal:Number(pl),penalesVisitante:Number(pv)};
+    const t=st.tanda;
+    if(t&&t.local.length+t.visitante.length){
+      penales.penalesDetalle={local:t.local,visitante:t.visitante,primero:t.primero};
+    }
   }
   if(!confirm('¿Cerrar la planilla definitivamente?'))return;
   const obs=document.getElementById('obs-text').value.trim();
