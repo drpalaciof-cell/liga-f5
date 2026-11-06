@@ -1704,7 +1704,7 @@ body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26
     <div id="admintab-aranceles" class="admintab hidden">
       <div class="glass section-card">
         <h3>💵 Aranceles por fecha</h3>
-        <p class="wizard-help" style="margin-bottom:12px;">Definí qué fecha (sábado) está abierta para cobrar y su vencimiento (12:00 del mediodía). Los equipos pagan <strong>$50.000</strong>; pasado el vencimiento, <strong>$55.000</strong> (queda marcado "fuera de hora"). Controlá quién pagó, cuánto falta y quién pagó tarde. <strong>Playoffs:</strong> cada instancia (octavos, cuartos, semis, final) es una fecha más; aparece en la lista apenas se crean sus partidos y pagan solo los equipos que la juegan.</p>
+        <p class="wizard-help" style="margin-bottom:12px;">Definí qué fecha (sábado) está abierta para cobrar y su vencimiento (12:00 del mediodía). Desde la Fecha 12 los equipos pagan <strong>$55.000</strong>; pasado el vencimiento, <strong>$60.000</strong> (queda marcado "fuera de hora"). Hasta la Fecha 11 era $50.000 / $55.000. Controlá quién pagó, cuánto falta y quién pagó tarde. <strong>Playoffs:</strong> cada instancia (octavos, cuartos, semis, final) es una fecha más; aparece en la lista apenas se crean sus partidos y pagan solo los equipos que la juegan.</p>
         <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;">
           <div class="field" style="margin:0;"><label>Fecha actual</label>
             <select id="cfg-arancel-fecha" style="padding:7px;border-radius:8px;">
@@ -3521,7 +3521,18 @@ function renderPanelEquipo() {
 // ═══════════════════ PAGOS: aranceles semanales ═══════════════════
 const ARANCEL_ALIAS = 'LIGA.F526';
 const ARANCEL_ALIAS_TITULAR = 'Mariano Gauna · billetera ASTRO PAY';
-const ARANCEL_MONTO = 50000, ARANCEL_MONTO_TARDE = 55000;
+// El arancel subió desde la Fecha 12 (pedido del usuario, 2026-11-06): $55.000 en término y
+// $60.000 fuera de hora. Las fechas anteriores siguen a $50.000 / $55.000, así la deuda vieja y
+// lo ya cobrado no cambian. El monto sale SIEMPRE de la fecha que se paga, nunca de un valor fijo.
+const ARANCEL_TARIFAS = [
+  { desde: 1, monto: 50000, tarde: 55000 },
+  { desde: 12, monto: 55000, tarde: 60000 },
+];
+function arancelTarifa(f) {
+  let t = ARANCEL_TARIFAS[0];
+  for (const x of ARANCEL_TARIFAS) if (Number(f) >= x.desde) t = x;
+  return t;
+}
 const fmtPesos = (n) => '$ ' + (Number(n) || 0).toLocaleString('es-AR');
 let _cfgArancel = { fecha: null, vence: null };
 async function _cargarCfgArancel() {
@@ -3631,7 +3642,7 @@ async function renderPagosEquipo() {
       if (st.estado !== 'pagado') { deuda += m; nDeuda++; }
       const detalle = st.estado === 'pagado'
         ? `Pagado ${fmtPesos(st.pago.montoDeclarado)}${st.pago.fueraDeHora ? ' · fuera de hora' : ''}`
-        : `${fmtPesos(m)}${m === ARANCEL_MONTO_TARDE ? ' <span style="color:var(--warn);">(fuera de hora)</span>' : ''}`;
+        : `${fmtPesos(m)}${m === arancelTarifa(f).tarde ? ' <span style="color:var(--warn);">(fuera de hora)</span>' : ''}`;
       filas.push(`<div class="list-row" style="align-items:center;">
         <div style="flex:1;min-width:0;">
           <strong>${poEq ? '🏆 ' + _arancelNombreFecha(f, divEq) : `Fecha ${f}`}</strong>${esActual ? ' <span class="badge badge-warn">Actual</span>' : ''}
@@ -3648,7 +3659,7 @@ async function renderPagosEquipo() {
         ? `<p style="font-size:13px;margin-bottom:10px;">⛔ Tu equipo ya no participa de la liga, así que desde la Fecha ${bajaDesde} no se te cobra el arancel. Abajo quedan las fechas que sí jugaste.</p>`
         : (_arancelPOEquipo(fecha, state.equipoId, divEq) && !_arancelPOEquipo(fecha, state.equipoId, divEq).juega)
           ? `<p style="font-size:13px;margin-bottom:10px;">🏆 Tu equipo no juega ${escapeHtml(_arancelNombreFecha(fecha))}, así que no paga esa instancia.</p>`
-          : `<p style="font-size:13px;margin-bottom:10px;">${_arancelPOEquipo(fecha, state.equipoId, divEq) ? '🏆 ' + escapeHtml(_arancelNombreFecha(fecha, divEq)) : `La Fecha ${fecha}`} vence <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencida</span>' : `<span class="muted">· después sube a ${fmtPesos(ARANCEL_MONTO_TARDE)}</span>`}</p>`}
+          : `<p style="font-size:13px;margin-bottom:10px;">${_arancelPOEquipo(fecha, state.equipoId, divEq) ? '🏆 ' + escapeHtml(_arancelNombreFecha(fecha, divEq)) : `La Fecha ${fecha}`} vence <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencida</span>' : `<span class="muted">· después sube a ${fmtPesos(arancelTarifa(fecha).tarde)}</span>`}</p>`}
       ${nDeuda ? `<div style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;">
         Debés <strong style="color:var(--danger);font-size:17px;">${fmtPesos(deuda)}</strong> — ${nDeuda} fecha(s) sin pagar.</div>`
         : `<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;color:var(--ok);">✅ Estás al día con los aranceles.</div>`}
@@ -3677,7 +3688,8 @@ function _estadoArancelFecha(pagos, f) {
 }
 // Una fecha anterior a la abierta ya venció sí o sí, así que va al monto de fuera de hora.
 function _montoArancelFecha(f, fechaActual, vencidaActual) {
-  return (f < fechaActual || (f === fechaActual && vencidaActual)) ? ARANCEL_MONTO_TARDE : ARANCEL_MONTO;
+  const t = arancelTarifa(f);
+  return (f < fechaActual || (f === fechaActual && vencidaActual)) ? t.tarde : t.monto;
 }
 // UNA FECHA POSTERGADA NO SE COBRA. La fecha 3 de Primera se postergó y les seguía
 // apareciendo a los 12 equipos como deuda: nadie debe una fecha que no se jugó.
@@ -3701,7 +3713,7 @@ function _notaPagoReasignado(p) {
 function abrirModalPagarArancel(f) {
   const vencido = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
   const monto = _montoArancelFecha(f, _cfgArancel.fecha, vencido);
-  const tarde = monto === ARANCEL_MONTO_TARDE;
+  const tarde = monto === arancelTarifa(f).tarde;
   openModal(`
     <h2 style="margin-bottom:4px;">Pagar arancel — ${escapeHtml(_arancelNombreFecha(f, (state.equipo && state.equipo.division) || ''))}</h2>
     <p class="muted" style="margin-bottom:14px;font-size:13px;">${tarde ? 'Fuera de término' : 'En término'}</p>
@@ -3735,7 +3747,7 @@ async function pagarArancel(fechaPago) {
     const poEq = _arancelPOEquipo(fecha, state.equipoId, (state.equipo && state.equipo.division) || '');
     if (poEq && !poEq.juega) { showToast('Tu equipo no juega esa instancia, no la tiene que pagar.', 'error'); return; }
     const vencidaActual = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
-    const fueraDeHora = _montoArancelFecha(fecha, _cfgArancel.fecha, vencidaActual) === ARANCEL_MONTO_TARDE;
+    const fueraDeHora = _montoArancelFecha(fecha, _cfgArancel.fecha, vencidaActual) === arancelTarifa(fecha).tarde;
     const eq = state.equipo || {};
     await db.collection('aranceles').add({
       equipoId: state.equipoId, equipoNombre: eq.nombre || '', division: eq.division || '', zona: eq.zona || '',
@@ -3826,7 +3838,7 @@ async function renderArancelesAdmin() {
   const pagadoIds = new Set(pagosFecha.map(p => p.equipoId));
   const pagados = equipos.filter(e => pagadoIds.has(e.id)).length;
   const recaudado = pagosFecha.reduce((s, p) => s + (p.montoDeclarado || 0), 0);
-  const objetivo = total * ARANCEL_MONTO;
+  const objetivo = total * arancelTarifa(fechaV).monto;
   const fueraHora = pagosFecha.filter(p => p.fueraDeHora).length;
   const filasPagaron = equipos.filter(e => pagadoIds.has(e.id)).sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '')).map(e => {
     const p = pagosFecha.find(x => x.equipoId === e.id) || {};

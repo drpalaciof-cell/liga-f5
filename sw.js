@@ -567,7 +567,9 @@
 // final) es una fecha más que se abre en "💵 Aranceles"; pagan solo los equipos que la juegan.
 // v108: "ligaf5admin" entra aunque la Cloud Function de login no responda (usa el acceso de
 // Firebase Authentication del mail del admin).
-const CACHE = 'ligaf5-v108';
+// v109: arancel nuevo desde la Fecha 12: $55.000 en término / $60.000 fuera de hora (ARANCEL_TARIFAS);
+//       las fechas 1-11 siguen a $50.000 / $55.000.
+const CACHE = 'ligaf5-v109';
 const ASSETS = [
   './index.html',
   './planilla.html',

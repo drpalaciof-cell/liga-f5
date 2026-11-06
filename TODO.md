@@ -1,3 +1,15 @@
+# 2026-11-06 (cont.) — Arancel $55.000 / $60.000 desde la Fecha 12 (sw v109)
+
+- Pedido del usuario: el arancel pasa a **$55.000** en término y **$60.000** fuera de hora, desde la
+  fecha abierta ahora (Fecha 12). Las fechas 1-11 siguen a $50.000 / $55.000 (deuda vieja y objetivo
+  de fechas pasadas no cambian).
+- `ARANCEL_MONTO`/`ARANCEL_MONTO_TARDE` reemplazadas por `ARANCEL_TARIFAS` + `arancelTarifa(fecha)`:
+  el monto, el "fuera de hora" y el objetivo del admin salen de la fecha que se paga.
+- ⚠️ Si alguien ya había pagado la Fecha 12 a $50.000, figura con ese monto (no se tocó nada en la base).
+- Para un próximo aumento: agregar `{ desde: N, monto, tarde }` al final de `ARANCEL_TARIFAS`.
+
+---
+
 # 2026-10-28 (cont.) — Login de admin por mail (sw v99)
 
 - El proyecto quedó SIN FACTURACIÓN: la Cloud Function `login` responde 503 ("service not available")
