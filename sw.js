@@ -565,7 +565,9 @@
 // cuadro igual que el público + crear cruces y horarios.
 // v107: aranceles en playoffs -- cada instancia (octavos de Segunda, cuartos de Primera, semis,
 // final) es una fecha más que se abre en "💵 Aranceles"; pagan solo los equipos que la juegan.
-const CACHE = 'ligaf5-v107';
+// v108: "ligaf5admin" entra aunque la Cloud Function de login no responda (usa el acceso de
+// Firebase Authentication del mail del admin).
+const CACHE = 'ligaf5-v108';
 const ASSETS = [
   './index.html',
   './planilla.html',

@@ -2225,6 +2225,10 @@ function showView(name) {
 // Admins que entran con mail y contraseña (Firebase Authentication). Misma lista que
 // esAdminPorMail() en firestore.rules -- si se suma uno, va en los dos lados.
 const ADMIN_EMAILS = ['dr.palaciof@gmail.com'];
+// Usuario de admin de siempre → su mail. Si el servidor de login (Cloud Function) no responde,
+// "ligaf5admin" entra igual con el acceso de Firebase Authentication de ese mail (misma
+// contraseña que tenga ese usuario de Authentication). Con la Function andando, entra como siempre.
+const ADMIN_USUARIOS = { ligaf5admin: 'dr.palaciof@gmail.com' };
 function esAdminPorMail(user) {
   return !!(user && user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())
     && (user.providerData || []).some(p => p && p.providerId === 'password'));
@@ -3219,6 +3223,19 @@ document.getElementById('form-login-equipo').addEventListener('submit', async e 
     try { res = await functions.httpsCallable('login')({ usuario, pass }); }
     catch (err) {
       if (err && (err.code === 'functions/internal' || err.code === 'functions/unavailable')) {
+        const mailAdmin = ADMIN_USUARIOS[usuario.toLowerCase()];
+        if (mailAdmin) {
+          try {
+            const cred = await auth.signInWithEmailAndPassword(mailAdmin, pass);
+            if (!esAdminPorMail(cred.user)) { await auth.signOut(); showToast('Ese usuario no está habilitado como administrador.', 'error'); return; }
+            await entrarComoAdminPorMail(cred.user);
+            showToast('Bienvenido al panel admin', 'ok');
+          } catch (e3) {
+            console.error(e3);
+            showToast('El servidor de login no responde y esa contraseña no coincide con la de tu mail de administrador en Firebase. Entrá con tu mail o igualá las contraseñas.', 'error');
+          }
+          return;
+        }
         // Servidor de login fuera de servicio: entra con el acceso nuevo del equipo.
         try {
           const equipoId = await loginEquipoPorAuth(usuario, pass);
