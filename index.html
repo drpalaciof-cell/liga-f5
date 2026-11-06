@@ -1704,7 +1704,7 @@ body.torneo-flyer #divisions-wrap .fx-playoffs .fx-fecha-title span{font-size:26
     <div id="admintab-aranceles" class="admintab hidden">
       <div class="glass section-card">
         <h3>💵 Aranceles por fecha</h3>
-        <p class="wizard-help" style="margin-bottom:12px;">Definí qué fecha (sábado) está abierta para cobrar y su vencimiento (12:00 del mediodía). Los equipos pagan <strong>$50.000</strong>; pasado el vencimiento, <strong>$55.000</strong> (queda marcado "fuera de hora"). Controlá quién pagó, cuánto falta y quién pagó tarde.</p>
+        <p class="wizard-help" style="margin-bottom:12px;">Definí qué fecha (sábado) está abierta para cobrar y su vencimiento (12:00 del mediodía). Los equipos pagan <strong>$50.000</strong>; pasado el vencimiento, <strong>$55.000</strong> (queda marcado "fuera de hora"). Controlá quién pagó, cuánto falta y quién pagó tarde. <strong>Playoffs:</strong> cada instancia (octavos, cuartos, semis, final) es una fecha más; aparece en la lista apenas se crean sus partidos y pagan solo los equipos que la juegan.</p>
         <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;">
           <div class="field" style="margin:0;"><label>Fecha actual</label>
             <select id="cfg-arancel-fecha" style="padding:7px;border-radius:8px;">
@@ -3508,8 +3508,51 @@ const ARANCEL_MONTO = 50000, ARANCEL_MONTO_TARDE = 55000;
 const fmtPesos = (n) => '$ ' + (Number(n) || 0).toLocaleString('es-AR');
 let _cfgArancel = { fecha: null, vence: null };
 async function _cargarCfgArancel() {
-  try { const d = await db.collection('config').doc('general').get(); const c = d.exists ? d.data() : {}; _cfgArancel = { fecha: c.arancelFechaActual || null, vence: c.arancelVence || null, postergadas: Array.isArray(c.fechasPostergadas) ? c.fechasPostergadas : [] }; } catch (e) {}
+  try { const d = await db.collection('config').doc('general').get(); const c = d.exists ? d.data() : {}; _cfgArancel = { fecha: c.arancelFechaActual || null, vence: c.arancelVence || null, postergadas: Array.isArray(c.fechasPostergadas) ? c.fechasPostergadas : [], po: _cfgArancel.po || [] }; } catch (e) {}
+  try {
+    const snap = await db.collection('partidos').where('fase', 'in', ['octavos', 'cuartos', 'semis', 'final']).get();
+    const po = []; snap.forEach(d => { const x = d.data(); po.push({ nf: Number(x.numeroFecha), division: x.division, fase: x.fase, local: x.equipoLocalId, visita: x.equipoVisitanteId }); });
+    _cfgArancel.po = po;
+  } catch (e) { console.error(e); }
   return _cfgArancel;
+}
+// ARANCEL EN PLAYOFFS (pedido 06/11): desde octavos en Segunda y desde cuartos en Primera,
+// hasta la final, pagan SOLO los equipos que juegan esa instancia. Cada ronda de playoffs es
+// una fecha numerada más (la 12 = octavos de Segunda, y así), así que se cobra con el mismo
+// mecanismo de siempre. Una fecha es "de playoffs" si tiene algún partido con `fase`; en esa
+// fecha deben únicamente los equipos que tienen partido en ella. El eliminado deja de deber
+// solo, y la división que ese día no juega playoffs no debe nada.
+function _arancelPO(f) {
+  const lista = ((_cfgArancel && _cfgArancel.po) || []).filter(x => x.nf === Number(f));
+  if (!lista.length) return null;
+  const porDiv = {};
+  lista.forEach(x => {
+    const d = porDiv[x.division] || (porDiv[x.division] = { fase: x.fase, equipos: new Set() });
+    if (x.local) d.equipos.add(x.local); if (x.visita) d.equipos.add(x.visita);
+  });
+  return porDiv;
+}
+/** null = fecha común (se cobra como siempre). Si es de playoffs: { juega, fase }. */
+function _arancelPOEquipo(f, equipoId, division) {
+  const po = _arancelPO(f);
+  if (!po) return null;
+  const d = po[division];
+  return { juega: !!(d && d.equipos.has(equipoId)), fase: d ? d.fase : null };
+}
+function _arancelNombreFecha(f, division) {
+  const po = _arancelPO(f);
+  const d = po && (division ? po[division] : Object.values(po)[0]);
+  return d ? `${FASE_LABEL[d.fase] || d.fase} (Fecha ${f})` : `Fecha ${f}`;
+}
+/** Última fecha que se puede abrir para cobrar: la 11 de la fase regular o la última de playoffs creada. */
+function _arancelUltimaFecha() {
+  const nfs = ((_cfgArancel && _cfgArancel.po) || []).map(x => x.nf).filter(n => !isNaN(n));
+  return Math.max(11, _cfgArancel.fecha || 0, ...nfs);
+}
+function _arancelOpcionLabel(f) {
+  const po = _arancelPO(f);
+  if (!po) return `Fecha ${f}`;
+  return `Fecha ${f} · 🏆 ` + Object.entries(po).map(([div, d]) => `${FASE_LABEL[d.fase] || d.fase} ${div}`).join(' + ');
 }
 function verImagenGrandeEquipo(src) { openModal(`<img src="${src}" style="max-width:100%;border-radius:8px;">`); }
 
@@ -3546,6 +3589,9 @@ async function renderPagosEquipo() {
     const bajaDesde = (state.equipo && state.equipo.bajaLiga) ? (state.equipo.bajaDesdeFecha || 1) : null;
     for (let f = fecha; f >= 1; f--) {
       if (bajaDesde != null && f >= bajaDesde) continue;
+      // Playoffs: solo debe la instancia si juega en ella (si no, ni aparece).
+      const poEq = _arancelPOEquipo(f, state.equipoId, divEq);
+      if (poEq && !poEq.juega && _estadoArancelFecha(pagos, f).estado !== 'pagado') continue;
       const st = _estadoArancelFecha(pagos, f);
       const postergada = _arancelFechaPostergada(f, divEq);
 
@@ -3571,7 +3617,7 @@ async function renderPagosEquipo() {
         : `${fmtPesos(m)}${m === ARANCEL_MONTO_TARDE ? ' <span style="color:var(--warn);">(fuera de hora)</span>' : ''}`;
       filas.push(`<div class="list-row" style="align-items:center;">
         <div style="flex:1;min-width:0;">
-          <strong>Fecha ${f}</strong>${esActual ? ' <span class="badge badge-warn">Actual</span>' : ''}
+          <strong>${poEq ? '🏆 ' + _arancelNombreFecha(f, divEq) : `Fecha ${f}`}</strong>${esActual ? ' <span class="badge badge-warn">Actual</span>' : ''}
           <div class="muted" style="font-size:12px;">${detalle}</div>
         </div>
         ${st.estado === 'pagado'
@@ -3583,7 +3629,9 @@ async function renderPagosEquipo() {
       <h3>💵 Aranceles por fecha</h3>
       ${bajaDesde != null
         ? `<p style="font-size:13px;margin-bottom:10px;">⛔ Tu equipo ya no participa de la liga, así que desde la Fecha ${bajaDesde} no se te cobra el arancel. Abajo quedan las fechas que sí jugaste.</p>`
-        : `<p style="font-size:13px;margin-bottom:10px;">La Fecha ${fecha} vence <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencida</span>' : `<span class="muted">· después sube a ${fmtPesos(ARANCEL_MONTO_TARDE)}</span>`}</p>`}
+        : (_arancelPOEquipo(fecha, state.equipoId, divEq) && !_arancelPOEquipo(fecha, state.equipoId, divEq).juega)
+          ? `<p style="font-size:13px;margin-bottom:10px;">🏆 Tu equipo no juega ${escapeHtml(_arancelNombreFecha(fecha))}, así que no paga esa instancia.</p>`
+          : `<p style="font-size:13px;margin-bottom:10px;">${_arancelPOEquipo(fecha, state.equipoId, divEq) ? '🏆 ' + escapeHtml(_arancelNombreFecha(fecha, divEq)) : `La Fecha ${fecha}`} vence <strong>${venceTxt} hs</strong> ${vencido ? '<span class="badge badge-danger">Vencida</span>' : `<span class="muted">· después sube a ${fmtPesos(ARANCEL_MONTO_TARDE)}</span>`}</p>`}
       ${nDeuda ? `<div style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;">
         Debés <strong style="color:var(--danger);font-size:17px;">${fmtPesos(deuda)}</strong> — ${nDeuda} fecha(s) sin pagar.</div>`
         : `<div style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;color:var(--ok);">✅ Estás al día con los aranceles.</div>`}
@@ -3638,7 +3686,7 @@ function abrirModalPagarArancel(f) {
   const monto = _montoArancelFecha(f, _cfgArancel.fecha, vencido);
   const tarde = monto === ARANCEL_MONTO_TARDE;
   openModal(`
-    <h2 style="margin-bottom:4px;">Pagar arancel — Fecha ${f}</h2>
+    <h2 style="margin-bottom:4px;">Pagar arancel — ${escapeHtml(_arancelNombreFecha(f, (state.equipo && state.equipo.division) || ''))}</h2>
     <p class="muted" style="margin-bottom:14px;font-size:13px;">${tarde ? 'Fuera de término' : 'En término'}</p>
     <div class="glass" style="border:1px solid var(--division-color);border-radius:14px;padding:14px;text-align:center;margin-bottom:16px;">
       <div style="font-size:12px;color:var(--text-dim);letter-spacing:.5px;">TRANSFERÍ AL ALIAS</div>
@@ -3667,6 +3715,8 @@ async function pagarArancel(fechaPago) {
     const fecha = fechaPago != null ? Number(fechaPago) : _cfgArancel.fecha;
     if (fecha == null) { showToast('No hay una fecha de arancel abierta.', 'error'); return; }
     if (_cfgArancel.fecha != null && fecha > _cfgArancel.fecha) { showToast('Esa fecha todavía no está abierta para pagar.', 'error'); return; }
+    const poEq = _arancelPOEquipo(fecha, state.equipoId, (state.equipo && state.equipo.division) || '');
+    if (poEq && !poEq.juega) { showToast('Tu equipo no juega esa instancia, no la tiene que pagar.', 'error'); return; }
     const vencidaActual = _cfgArancel.vence ? (new Date() > new Date(_cfgArancel.vence)) : false;
     const fueraDeHora = _montoArancelFecha(fecha, _cfgArancel.fecha, vencidaActual) === ARANCEL_MONTO_TARDE;
     const eq = state.equipo || {};
@@ -3721,14 +3771,18 @@ async function renderArancelesAdmin() {
   await _cargarCfgArancel();
   // Prefill config (sin pisar mientras el admin edita)
   const fEl = document.getElementById('cfg-arancel-fecha');
-  if (fEl && document.activeElement !== fEl && _cfgArancel.fecha) fEl.value = _cfgArancel.fecha;
+  const ultimaF = _arancelUltimaFecha();
+  if (fEl && document.activeElement !== fEl) {
+    fEl.innerHTML = `<option value="">— sin abrir —</option>` + Array.from({ length: ultimaF }, (_, i) => i + 1).map(f => `<option value="${f}">${_arancelOpcionLabel(f)}</option>`).join('');
+    if (_cfgArancel.fecha) fEl.value = _cfgArancel.fecha;
+  }
   const vEl = document.getElementById('cfg-arancel-vence');
   if (vEl && document.activeElement !== vEl && _cfgArancel.vence) { const d = new Date(_cfgArancel.vence), p = n => String(n).padStart(2, '0'); vEl.value = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
   const tab = state.arancelTab || 'Primera';
   if (state.arancelFechaVista == null) state.arancelFechaVista = _cfgArancel.fecha || 1;
   const fechaV = state.arancelFechaVista;
   document.getElementById('aranceles-subtabs').innerHTML = [['Primera', '🥇 Primera'], ['A', '🥈 Zona A'], ['B', '🥈 Zona B']].map(([k, l]) => `<button class="tab-btn ${tab === k ? 'active' : ''}" onclick="seleccionarArancelTab('${k}')">${l}</button>`).join('');
-  document.getElementById('aranceles-fecha-sel').innerHTML = `Ver fecha: <select onchange="seleccionarArancelFecha(this.value)" style="padding:5px 8px;border-radius:8px;">${Array.from({ length: 11 }, (_, i) => i + 1).map(f => `<option value="${f}" ${f === fechaV ? 'selected' : ''}>Fecha ${f}${f === _cfgArancel.fecha ? ' (actual)' : ''}</option>`).join('')}</select>`;
+  document.getElementById('aranceles-fecha-sel').innerHTML = `Ver fecha: <select onchange="seleccionarArancelFecha(this.value)" style="padding:5px 8px;border-radius:8px;">${Array.from({ length: ultimaF }, (_, i) => i + 1).map(f => `<option value="${f}" ${f === fechaV ? 'selected' : ''}>${_arancelOpcionLabel(f)}${f === _cfgArancel.fecha ? ' (actual)' : ''}</option>`).join('')}</select>`;
   const delTab = tab === 'Primera' ? equiposCacheAdmin.filter(e => e.division === 'Primera') : equiposCacheAdmin.filter(e => e.division === 'Segunda' && e.zona === tab);
   // Un equipo que se bajó de la liga no se le cobra más el arancel: no suma al objetivo ni
   // aparece en "Faltan" (si no, figura debiendo todas las fechas que quedan hasta el final).
@@ -3737,7 +3791,13 @@ async function renderArancelesAdmin() {
   // La baja rige DESDE una fecha (bajaDesdeFecha): las anteriores se siguen viendo como
   // siempre, con su pago, porque esas sí las jugó y las pagó.
   const estaDeBaja = e => e.bajaLiga && fechaV >= (e.bajaDesdeFecha || 1);
-  const equipos = delTab.filter(e => !estaDeBaja(e));
+  // Playoffs: en esa fecha deben solo los que juegan la instancia (ver _arancelPO).
+  const poFecha = _arancelPO(fechaV);
+  const divTabPO = tab === 'Primera' ? 'Primera' : 'Segunda';
+  const poDiv = poFecha ? poFecha[divTabPO] : null;
+  const juegaPO = e => !poFecha || !!(poDiv && poDiv.equipos.has(e.id));
+  const noJueganPO = poFecha ? delTab.filter(e => !estaDeBaja(e) && !juegaPO(e)) : [];
+  const equipos = delTab.filter(e => !estaDeBaja(e) && juegaPO(e));
   const dadosDeBaja = delTab.filter(estaDeBaja);
   const total = equipos.length;
   // Una fecha postergada no se cobra: no tiene sentido mostrar "faltan 12" de algo que
@@ -3772,12 +3832,18 @@ async function renderArancelesAdmin() {
         <div>Pagaron fuera de hora: <strong>${fueraHora}</strong></div>
       </div>
     </div>
+    ${poFecha ? `<div style="background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.3);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:13.5px;">
+      ${poDiv ? `🏆 <strong>${escapeHtml(FASE_LABEL[poDiv.fase] || poDiv.fase)}</strong> — pagan solo los ${equipos.length} equipo(s) ${tab === 'Primera' ? 'que' : 'de esta zona que'} juegan esta instancia.`
+        : `🏆 En la Fecha ${fechaV} ${tab === 'Primera' ? 'Primera' : 'Segunda'} no juega playoffs: no se cobra a nadie.`}
+    </div>` : ''}
     ${esPostergada ? `<div style="background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.35);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:13.5px;">
       ⏸ <strong>Fecha ${fechaV} postergada</strong> — no se cobra y nadie la debe.
       ${pagados ? `${pagados} equipo(s) la habían pagado antes de que se postergara: esa plata queda a favor.` : ''}
     </div>` : ''}
     <h4 style="margin:10px 0 6px;">✅ Pagaron (${pagados})</h4>${filasPagaron || '<p class="muted">Nadie pagó todavía en esta fecha.</p>'}
     ${esPostergada ? '' : `<h4 style="margin:16px 0 6px;">⏳ Faltan (${total - pagados})</h4>${filasFaltan || '<p class="muted" style="color:var(--ok);">¡Todos pagaron!</p>'}`}
+    ${noJueganPO.length ? `<h4 style="margin:16px 0 6px;">🏁 No juegan esta instancia (${noJueganPO.length}) — no se les cobra</h4>
+      <p class="muted" style="font-size:12.5px;">${noJueganPO.map(e => escapeHtml(e.nombre)).sort().join(' · ')}</p>` : ''}
     ${dadosDeBaja.length ? `<h4 style="margin:16px 0 6px;">⛔ Fuera de la liga (${dadosDeBaja.length}) — no se les cobra</h4>${dadosDeBaja.map(e => `
       <div class="list-row" style="align-items:center;opacity:.7;border-left:4px solid var(--text-dim);padding-left:10px;border-radius:8px;margin-bottom:5px;">
         <div style="flex:1;font-weight:700;">⛔ ${escapeHtml(e.nombre)}</div>
