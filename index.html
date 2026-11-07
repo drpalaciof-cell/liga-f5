@@ -3222,7 +3222,11 @@ document.getElementById('form-login-equipo').addEventListener('submit', async e 
     let res;
     try { res = await functions.httpsCallable('login')({ usuario, pass }); }
     catch (err) {
-      if (err && (err.code === 'functions/internal' || err.code === 'functions/unavailable')) {
+      // Con la Function andando, un equipo que ya usa la contraseña NUEVA (Authentication) recibe
+      // "permission-denied" del servidor (que solo conoce la vieja): también se prueba la nueva.
+      // Así entran con cualquiera de las dos.
+      const probarNueva = err && err.code === 'functions/permission-denied' && !ADMIN_USUARIOS[usuario.toLowerCase()];
+      if (err && (err.code === 'functions/internal' || err.code === 'functions/unavailable' || probarNueva)) {
         const mailAdmin = ADMIN_USUARIOS[usuario.toLowerCase()];
         if (mailAdmin) {
           try {
