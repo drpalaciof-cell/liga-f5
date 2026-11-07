@@ -1,3 +1,14 @@
+# 2026-11-07 — LORESVA F.C: corrección de GARCIA y 2 jugadores nuevos (antes del partido de las 15)
+
+- `GARCIA, GABRIEL 37004782` → **`GARCIA, FEDERICO GABRIEL 37044782`** (DNI mal tipeado). Es el traspaso
+  desde ELOSRA (en ELOSRA figura `GARCIA, federico 37044782`): también se corrigió el DNI en su
+  `seguroHabilitadoManual` ("Comunicado oficial 06/11/2026 — traspaso desde ELOSRA"), si no quedaba sin seguro.
+- Agregados: `GARCETE, EUGENIO 44344295` y `SANCHEZ, EMILIANO MARTIN 39900611` (plantel 26 → 28).
+  **Sin seguro habilitado** al momento de cargarlos (no están en ningún otro plantel) — preguntado al usuario.
+- Respaldo de `jugadores` + `seguroHabilitadoManual` antes del cambio en `respaldo_loresva_plantel.json`.
+
+---
+
 # 2026-11-06 (cont.) — Arancel $55.000 / $60.000 desde la Fecha 12 (sw v109)
 
 - Pedido del usuario: el arancel pasa a **$55.000** en término y **$60.000** fuera de hora, desde la

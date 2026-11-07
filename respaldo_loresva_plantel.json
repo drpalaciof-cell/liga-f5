@@ -1,0 +1,152 @@
+{
+ "jugadores": [
+  {
+   "apellido": "AUGUSTO",
+   "nombre": "LEANDRO",
+   "dni": "40627367"
+  },
+  {
+   "apellido": "AUGUSTO",
+   "nombre": "LUCAS NAHUEL",
+   "dni": "46064021"
+  },
+  {
+   "apellido": "BENITEZ",
+   "nombre": "TOMÁS",
+   "dni": "40988190"
+  },
+  {
+   "apellido": "BOGADO",
+   "nombre": "MAURICIO",
+   "dni": "46154212"
+  },
+  {
+   "apellido": "BRIZUELA",
+   "nombre": "MAXIMO",
+   "dni": "39132170"
+  },
+  {
+   "apellido": "CABALLERO",
+   "nombre": "GABRIEL",
+   "dni": "38377606"
+  },
+  {
+   "apellido": "CABALLERO",
+   "nombre": "CARLOS",
+   "dni": "41415923"
+  },
+  {
+   "apellido": "BRIZUELA",
+   "nombre": "EDUARDO NICOLAS",
+   "dni": "45050614"
+  },
+  {
+   "apellido": "DOMINGUEZ",
+   "nombre": "NICOLAS",
+   "dni": "36205079"
+  },
+  {
+   "apellido": "GARCIA",
+   "nombre": "RAMIRO ANDRES",
+   "dni": "43806758"
+  },
+  {
+   "apellido": "MELGAREJO",
+   "nombre": "MARTÍN",
+   "dni": "39903333"
+  },
+  {
+   "apellido": "MELGAREJO",
+   "nombre": "VLADIMIR IGNACIO",
+   "dni": "46862248"
+  },
+  {
+   "apellido": "MELGAREJO",
+   "nombre": "GASTON",
+   "dni": "39319190"
+  },
+  {
+   "apellido": "MOLINA",
+   "nombre": "LEANDRO",
+   "dni": "36960034"
+  },
+  {
+   "apellido": "MORINIGO",
+   "nombre": "NICOLAS",
+   "dni": "39268902"
+  },
+  {
+   "apellido": "ORTIZ",
+   "nombre": "EXEQUIEL",
+   "dni": "38191868"
+  },
+  {
+   "apellido": "PAEZ",
+   "nombre": "MARTIN",
+   "dni": "37911005"
+  },
+  {
+   "apellido": "PEREZ",
+   "nombre": "FRANCO",
+   "dni": "45532657"
+  },
+  {
+   "apellido": "BOBADILLA",
+   "nombre": "FABRICIO RUBEN",
+   "dni": "45971121"
+  },
+  {
+   "apellido": "RODRIGUEZ",
+   "nombre": "GASTÓN",
+   "dni": "37973701"
+  },
+  {
+   "apellido": "ROMERO",
+   "nombre": "BRUNO EXEQUIEL",
+   "dni": "46322433"
+  },
+  {
+   "apellido": "SALA",
+   "nombre": "JUAN",
+   "dni": "38575606"
+  },
+  {
+   "apellido": "SANABRIA",
+   "nombre": "JOEL ALEJANDRO",
+   "dni": "36206328"
+  },
+  {
+   "apellido": "SILVA",
+   "nombre": "CLAUDIO NICOLAS",
+   "dni": "39132131"
+  },
+  {
+   "apellido": "VELOZO",
+   "nombre": "CRISTINO LEON",
+   "dni": "46063992"
+  },
+  {
+   "apellido": "GARCIA",
+   "nombre": "GABRIEL",
+   "dni": "37004782"
+  }
+ ],
+ "seguroHabilitadoManual": [
+  {
+   "dni": "45050614",
+   "fecha": "2026-08-28T14:43:55.295Z",
+   "monto": 8000
+  },
+  {
+   "dni": "45971121",
+   "fecha": "2026-08-28T14:43:31.395Z",
+   "monto": 8000
+  },
+  {
+   "dni": "37004782",
+   "fecha": "2026-11-07T14:35:14.697Z",
+   "monto": 0,
+   "motivo": "Comunicado oficial 06/11/2026 — traspaso desde ELOSRA"
+  }
+ ]
+}
