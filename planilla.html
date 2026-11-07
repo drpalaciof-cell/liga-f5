@@ -799,7 +799,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v111</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v112</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -2974,8 +2974,12 @@ function cerrarPlanilla(){
       toast('La tanda de penales todavía no terminó.',5000);document.getElementById('penales-box').scrollIntoView({block:'center',behavior:'smooth'});return;
     }
     const pl=document.getElementById('pen-local').value,pv=document.getElementById('pen-visitante').value;
+    // Sin ventaja deportiva (todo lo que no es el 1° en la 1ª ronda) un empate SE DEFINE por
+    // penales: no se puede cerrar sin la tanda, si no el cruce queda sin ganador en el cuadro.
     if(pl===''&&pv===''){
-      if(!confirm('Terminó empatado y no cargaste penales: pasa el equipo con ventaja deportiva. ¿Cerrar así?'))return;
+      toast('Terminó empatado: hay que patear penales y cargarlos antes de cerrar.',6000);
+      document.getElementById('penales-box').scrollIntoView({block:'center',behavior:'smooth'});
+      return;
     }else if(pl===''||pv===''||Number(pl)===Number(pv)){
       toast('Completá los penales de los dos equipos (no pueden quedar iguales).',5000);
       document.getElementById('penales-box').scrollIntoView({block:'center',behavior:'smooth'});

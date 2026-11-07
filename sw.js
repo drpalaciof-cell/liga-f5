@@ -571,7 +571,9 @@
 //       las fechas 1-11 siguen a $50.000 / $55.000.
 // v110: con la Function de login andando, el equipo entra con la contraseña vieja O con la nueva.
 // v111: el editor de plantel del admin ya no corta la lista a 25 (traspasos de playoffs: 26-27).
-const CACHE = 'ligaf5-v111';
+// v112: planilla -- un empate de playoffs SIN ventaja deportiva no se puede cerrar sin cargar los
+// penales (antes preguntaba "pasa el equipo con ventaja" aunque no hubiera ninguno).
+const CACHE = 'ligaf5-v112';
 const ASSETS = [
   './index.html',
   './planilla.html',
