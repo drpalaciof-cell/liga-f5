@@ -2068,7 +2068,7 @@ async function ejecutarDepuracionSeguro() {
       afectados.slice(i, i + 200).forEach(({ eq, salen, quedan }) => {
         // Los editores de plantel esperan siempre NUM_JUGADORES filas: se compactan los que
         // quedan al principio y se rellena con filas vacías.
-        const nuevos = quedan.slice(0, NUM_JUGADORES);
+        const nuevos = quedan.slice(0, Math.max(NUM_JUGADORES, quedan.length));   // playoffs: puede haber más de 25 (traspasos)
         while (nuevos.length < NUM_JUGADORES) nuevos.push({ apellido: '', nombre: '', dni: '' });
         const backup = (eq.jugadoresSinSeguro || []).concat(salen.map(j => ({ ...j, quitadoEn: ahora })));
         batch.update(db.collection('equipos').doc(eq.id), { jugadores: nuevos, jugadoresSinSeguro: backup });
@@ -9316,7 +9316,9 @@ async function abrirEditarPlantelAdmin(equipoId) {
     const doc = await db.collection('equipos').doc(equipoId).get();
     if (!doc.exists) { showToast('No se encontró el equipo.', 'error'); return; }
     const eq = doc.data();
-    const jugadores = (eq.jugadores && eq.jugadores.length ? eq.jugadores.slice(0, NUM_JUGADORES) : emptyJugadores());
+    // Playoffs: con los traspasos del 06/11 hay listas de 26-27. No se cortan acá: cortar a 25
+    // borraba en silencio los últimos jugadores al guardar el plantel desde el admin.
+    const jugadores = (eq.jugadores && eq.jugadores.length ? eq.jugadores.slice() : emptyJugadores());
     while (jugadores.length < NUM_JUGADORES) jugadores.push({ apellido: '', nombre: '', dni: '' });
     const aseguradoSet = new Set([...(eq.seguroJugadoresDni || []), ...(eq.seguroHabilitadoManual || []).map(h => h.dni)]);
     const dt = eq.dt || {}, ay = eq.ayudante || {};

@@ -570,7 +570,8 @@
 // v109: arancel nuevo desde la Fecha 12: $55.000 en término / $60.000 fuera de hora (ARANCEL_TARIFAS);
 //       las fechas 1-11 siguen a $50.000 / $55.000.
 // v110: con la Function de login andando, el equipo entra con la contraseña vieja O con la nueva.
-const CACHE = 'ligaf5-v110';
+// v111: el editor de plantel del admin ya no corta la lista a 25 (traspasos de playoffs: 26-27).
+const CACHE = 'ligaf5-v111';
 const ASSETS = [
   './index.html',
   './planilla.html',
