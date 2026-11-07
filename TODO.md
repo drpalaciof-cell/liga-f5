@@ -4,7 +4,7 @@
   desde ELOSRA (en ELOSRA figura `GARCIA, federico 37044782`): también se corrigió el DNI en su
   `seguroHabilitadoManual` ("Comunicado oficial 06/11/2026 — traspaso desde ELOSRA"), si no quedaba sin seguro.
 - Agregados: `GARCETE, EUGENIO 44344295` y `SANCHEZ, EMILIANO MARTIN 39900611` (plantel 26 → 28).
-  **Sin seguro habilitado** al momento de cargarlos (no están en ningún otro plantel) — preguntado al usuario.
+  Seguro habilitado a mano a pedido del usuario (`seguroHabilitadoManual`, "alta para playoffs"). LORESVA queda con los 28 habilitados.
 - Respaldo de `jugadores` + `seguroHabilitadoManual` antes del cambio en `respaldo_loresva_plantel.json`.
 
 ---
