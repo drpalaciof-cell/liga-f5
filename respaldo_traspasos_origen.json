@@ -1,0 +1,919 @@
+{
+ "sE8EMMm5SKvhs6ZMNxAq": {
+  "nombre": "ELOSRA",
+  "jugadores": [
+   {
+    "apellido": "AGUAYO",
+    "nombre": "fabricio",
+    "dni": "38575615"
+   },
+   {
+    "apellido": "BARRIOS",
+    "nombre": "agustin",
+    "dni": "41177500"
+   },
+   {
+    "apellido": "BOGADO",
+    "nombre": "ivan",
+    "dni": "40626767"
+   },
+   {
+    "apellido": "DELGADO",
+    "nombre": "enzo",
+    "dni": "43350709"
+   },
+   {
+    "apellido": "GARCIA",
+    "nombre": "federico",
+    "dni": "37044782"
+   },
+   {
+    "apellido": "GAUNA",
+    "nombre": "gabriel",
+    "dni": "40215103"
+   },
+   {
+    "apellido": "GENES",
+    "nombre": "adrian",
+    "dni": "39900764"
+   },
+   {
+    "apellido": "GONZALEZ",
+    "nombre": "alejandro",
+    "dni": "44226456"
+   },
+   {
+    "apellido": "HERMOZA",
+    "nombre": "pablo",
+    "dni": "40210885"
+   },
+   {
+    "apellido": "LEDESMA",
+    "nombre": "manuel",
+    "dni": "36530159"
+   },
+   {
+    "apellido": "LEZCANO",
+    "nombre": "alexis",
+    "dni": "46677861"
+   },
+   {
+    "apellido": "LOPEZ",
+    "nombre": "tiago",
+    "dni": "48274771"
+   },
+   {
+    "apellido": "MARECO",
+    "nombre": "mauricio",
+    "dni": "46154421"
+   },
+   {
+    "apellido": "MELGAREJO",
+    "nombre": "gaspar",
+    "dni": "48002215"
+   },
+   {
+    "apellido": "ORTEGA",
+    "nombre": "sebastian",
+    "dni": "33224494"
+   },
+   {
+    "apellido": "ROJAS",
+    "nombre": "facundo",
+    "dni": "42728221"
+   },
+   {
+    "apellido": "ROLON",
+    "nombre": "federico",
+    "dni": "38575788"
+   },
+   {
+    "apellido": "VERA",
+    "nombre": "ezequiel",
+    "dni": "47546392"
+   },
+   {
+    "apellido": "ZAMORELO",
+    "nombre": "martin",
+    "dni": "39719126"
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   }
+  ],
+  "jugadoresTraspasados": null
+ },
+ "Q0U78D9l3qAWMqZNyaFh": {
+  "nombre": "ROTENS FC",
+  "jugadores": [
+   {
+    "apellido": "ALMIRON",
+    "nombre": "Claudio",
+    "dni": "35624382"
+   },
+   {
+    "apellido": "AMARILLA",
+    "nombre": "JAVIER",
+    "dni": "37911771"
+   },
+   {
+    "apellido": "BERNAL",
+    "nombre": "Sebastian",
+    "dni": "39317386"
+   },
+   {
+    "apellido": "CUQUEJO",
+    "nombre": "Ezequiel",
+    "dni": "44982890"
+   },
+   {
+    "apellido": "ENCINAS",
+    "nombre": "Facundo",
+    "dni": "37799851"
+   },
+   {
+    "apellido": "GUZMAN",
+    "nombre": "Miguel",
+    "dni": "44624726"
+   },
+   {
+    "apellido": "IBARRA",
+    "nombre": "Enzo",
+    "dni": "42993933"
+   },
+   {
+    "apellido": "LARROZA",
+    "nombre": "Hernan",
+    "dni": "46677875"
+   },
+   {
+    "apellido": "LEGUIZAMON",
+    "nombre": "Guillermo",
+    "dni": "43328665"
+   },
+   {
+    "apellido": "MANCILLA",
+    "nombre": "Leonardo",
+    "dni": "42802737"
+   },
+   {
+    "apellido": "MONTIEL",
+    "nombre": "Santiago",
+    "dni": "42415245"
+   },
+   {
+    "apellido": "MONTIEL",
+    "nombre": "Lucas",
+    "dni": "38191804"
+   },
+   {
+    "apellido": "ORTIZ",
+    "nombre": "Mathias",
+    "dni": "38378096"
+   },
+   {
+    "apellido": "OZUNA",
+    "nombre": "Hugo",
+    "dni": "46469583"
+   },
+   {
+    "apellido": "PATIÑO",
+    "nombre": "Mauro",
+    "dni": "40776006"
+   },
+   {
+    "apellido": "PERALTA",
+    "nombre": "Victor",
+    "dni": "38096529"
+   },
+   {
+    "apellido": "PERALTA",
+    "nombre": "Fernando",
+    "dni": "42759798"
+   },
+   {
+    "apellido": "PINEDA",
+    "nombre": "Brian",
+    "dni": "43069257"
+   },
+   {
+    "apellido": "ROJAS",
+    "nombre": "Diego",
+    "dni": "37066450"
+   },
+   {
+    "apellido": "ROJAS",
+    "nombre": "Antonio",
+    "dni": "41013360"
+   },
+   {
+    "apellido": "SALINAS",
+    "nombre": "Santiago",
+    "dni": "48146249"
+   },
+   {
+    "apellido": "VELAZQUEZ",
+    "nombre": "John",
+    "dni": "44224682"
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   }
+  ],
+  "jugadoresTraspasados": null
+ },
+ "tVI9TJWc1W3hfouYMW5v": {
+  "nombre": "LA SUB 21",
+  "jugadores": [
+   {
+    "apellido": "ACOSTA",
+    "nombre": "Juan ramon",
+    "dni": "39135494"
+   },
+   {
+    "apellido": "ARAMBURU",
+    "nombre": "Renzo",
+    "dni": "47714724"
+   },
+   {
+    "apellido": "ARCE",
+    "nombre": "Carlos matias",
+    "dni": "35678189"
+   },
+   {
+    "apellido": "BENÍTEZ",
+    "nombre": "Nicolás yamil",
+    "dni": "41176764"
+   },
+   {
+    "apellido": "BRUNELLI",
+    "nombre": "Nicolás",
+    "dni": "40084825"
+   },
+   {
+    "apellido": "CABALLERO",
+    "nombre": "Nahuel",
+    "dni": "50112133"
+   },
+   {
+    "apellido": "DOMÍNGUEZ",
+    "nombre": "Lucas",
+    "dni": "38543064"
+   },
+   {
+    "apellido": "DUARTE",
+    "nombre": "Juan",
+    "dni": "45817244"
+   },
+   {
+    "apellido": "FIGUEREDO",
+    "nombre": "Juan Carlos",
+    "dni": "40488895"
+   },
+   {
+    "apellido": "FLEITAS",
+    "nombre": "Luis Alberto",
+    "dni": "38377262"
+   },
+   {
+    "apellido": "GONZÁLEZ",
+    "nombre": "Silvio",
+    "dni": "48146226"
+   },
+   {
+    "apellido": "IBARRA",
+    "nombre": "Ivan xavier",
+    "dni": "38577082"
+   },
+   {
+    "apellido": "MACHUCA",
+    "nombre": "Luciano",
+    "dni": "44982246"
+   },
+   {
+    "apellido": "NEIROT",
+    "nombre": "Marcelo adrian",
+    "dni": "34842739"
+   },
+   {
+    "apellido": "ORTEGA",
+    "nombre": "Juan daniel",
+    "dni": "46470728"
+   },
+   {
+    "apellido": "PAZ",
+    "nombre": "Franco Sebastian",
+    "dni": "45533134"
+   },
+   {
+    "apellido": "QUINTANA",
+    "nombre": "Oscar emanuel",
+    "dni": "40084026"
+   },
+   {
+    "apellido": "QUINTANA",
+    "nombre": "Luciano",
+    "dni": "46395084"
+   },
+   {
+    "apellido": "RODRÍGUEZ",
+    "nombre": "Gaston nicolas",
+    "dni": "44225899"
+   },
+   {
+    "apellido": "RODRÍGUEZ",
+    "nombre": "Alexander Joaquín",
+    "dni": "46608838"
+   },
+   {
+    "apellido": "ROMERO",
+    "nombre": "Pedro Gabriel",
+    "dni": "46322329"
+   },
+   {
+    "apellido": "TESSIO",
+    "nombre": "Dylan",
+    "dni": "44587713"
+   },
+   {
+    "apellido": "VIERA",
+    "nombre": "Daniel",
+    "dni": "40085096"
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   }
+  ],
+  "jugadoresTraspasados": null
+ },
+ "KlQmxcm9SdIoiLrg2cgL": {
+  "nombre": "DEFENSORES DEL OBRERO",
+  "jugadores": [
+   {
+    "apellido": "AGUERO",
+    "nombre": "Miguel",
+    "dni": "44647272"
+   },
+   {
+    "apellido": "AGUERO",
+    "nombre": "Ezequiel",
+    "dni": "46679204"
+   },
+   {
+    "apellido": "AGUILAR",
+    "nombre": "Aníbal",
+    "dni": "42528185"
+   },
+   {
+    "apellido": "AGUIRRE",
+    "nombre": "Ezequiel",
+    "dni": "44923089"
+   },
+   {
+    "apellido": "ALBARENGA",
+    "nombre": "Gonzalo",
+    "dni": "43329740"
+   },
+   {
+    "apellido": "AMARILLA",
+    "nombre": "Tobias",
+    "dni": "48146915"
+   },
+   {
+    "apellido": "DOMINGUEZ",
+    "nombre": "Samuel",
+    "dni": "46322058"
+   },
+   {
+    "apellido": "ENCINA",
+    "nombre": "Jose",
+    "dni": "44717533"
+   },
+   {
+    "apellido": "FERNANDEZ",
+    "nombre": "Adrian",
+    "dni": "40803704"
+   },
+   {
+    "apellido": "FLORENTIN",
+    "nombre": "Nahuel",
+    "dni": "44225837"
+   },
+   {
+    "apellido": "GALARZA",
+    "nombre": "Mateo",
+    "dni": "46608875"
+   },
+   {
+    "apellido": "MEDINA",
+    "nombre": "Jeremías",
+    "dni": "44102324"
+   },
+   {
+    "apellido": "PAROLA",
+    "nombre": "Lautaro",
+    "dni": "44924106"
+   },
+   {
+    "apellido": "RAMIREZ",
+    "nombre": "Facundo",
+    "dni": "43069318"
+   },
+   {
+    "apellido": "RIVERO",
+    "nombre": "Marco",
+    "dni": "43351343"
+   },
+   {
+    "apellido": "ROMERO",
+    "nombre": "Enrique",
+    "dni": "43068417"
+   },
+   {
+    "apellido": "TORRES",
+    "nombre": "Claudio",
+    "dni": "44224962"
+   },
+   {
+    "apellido": "VALLEJOZ",
+    "nombre": "Fernando",
+    "dni": "39316369"
+   },
+   {
+    "apellido": "VILLALBA",
+    "nombre": "Enrique",
+    "dni": "41415190"
+   },
+   {
+    "apellido": "VILLAR",
+    "nombre": "Brian",
+    "dni": "42728201"
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   }
+  ],
+  "jugadoresTraspasados": null
+ },
+ "jWKjiwMFDlekxS86hSRd": {
+  "nombre": "INSTITUTO F.C",
+  "jugadores": [
+   {
+    "apellido": "ACOSTA",
+    "nombre": "Ticiano",
+    "dni": "46862226"
+   },
+   {
+    "apellido": "ALVARENGA",
+    "nombre": "Diego",
+    "dni": "46523716"
+   },
+   {
+    "apellido": "AVALOS",
+    "nombre": "Mauricio",
+    "dni": "40626139"
+   },
+   {
+    "apellido": "BARCELLONA",
+    "nombre": "Brian",
+    "dni": "38442132"
+   },
+   {
+    "apellido": "BENITEZ",
+    "nombre": "Facundo",
+    "dni": "39606406"
+   },
+   {
+    "apellido": "BUSTO",
+    "nombre": "Santiago",
+    "dni": "43712341"
+   },
+   {
+    "apellido": "CABELLO",
+    "nombre": "Matias",
+    "dni": "40083054"
+   },
+   {
+    "apellido": "CACERES",
+    "nombre": "Maximiliano",
+    "dni": "42634283"
+   },
+   {
+    "apellido": "CENTURION",
+    "nombre": "Lucas",
+    "dni": "41415320"
+   },
+   {
+    "apellido": "DIAZ",
+    "nombre": "Matias",
+    "dni": "42526892"
+   },
+   {
+    "apellido": "DORREGO",
+    "nombre": "Maximo",
+    "dni": "39319595"
+   },
+   {
+    "apellido": "GONZALEZ",
+    "nombre": "Milton",
+    "dni": "37468407"
+   },
+   {
+    "apellido": "GUSTELER",
+    "nombre": "Gonzalo",
+    "dni": "41607385"
+   },
+   {
+    "apellido": "LEDESMA",
+    "nombre": "Eladio",
+    "dni": "46862611"
+   },
+   {
+    "apellido": "MIRANDA",
+    "nombre": "Gaston",
+    "dni": "42756649"
+   },
+   {
+    "apellido": "MORA",
+    "nombre": "Franco",
+    "dni": "43330098"
+   },
+   {
+    "apellido": "ORUE",
+    "nombre": "Matias",
+    "dni": "41013160"
+   },
+   {
+    "apellido": "PASSERINI",
+    "nombre": "Nahuel",
+    "dni": "41415439"
+   },
+   {
+    "apellido": "RUCHINSKY OSUNA",
+    "nombre": "Fabricio",
+    "dni": "46064893"
+   },
+   {
+    "apellido": "SOSA",
+    "nombre": "Elian",
+    "dni": "42758342"
+   },
+   {
+    "apellido": "VELAZQUEZ",
+    "nombre": "Cesar",
+    "dni": "36669926"
+   },
+   {
+    "apellido": "VERA",
+    "nombre": "Ivan",
+    "dni": "35625292"
+   },
+   {
+    "apellido": "MONZON",
+    "nombre": "Miqueas",
+    "dni": "50476613"
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   }
+  ],
+  "jugadoresTraspasados": null
+ },
+ "PKQActjz73vqJkC3ch4b": {
+  "nombre": "VALENCIA",
+  "jugadores": [
+   {
+    "apellido": "ACUÑA",
+    "nombre": "Jeremías, David",
+    "dni": "48027053"
+   },
+   {
+    "apellido": "ALCARAZ",
+    "nombre": "Gabriel, Omar",
+    "dni": "46869904"
+   },
+   {
+    "apellido": "AYALA",
+    "nombre": "Maximiliano",
+    "dni": "48145573"
+   },
+   {
+    "apellido": "BENITEZ",
+    "nombre": "Facundo ,Nahuel",
+    "dni": "44923932"
+   },
+   {
+    "apellido": "BLANCO",
+    "nombre": "Jorge",
+    "dni": "44224236"
+   },
+   {
+    "apellido": "CASOLA",
+    "nombre": "Leonardo, Isaac",
+    "dni": "41519466"
+   },
+   {
+    "apellido": "CUELLAR",
+    "nombre": "Hugo, Fabián",
+    "dni": "44924138"
+   },
+   {
+    "apellido": "CUELLAR",
+    "nombre": "Leonardo, Javier",
+    "dni": "43938538"
+   },
+   {
+    "apellido": "DUARTE",
+    "nombre": "Nahuel, Aníbal",
+    "dni": "48864853"
+   },
+   {
+    "apellido": "GOMEZ",
+    "nombre": "Jonathan",
+    "dni": "46864853"
+   },
+   {
+    "apellido": "OJEDA",
+    "nombre": "Manuel, Ezequiel",
+    "dni": "46470328"
+   },
+   {
+    "apellido": "OLMEDO",
+    "nombre": "Axel, Ezequiel",
+    "dni": "44185175"
+   },
+   {
+    "apellido": "ORTELLADO",
+    "nombre": "Hernan, Luciano",
+    "dni": "44769661"
+   },
+   {
+    "apellido": "PEÑA",
+    "nombre": "Enzo,  Nicolás",
+    "dni": "44465803"
+   },
+   {
+    "apellido": "PÉREZ",
+    "nombre": "Juan,  David",
+    "dni": "46468775"
+   },
+   {
+    "apellido": "RIOS",
+    "nombre": "Nahuel,  Maximiliano",
+    "dni": "44344438"
+   },
+   {
+    "apellido": "ROJAS",
+    "nombre": "David",
+    "dni": "49708941"
+   },
+   {
+    "apellido": "ROMERO",
+    "nombre": "Fernando Gabriel",
+    "dni": "43903350"
+   },
+   {
+    "apellido": "VEGA",
+    "nombre": "Diego",
+    "dni": "45899871"
+   },
+   {
+    "apellido": "VEGA",
+    "nombre": "Tiago,  Ramiro",
+    "dni": "45643747"
+   },
+   {
+    "apellido": "ESPINOSA",
+    "nombre": "Jonathan",
+    "dni": "45901113"
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   }
+  ],
+  "jugadoresTraspasados": null
+ },
+ "40qpPNLdR5pknCT3Xwko": {
+  "nombre": "RURAL 55",
+  "jugadores": [
+   {
+    "nombre": "Mirko",
+    "apellido": "ACOSTA",
+    "dni": "46394025"
+   },
+   {
+    "dni": "44465828",
+    "nombre": "Lautaro",
+    "apellido": "ARAMBURU"
+   },
+   {
+    "dni": "46063798",
+    "apellido": "ARCE",
+    "nombre": "Santiago"
+   },
+   {
+    "dni": "43453458",
+    "nombre": "Facundo",
+    "apellido": "BOGADO"
+   },
+   {
+    "apellido": "CARDOZO",
+    "nombre": "Santiago",
+    "dni": "45381987"
+   },
+   {
+    "apellido": "CARDOZO",
+    "nombre": "Tiago",
+    "dni": "44924133"
+   },
+   {
+    "nombre": "Geronimo",
+    "dni": "45171028",
+    "apellido": "CESPEDES"
+   },
+   {
+    "nombre": "Juan",
+    "dni": "45642695",
+    "apellido": "CHAVES"
+   },
+   {
+    "nombre": "Alejandro",
+    "apellido": "CORONEL",
+    "dni": "45171126"
+   },
+   {
+    "dni": "43938179",
+    "nombre": "Alejandro",
+    "apellido": "CORREA"
+   },
+   {
+    "dni": "42755609",
+    "apellido": "CORREA",
+    "nombre": "Benjamin"
+   },
+   {
+    "nombre": "Ramiro",
+    "apellido": "FERNANDEZ",
+    "dni": "45171070"
+   },
+   {
+    "apellido": "GUZMAN",
+    "nombre": "Laureano",
+    "dni": "44982256"
+   },
+   {
+    "dni": "42633547",
+    "nombre": "Eduardo",
+    "apellido": "IBARRA"
+   },
+   {
+    "nombre": "Ivan",
+    "apellido": "LESME",
+    "dni": "43068391"
+   },
+   {
+    "dni": "45050004",
+    "nombre": "Gonzalo",
+    "apellido": "MICHATEK"
+   },
+   {
+    "apellido": "NUÑEZ",
+    "dni": "45968691",
+    "nombre": "Bruno"
+   },
+   {
+    "dni": "46470913",
+    "apellido": "ORTIZ",
+    "nombre": "Alan"
+   },
+   {
+    "dni": "44224027",
+    "apellido": "PENAYO",
+    "nombre": "Tomas"
+   },
+   {
+    "nombre": "Benjamin",
+    "apellido": "PINO",
+    "dni": "46522536"
+   },
+   {
+    "dni": "46468363",
+    "apellido": "RODRIGUEZ",
+    "nombre": "Angel"
+   },
+   {
+    "dni": "45049486",
+    "apellido": "SILGUERO",
+    "nombre": "Lucas"
+   },
+   {
+    "dni": "40211119",
+    "apellido": "SOSA",
+    "nombre": "Oscar"
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   },
+   {
+    "apellido": "",
+    "nombre": "",
+    "dni": ""
+   }
+  ],
+  "jugadoresTraspasados": null
+ }
+}

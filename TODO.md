@@ -1,3 +1,25 @@
+# 2026-11-07 (cont.) — Traspasos de playoffs: fuera del plantel del equipo de origen
+
+Cruzado el PDF "OFICIAL - TRASPASOS PLAY OFF - SEGUNDA DIVISION" (comunicado 06/11, 24 jugadores):
+los 24 están en su equipo nuevo con seguro habilitado (GARCIA con 37044782, ver abajo).
+A pedido del usuario se sacaron del plantel de su equipo ANTERIOR los 14 que seguían ahí
+(fila quitada, el resto sube, fila vacía al final). Cada uno queda registrado en el equipo de origen en
+el campo nuevo **`jugadoresTraspasados[]`** `{apellido,nombre,dni,destino,fecha,motivo}`.
+Respaldo de los planteles antes del cambio en `respaldo_traspasos_origen.json`.
+
+- ELOSRA: GAUNA 40215103, ORTEGA 33224494 → JUVENTUD · LEZCANO 46677861 → LA BANDA · GENES 39900764 → CONTADORES · GARCIA 37044782 → LORESVA
+- ROTENS: ORTIZ 38378096 → DRINK TEAM · LA SUB 21: DUARTE 45817244 → FRANJAMIGOS, MACHUCA 44982246 → ESTILO
+- DEFENSORES DEL OBRERO: ALBARENGA 43329740 → LA BANDA
+- INSTITUTO: GUSTELER 41607385 → CONTI, VELAZQUEZ 36669926 → ESTILO, DORREGO 39319595 → CITY (figura LIBRE en el PDF)
+- VALENCIA: PEÑA 44465803 → CONTI · RURAL 55: IBARRA 42633547 → CITY
+
+⚠ Nombres de pila distintos entre el PDF y el plantel de origen con el MISMO DNI (avisado al usuario):
+GAUNA Carlos/gabriel, ORTEGA Alcides/sebastian, ALBARENGA Facundo/Gonzalo, MACHUCA Sebastian/Luciano,
+IBARRA Sebastian/Eduardo. GARCIA: el PDF dice 37.004.782, ELOSRA tenía 37044782 (se usó 37044782).
+GARCETE y SANCHEZ (LORESVA, cargados hoy) **no están en el comunicado**.
+
+---
+
 # 2026-11-07 — LORESVA F.C: corrección de GARCIA y 2 jugadores nuevos (antes del partido de las 15)
 
 - `GARCIA, GABRIEL 37004782` → **`GARCIA, FEDERICO GABRIEL 37044782`** (DNI mal tipeado). Es el traspaso
