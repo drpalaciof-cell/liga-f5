@@ -389,6 +389,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .ph-div-badge{display:flex;align-items:center;gap:4px;}
 .ph-div-logo{height:20px;width:auto;object-fit:contain;}
 .ph-div-nombre{font-size:9px;font-weight:800;color:#fff;letter-spacing:1px;text-transform:uppercase;}
+#ph-crono{font-variant-numeric:tabular-nums;font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:40px;line-height:1;color:#000;background:#fff;padding:6px 14px;border-radius:4px;letter-spacing:1px;cursor:pointer;min-width:132px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.45);}
+#ph-crono.pausado{color:#c62828;}
 .ph-periodo{font-size:9px;font-weight:800;color:var(--cyan);background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.22);padding:3px 9px;border-radius:10px;white-space:nowrap;letter-spacing:.5px;}
 
 /* ── FALTAS BAR ── */
@@ -799,7 +801,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
 <!-- Indicador de versión visible -- agregado el 22/08 en pleno incidente en producción,
      porque no había forma de confirmar por captura si una tablet ya había bajado el deploy
      nuevo o seguía con JS viejo en caché. Bumpear el texto acá junto con CACHE en sw.js. -->
-<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v113</div>
+<div style="position:fixed;bottom:4px;right:8px;font-size:10px;color:rgba(255,255,255,.3);z-index:999;pointer-events:none;">v114</div>
 <div id="offline-bar">⚠ Sin conexión · Los cambios se guardarán cuando vuelva la señal</div>
 
 <!-- Aviso de la organización -- flota arriba de CUALQUIER pantalla sin taparla ni bloquearla
@@ -965,7 +967,7 @@ hr.div{border:none;border-top:1px solid rgba(255,255,255,0.07);margin:14px 0;}
         <span class="ph-div-nombre" id="ph-division-nombre"></span>
       </div>
       <span class="ph-periodo" id="ph-periodo">1° TIEMPO</span>
-      <span id="ph-crono" onclick="abrirModalCorregirCrono()" style="display:none;font-variant-numeric:tabular-nums;font-weight:800;font-size:17px;color:var(--orange);letter-spacing:.5px;cursor:pointer;text-decoration:underline dotted;" title="Tocar para corregir el tiempo"></span>
+      <span id="ph-crono" onclick="abrirModalCorregirCrono()" style="display:none;" title="Tocar para corregir el tiempo"></span>
     </div>
     <button class="topbar-back" onclick="abrirModalArbitros()" title="Árbitros">🧑‍⚖️</button>
   </div>
@@ -1644,7 +1646,9 @@ function getSancionesActivas(counts, eq, numeroFecha){
 
 // Ordena por horario real; un partido sin horario (los que no se juegan) va siempre al final.
 function horarioAMin(h){const m=/^(\d{1,2}):(\d{2})/.exec(h||'');return m?(+m[1])*60+(+m[2]):99999;}
+let _listaGen=0;
 async function cargarLista(){
+  const gen=++_listaGen; // si entra otra carga mientras ésta espera, ésta no dibuja nada (evita la lista duplicada)
   if(st.unsub){st.unsub();st.unsub=null;}
   iniciarSyncAvisos();
   // Si ya había permiso concedido de una sesión anterior, re-suscribe solo (sin volver a
@@ -1665,6 +1669,7 @@ async function cargarLista(){
     let todos=[];
     // El modo prueba (que creaba partidos con _sim:true) ya no existe en la app, pero se
     // mantiene este filtro por si queda algún documento viejo de antes en la base.
+    if(gen!==_listaGen)return;
     snap.forEach(doc=>{const d={id:doc.id,...doc.data()};if(d._sim)return;_pCache[doc.id]=d;todos.push(d);});
     body.innerHTML='';
     if(!todos.length){
@@ -1679,6 +1684,8 @@ async function cargarLista(){
     }));
     // Fecha activa: la más baja con partidos pendientes o en curso (no cerrados, no jugados en sim viejo)
     const _cfgL=await getCfg();
+    if(gen!==_listaGen)return;
+    body.innerHTML='';
     const activos=todos.filter(p=>p.estado!=='cerrado'&&!(p.jugado===true&&!p.estado)
       && !esPostergada(_cfgL,p.division,p.numeroFecha));
     const fechasActivas=[...new Set(activos.map(p=>p.numeroFecha||0))].sort((a,b)=>Number(a)-Number(b));
@@ -2419,6 +2426,7 @@ setInterval(()=>{
   const hastaMs=el.dataset.pausaDesde?new Date(el.dataset.pausaDesde).getTime():Date.now();
   const totalSeg=Math.max(0,Math.floor((hastaMs-new Date(el.dataset.desde).getTime()-pausaAcum)/1000));
   el.textContent=String(Math.floor(totalSeg/60)).padStart(2,'0')+':'+String(totalSeg%60).padStart(2,'0')+(el.dataset.pausaDesde?' ⏸':'');
+  el.classList.toggle('pausado',!!el.dataset.pausaDesde);
 },1000);
 function actualizarBotonPausa(){
   const btn=document.getElementById('btn-pausa-crono');

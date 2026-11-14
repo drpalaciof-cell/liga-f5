@@ -574,7 +574,8 @@
 // v112: planilla -- un empate de playoffs SIN ventaja deportiva no se puede cerrar sin cargar los
 // penales (antes preguntaba "pasa el equipo con ventaja" aunque no hubiera ninguno).
 // v113: aranceles de la ronda de playoffs siguiente aunque todavía no estén creados sus partidos.
-const CACHE = 'ligaf5-v113';
+// v114: planilla -- cronómetro grande (fondo blanco, número negro) y lista de partidos sin duplicados.
+const CACHE = 'ligaf5-v114';
 const ASSETS = [
   './index.html',
   './planilla.html',
