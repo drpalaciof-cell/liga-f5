@@ -3544,6 +3544,31 @@ async function _cargarCfgArancel() {
   try {
     const snap = await db.collection('partidos').where('fase', 'in', ['octavos', 'cuartos', 'semis', 'final']).get();
     const po = []; snap.forEach(d => { const x = d.data(); po.push({ nf: Number(x.numeroFecha), division: x.division, fase: x.fase, local: x.equipoLocalId, visita: x.equipoVisitanteId }); });
+    // Ronda siguiente todavía sin partidos creados (pedido 13/11: habilitar el arancel de cuartos
+    // de Primera y Segunda antes de armar los cruces). Si en una división la próxima ronda ya
+    // tiene definidos los dos equipos de cada cruce, se la cobra como una fecha más con esos
+    // equipos. El número es el mismo que sugiere "Crear partidos de…": el de los playoffs de la
+    // otra división que estén sin jugar o, si no hay, la fecha siguiente a la última cargada
+    // (así las dos divisiones comparten número cuando juegan el mismo día).
+    try {
+      const [ps, es] = await Promise.all([db.collection('partidos').get(), db.collection('equipos').get()]);
+      const todos = [], eqs = [];
+      ps.forEach(d => todos.push({ id: d.id, ...d.data() }));
+      es.forEach(d => eqs.push({ id: d.id, ...d.data() }));
+      const maxNf = Math.max(0, ...todos.map(x => Number(x.numeroFecha) || 0));
+      const virt = [];
+      Object.keys(PLAYOFF_CFG).forEach(div => {
+        const cu = calcularCuadroPlayoffs(div, eqs.filter(e => e.division === div), todos.filter(x => x.division === div));
+        const pend = _poRondaPendiente(cu);
+        if (!pend || !pend.listos || (pend.r === 0 && cu.proyectado)) return;
+        virt.push({ div, fase: FASE_KEY[cu.cfg.rondas[pend.r]], faltan: pend.faltan });
+      });
+      virt.forEach(v => {
+        const otra = todos.filter(x => x.division !== v.div && x.fase && !x.jugado).map(x => Number(x.numeroFecha)).filter(n => !isNaN(n));
+        const nf = otra.length ? Math.min(...otra) : maxNf + 1;
+        v.faltan.forEach(mt => po.push({ nf, division: v.div, fase: v.fase, local: mt.a.id, visita: mt.b.id, aCrear: true }));
+      });
+    } catch (e) { console.error(e); }
     _cfgArancel.po = po;
   } catch (e) { console.error(e); }
   return _cfgArancel;

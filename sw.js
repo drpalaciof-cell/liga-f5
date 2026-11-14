@@ -573,7 +573,8 @@
 // v111: el editor de plantel del admin ya no corta la lista a 25 (traspasos de playoffs: 26-27).
 // v112: planilla -- un empate de playoffs SIN ventaja deportiva no se puede cerrar sin cargar los
 // penales (antes preguntaba "pasa el equipo con ventaja" aunque no hubiera ninguno).
-const CACHE = 'ligaf5-v112';
+// v113: aranceles de la ronda de playoffs siguiente aunque todavía no estén creados sus partidos.
+const CACHE = 'ligaf5-v113';
 const ASSETS = [
   './index.html',
   './planilla.html',
